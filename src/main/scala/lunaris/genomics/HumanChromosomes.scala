@@ -42,4 +42,37 @@ object HumanChromosomes {
       chr21 -> 46709983, chr22 -> 50818468, chrX -> 156040895, chrY -> 57227415
     )
 
+  val totalSize: Long = all.map(sizes).sum
+
+  def locusToAbsPos(locus: Locus): Long = {
+    val chromIter = all.iterator
+    var absPos: Long = locus.pos
+    var foundChrom = false
+    while(chromIter.hasNext && !foundChrom) {
+      val chrom = chromIter.next()
+      if(chrom == locus.chromosome) {
+        foundChrom = true
+      } else {
+        absPos += sizes(chrom)
+      }
+    }
+    absPos
+  }
+
+  def absPosToLocus(absPos: Long): Option[Locus] = {
+    val chromIter = all.iterator
+    var chromOpt: Option[Chromosome] = None
+    var pos: Long = absPos
+    while(chromIter.hasNext && chromOpt.isEmpty) {
+      val chrom = chromIter.next()
+      val size = sizes(chrom)
+      if(absPos > size) {
+        pos -= size
+      } else {
+        chromOpt = Some(chrom)
+      }
+    }
+    chromOpt.map(Locus(_, pos))
+  }
+
 }

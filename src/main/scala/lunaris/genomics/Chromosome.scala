@@ -1,14 +1,19 @@
 package lunaris.genomics
 
 trait Chromosome {
+  def asString: String
 
 }
 
 object Chromosome {
 
-  case class Autosome(number: Int) extends Chromosome
+  case class Autosome(number: Int) extends Chromosome {
+    override def asString: String = number.toString
+  }
 
-  case class Allosome(letter: Char) extends Chromosome
+  case class Allosome(letter: Char) extends Chromosome {
+    override def asString: String = letter.toString
+  }
 
   object ChromosomeOrdering extends Ordering[Chromosome] {
     override def compare(chr1: Chromosome, chr2: Chromosome): Int = {
