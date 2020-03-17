@@ -66,7 +66,7 @@ object HumanChromosomes {
     while(chromIter.hasNext && chromOpt.isEmpty) {
       val chrom = chromIter.next()
       val size = sizes(chrom)
-      if(absPos > size) {
+      if(pos > size) {
         pos -= size
       } else {
         chromOpt = Some(chrom)
