@@ -1,10 +1,19 @@
 package lunaris.datagen.app
 
+import java.io.PrintWriter
+
+import better.files.File
 import lunaris.genomics.{HumanChromosomes, Locus}
 import lunaris.utils.AscendingLongIterator
 
 import scala.util.Random
 
+/**
+ * Creates simulated location-sorted TSV data file
+ * Block-gzip with bgzip
+ * Then index using tabix:
+ * tabix -s1 -b2 -e2 <filename>
+ */
 object DataSimulator {
 
   case class LocusWithApsPos(locus: Locus, absPos: Long)
@@ -23,6 +32,12 @@ object DataSimulator {
   def main(args: Array[String]): Unit = {
     val nRecords: Long = args(0).toLong
     val absPosIter = AscendingLongIterator(nRecords, HumanChromosomes.totalSize)
+    val out = if(args.length > 1) {
+      val outFile = File(args(1))
+      outFile.newPrintWriter(autoFlush = false)
+    } else {
+      new PrintWriter(System.out)
+    }
     val cols: Seq[Col] = Seq(
       Col("chrom", _.locus.chromosome.asString),
       Col("pos", _.locus.pos.toString),
@@ -39,13 +54,14 @@ object DataSimulator {
       Col("flavor", _ => pickFrom(flavors)),
       Col("mystery", _ => (19 + random.nextInt(19 + random.nextInt(19 + random.nextInt(19)))).toString)
     )
-    println(cols.map(_.name).mkString("\t"))
+    out.println("#" + cols.map(_.name).mkString("\t"))
     while (absPosIter.hasNext) {
       val absPos = absPosIter.next()
       val locus = HumanChromosomes.absPosToLocus(absPos).get
       val locusWithApsPos = LocusWithApsPos(locus, absPos)
-      println(cols.map(_.fieldGen(locusWithApsPos)).mkString("\t"))
+      out.println(cols.map(_.fieldGen(locusWithApsPos)).mkString("\t"))
     }
+    out.flush()
   }
 
 }
