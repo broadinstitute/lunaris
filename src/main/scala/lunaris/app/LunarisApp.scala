@@ -3,6 +3,7 @@ package lunaris.app
 import java.io.InputStream
 import java.nio.file.Files
 
+import htsjdk.samtools.util.BlockCompressedInputStream
 import htsjdk.tribble.AbstractFeatureReader
 import htsjdk.tribble.index.tabix.TabixIndex
 import lunaris.data.DataSources
@@ -12,11 +13,12 @@ object LunarisApp {
 
   def main(args: Array[String]): Unit = {
     //    val dataSourceWithIndex = DataSources.simDataOnTerra
-        val dataSourceWithIndex = DataSources.simDataOnOliversOldLaptop
+    val dataSourceWithIndex = DataSources.simDataOnOliversOldLaptop
     val featureResource = dataSourceWithIndex.dataSource.toUri.toString
     println(featureResource)
-    val indexInputStream: InputStream = Files.newInputStream(dataSourceWithIndex.index)
-    val tabixIndex: TabixIndex = new TabixIndex(indexInputStream)
+    val rawIndexInputStream: InputStream = Files.newInputStream(dataSourceWithIndex.index)
+    val unzippedIndexInputStream = new BlockCompressedInputStream(rawIndexInputStream)
+    val tabixIndex: TabixIndex = new TabixIndex(unzippedIndexInputStream)
     val featureReader = AbstractFeatureReader.getFeatureReader(featureResource, RecordCodec, tabixIndex)
     val header = featureReader.getHeader
     println(header)
