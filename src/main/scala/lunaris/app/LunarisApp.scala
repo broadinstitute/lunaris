@@ -19,7 +19,10 @@ object LunarisApp {
     val rawIndexInputStream: InputStream = Files.newInputStream(dataSourceWithIndex.index)
     val unzippedIndexInputStream = new BlockCompressedInputStream(rawIndexInputStream)
     val tabixIndex: TabixIndex = new TabixIndex(unzippedIndexInputStream)
-    val featureReader = AbstractFeatureReader.getFeatureReader(featureResource, RecordCodec, tabixIndex)
+    val chromCol = 0
+    val posCol = 1
+    val featureReader =
+      AbstractFeatureReader.getFeatureReader(featureResource, RecordCodec(chromCol, posCol), tabixIndex)
     val header = featureReader.getHeader
     println(header)
     val recordIterator = featureReader.query("1", 1, 100000)
