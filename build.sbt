@@ -5,14 +5,12 @@ val scalaV = "2.13.1"
 val yootilzV = "0.1.2"
 val scalaTestV = "3.1.1"
 val betterFilesV = "3.8.0"
-val htsjdkV = "2.21.3"
 val googleCloudNioV = "0.107.0-alpha"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
   "org.broadinstitute" %% "yootilz-gcp" % yootilzV,
   "com.github.pathikrit" %% "better-files" % betterFilesV,
-  "com.github.samtools" % "htsjdk" % htsjdkV,
   "com.google.cloud" % "google-cloud-nio" % googleCloudNioV
 )
 
