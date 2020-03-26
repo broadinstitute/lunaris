@@ -1,10 +1,10 @@
 package lunaris.data
 
-import java.nio.file.{Path, Paths}
+import lunaris.io.InputId
 
-case class DataSourceWithIndex(dataSource: Path, index: Path)
+case class DataSourceWithIndex(dataSource: InputId, index: InputId)
 
 object DataSourceWithIndex {
   def apply(dataSource: String, index: String): DataSourceWithIndex =
-    DataSourceWithIndex(Paths.get(dataSource), Paths.get(index))
+    DataSourceWithIndex(InputId(dataSource), InputId(index))
 }
