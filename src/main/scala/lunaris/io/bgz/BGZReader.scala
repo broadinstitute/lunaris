@@ -1,20 +1,22 @@
 package lunaris.io.bgz
 
-import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
+import java.nio.{ByteBuffer, ByteOrder}
+
+import org.broadinstitute.yootilz.core.snag.Snag
 
 class BGZReader(val readChannel: ReadableByteChannel) {
   val bufferSize: Int = 100
   val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
+  buffer.order(ByteOrder.LITTLE_ENDIAN)
 
   val bytesRead: Int = readChannel.read(buffer)
   println(s"Read $bytesRead bytes.")
   buffer.flip()
-  val bytes = new Array[Byte](100)
-  buffer.get(bytes)
-  println("The bytes:")
-  println(bytes.mkString(" "))
-  println("These were the bytes.")
+  val either: Either[Snag, BGZHeader] = BGZHeader.read(buffer)
+  println("The either:")
+  println(either)
+  println("This was the either.")
 }
 
 object BGZReader {
