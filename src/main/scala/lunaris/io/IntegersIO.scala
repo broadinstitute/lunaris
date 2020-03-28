@@ -29,6 +29,8 @@ object IntegersIO {
         byte.toLong + UnsignedByte.shiftToPositive
       }
     }
+
+    override def toString: String = toPositiveInt.toString
   }
 
   object UnsignedByte {
@@ -55,6 +57,8 @@ object IntegersIO {
         short.toLong + UnsignedShort.shiftToPositive
       }
     }
+
+    override def toString: String = toPositiveInt.toString
   }
 
   object UnsignedShort {
@@ -73,6 +77,8 @@ object IntegersIO {
         int.toLong + UnsignedInt.shiftToPositive
       }
     }
+
+    override def toString: String = toPositiveLong.toString
   }
 
   object UnsignedInt {
@@ -88,4 +94,5 @@ object IntegersIO {
   object UnsignedLong {
     def apply(long: Long): UnsignedLong = new UnsignedLong(long)
   }
+
 }
