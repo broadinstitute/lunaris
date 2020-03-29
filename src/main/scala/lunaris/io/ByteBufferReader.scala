@@ -2,7 +2,7 @@ package lunaris.io
 
 import java.nio.{BufferUnderflowException, ByteBuffer}
 
-import lunaris.io.IntegersIO.{UnsignedByte, UnsignedInt}
+import lunaris.io.IntegersIO.{UnsignedByte, UnsignedInt, UnsignedShort}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 class ByteBufferReader(val buffer: ByteBuffer) {
@@ -37,8 +37,14 @@ class ByteBufferReader(val buffer: ByteBuffer) {
   def readUnsignedByteFieldAssert(name: String, expected: UnsignedByte): Either[Snag, UnsignedByte] =
     readFieldAssert(name, buffer => UnsignedByte(buffer.get()), expected)
 
+  def readUnsignedShortField(name: String): Either[Snag, UnsignedShort] =
+    readField(name, buffer => UnsignedShort(buffer.getShort()))
+
+  def readUnsignedShortFieldAssert(name: String, expected: UnsignedShort): Either[Snag, UnsignedShort] =
+    readFieldAssert(name, buffer => UnsignedShort(buffer.getShort()), expected)
+
   def readUnsignedIntField(name: String): Either[Snag, UnsignedInt] =
-    readField(name, buffer => UnsignedInt(buffer.getInt))
+    readField(name, buffer => UnsignedInt(buffer.getInt()))
 
   def readUnsignedIntFieldAssert(name: String, expected: UnsignedInt): Either[Snag, UnsignedInt] =
     readFieldAssert(name, buffer => UnsignedInt(buffer.getInt()), expected)
