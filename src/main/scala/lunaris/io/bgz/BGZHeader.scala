@@ -7,7 +7,9 @@ import lunaris.io.IntegersIO.{UnsignedByte, UnsignedInt, UnsignedShort}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class BGZHeader(mtime: UnsignedInt, xfl: UnsignedByte, os: UnsignedByte, xlen: UnsignedShort,
-                     bsize: UnsignedShort)
+                     bsize: UnsignedShort) {
+  def blockSize: Int = bsize.toPositiveInt + 1
+}
 
 object BGZHeader {
   def read(buffer: ByteBuffer): Either[Snag, BGZHeader] = {
