@@ -18,7 +18,7 @@ case class RecordCodec(chromCol: Int, posCol: Int) extends AsciiFeatureCodec[Rec
     val nextLine = reader.next()
     println("header next line")
     println(nextLine)
-    Thread.dumpStack()
+    //Thread.dumpStack()
     if(line != null && isHeader(line)) {
       val headerLine = line.substring(1).trim()
       val colNames = headerLine.split("\t")
@@ -32,7 +32,7 @@ case class RecordCodec(chromCol: Int, posCol: Int) extends AsciiFeatureCodec[Rec
 //    println(line.map(_.toHexString).mkString(" "))
     println("decode")
     println(line)
-    Thread.dumpStack()
+   //Thread.dumpStack()
     if(isHeader(line)) {
       null
     } else {

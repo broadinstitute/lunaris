@@ -3,7 +3,8 @@ package lunaris.app
 import java.io.InputStream
 import java.nio.file.Files
 
-import htsjdk.samtools.util.BlockCompressedInputStream
+import htsjdk.samtools.seekablestream.SeekableStreamFactory
+import htsjdk.samtools.util.{BlockCompressedInputStream, IOUtil}
 import htsjdk.tribble.AbstractFeatureReader
 import htsjdk.tribble.index.tabix.TabixIndex
 import lunaris.data.DataSources
@@ -13,20 +14,17 @@ object LunarisApp {
 
   def main(args: Array[String]): Unit = {
     //    val dataSourceWithIndex = DataSources.simDataOnTerra
-    val dataSourceWithIndex = DataSources.simDataOnOliversOldLaptop
+    val dataSourceWithIndex = DataSources.simDataInPublicBucket
     val featureResource = dataSourceWithIndex.dataSource.toUri.toString
     println(featureResource)
-    val rawIndexInputStream: InputStream = Files.newInputStream(dataSourceWithIndex.index)
-    val unzippedIndexInputStream = new BlockCompressedInputStream(rawIndexInputStream)
-    val tabixIndex: TabixIndex = new TabixIndex(unzippedIndexInputStream)
     val chromCol = 0
     val posCol = 1
     val featureReader =
-      AbstractFeatureReader.getFeatureReader(featureResource, RecordCodec(chromCol, posCol), tabixIndex)
+      AbstractFeatureReader.getFeatureReader(featureResource, dataSourceWithIndex.index.toUri.toString, RecordCodec(chromCol, posCol), true, null, null)
 //    val header = featureReader.getHeader
 //    println(header)
-//    val recordIterator = featureReader.query("1", 1, 100000)
-    val recordIterator = featureReader.iterator()
+    val recordIterator = featureReader.query("8", 51844707, 67281173)
+ //   val recordIterator = featureReader.iterator()
     var count: Int = 0
     while (count < 10 && recordIterator.hasNext) {
       val record = recordIterator.next()

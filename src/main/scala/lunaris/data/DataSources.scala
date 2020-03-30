@@ -14,4 +14,16 @@ object DataSources {
       "/home/BROAD.MIT.EDU/oliverr/lunaris/data/sim/sim.tsv.gz.tbi"
     )
 
+  val simDataOnLouisLaptop: DataSourceWithIndex =
+    DataSourceWithIndex(
+      "/Users/louisb/Workspace/lunaris/out.txt.gz",
+      "/Users/louisb/Workspace/lunaris/out.txt.gz.tbi",
+    )
+
+  val simDataInPublicBucket: DataSourceWithIndex =
+    DataSourceWithIndex(
+      "gs://hellbender/test/resources/lunaris/out.txt.gz",
+      "gs://hellbender/test/resources/lunaris/out.txt.gz.tbi"
+    )
+
 }
