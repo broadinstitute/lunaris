@@ -12,11 +12,17 @@ object LunarisApp {
       DataSources.simDataOnOliversOldLaptop
     else
       DataSources.simDataOnTerra
-    dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
+    dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
       val snagOrBlock = BGZBlock.read(readChannel)
-      println("Snag or Block:")
-      println(snagOrBlock)
-      println("That was the Snag or Block")
+      snagOrBlock match {
+        case Left(snag) =>
+          println(snag.message)
+          println(snag.report)
+        case Right(block) =>
+          println(block)
+          println(s"Size of unzipped data: " + block.unzippedData.bytes.length)
+          println(new String(block.unzippedData.bytes))
+      }
     }
   }
 
