@@ -10,12 +10,11 @@ import scala.util.control.NonFatal
 case class BGZUnzippedData(bytes: Array[Byte])
 
 object BGZUnzippedData {
-  def read(gzippedData: Array[Byte], zippedSize: Int, unzippedSize: Int): Either[Snag, BGZUnzippedData] = {
+  def read(gzippedData: Array[Byte], zippedSize: Int): Either[Snag, BGZUnzippedData] = {
     try {
-      val unzippedInputStream = new ByteArrayInputStream(gzippedData, 0, unzippedSize)
+      val unzippedInputStream = new ByteArrayInputStream(gzippedData, 0, zippedSize)
       val gzipInputStream = new GZIPInputStream(unzippedInputStream)
-      val unzippedBytes = new Array[Byte](unzippedSize)
-      gzipInputStream.read(unzippedBytes)
+      val unzippedBytes = gzipInputStream.readAllBytes()
       Right(BGZUnzippedData(unzippedBytes))
     } catch {
       case NonFatal(ex) => Left(Snag(ex))

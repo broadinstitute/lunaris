@@ -22,7 +22,7 @@ object BGZBlock {
     for {
       header <- BGZHeader.read(buffer)
       footer <- BGZFooter.read(buffer, header)
-      unzippedData <- BGZUnzippedData.read(bytes, header.blockSize, footer.unzippedDataSize)
+      unzippedData <- BGZUnzippedData.read(bytes, header.blockSize)
     } yield BGZBlock(header, footer, unzippedData)
   }
 }
