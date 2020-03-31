@@ -1,9 +1,7 @@
 package lunaris.io.bgz
 
-import java.nio.{ByteBuffer, ByteOrder}
-
-import lunaris.io.ByteBufferReader
 import lunaris.io.IntegersIO.{UnsignedByte, UnsignedInt, UnsignedShort}
+import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class BGZHeader(mtime: UnsignedInt, xfl: UnsignedByte, os: UnsignedByte, xlen: UnsignedShort,
@@ -12,9 +10,8 @@ case class BGZHeader(mtime: UnsignedInt, xfl: UnsignedByte, os: UnsignedByte, xl
 }
 
 object BGZHeader {
-  def read(buffer: ByteBuffer): Either[Snag, BGZHeader] = {
-    buffer.order(ByteOrder.LITTLE_ENDIAN)
-    val reader = new ByteBufferReader(buffer)
+  def read(refiller: ByteBufferRefiller): Either[Snag, BGZHeader] = {
+    val reader = new ByteBufferReader(refiller)
     for {
       _ <- reader.readUnsignedByteFieldAssert("id1", UnsignedByte(31))
       _ <- reader.readUnsignedByteFieldAssert("id2", UnsignedByte(139.toByte))
