@@ -20,7 +20,7 @@ trait ByteBufferRefiller {
     }
   }
 
-  def read[T](reader: ByteBuffer => T, nBytesNeeded: Int): Either[Snag, T] = {
+  def read[T](nBytesNeeded: Int)(reader: ByteBuffer => T): Either[Snag, T] = {
     val snagOrBytesAvailable = if (buffer.remaining() < nBytesNeeded) {
       refill(nBytesNeeded)
     } else {

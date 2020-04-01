@@ -1,6 +1,6 @@
 package lunaris.io.bgz
 
-import java.nio.{ByteBuffer, ByteOrder}
+import java.nio.ByteOrder
 import java.nio.channels.ReadableByteChannel
 
 import lunaris.io.ByteBufferRefiller
@@ -19,7 +19,7 @@ object BGZBlock {
     for {
       header <- BGZHeader.read(refiller)
       footer <- BGZFooter.read(refiller, header)
-      unzippedData <- BGZUnzippedData.read(refiller.bytes, header.blockSize)
+      unzippedData <- BGZUnzippedData.read(refiller, header.blockSize)
     } yield BGZBlock(header, footer, unzippedData)
   }
 }
