@@ -1,8 +1,6 @@
 package lunaris.io.bgz
 
-import java.nio.ByteBuffer
-
-import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
+import lunaris.io.ByteBufferReader
 import lunaris.io.IntegersIO.UnsignedInt
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -13,11 +11,9 @@ case class BGZFooter(crc32: UnsignedInt, isize: UnsignedInt) {
 object BGZFooter {
   val nFooterBytes = 8
 
-  def read(refiller: ByteBufferRefiller, header: BGZHeader): Either[Snag, BGZFooter] = read(refiller, header.blockSize)
+  def read(reader: ByteBufferReader, header: BGZHeader): Either[Snag, BGZFooter] = read(reader, header.blockSize)
 
-  def read(refiller: ByteBufferRefiller, blockSize: Int): Either[Snag, BGZFooter] = {
-    refiller.buffer.position(blockSize - nFooterBytes)
-    val reader = new ByteBufferReader(refiller)
+  def read(reader: ByteBufferReader, blockSize: Int): Either[Snag, BGZFooter] = {
     for {
       crc32 <- reader.readUnsignedIntField("crc32")
       isize <- reader.readUnsignedIntField("isize")

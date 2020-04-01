@@ -50,11 +50,16 @@ class ByteBufferReader(val refiller: ByteBufferRefiller) {
   def readUnsignedIntFieldAssert(name: String, expected: UnsignedInt): Either[Snag, UnsignedInt] =
     readFieldAssert(name, expected, 4)(buffer => UnsignedInt(buffer.getInt()))
 
-  def unzip(unzippedSize: Int): Either[Snag, Array[Byte]] = {
-    refiller.read(unzippedSize) { buffer =>
-      val is = new ByteArrayInputStream(buffer.array, buffer.position(), unzippedSize)
+  def unzip(blockSize: Int): Either[Snag, Array[Byte]] = {
+    refiller.read(blockSize) { buffer =>
+      val is = new ByteArrayInputStream(buffer.array, buffer.position(), blockSize)
       val unzippedBytes = new GZIPInputStream(is).readAllBytes()
+      buffer.position(buffer.position() + blockSize)
       unzippedBytes
     }
   }
+}
+
+object ByteBufferReader {
+  def apply(refiller: ByteBufferRefiller): ByteBufferReader = new ByteBufferReader(refiller)
 }

@@ -12,6 +12,14 @@ trait ByteBufferRefiller {
 
   def refill(nBytesNeeded: Int): Either[Snag, Int]
 
+  def makeAvailable(nBytesNeeded: Int): Either[Snag, Int] = {
+    if (buffer.remaining() < nBytesNeeded) {
+      refill(nBytesNeeded)
+    } else {
+      Right(buffer.remaining())
+    }
+  }
+
   def read[T](reader: ByteBuffer => T): Either[Snag, T] = {
     try {
       Right(reader(buffer))
@@ -21,11 +29,9 @@ trait ByteBufferRefiller {
   }
 
   def read[T](nBytesNeeded: Int)(reader: ByteBuffer => T): Either[Snag, T] = {
-    val snagOrBytesAvailable = if (buffer.remaining() < nBytesNeeded) {
-      refill(nBytesNeeded)
-    } else {
-      Right(buffer.remaining())
-    }
+    println("bytes available: " + buffer.remaining())
+    println("bytes needed: " + nBytesNeeded)
+    val snagOrBytesAvailable = makeAvailable(nBytesNeeded)
     for {
       _ <- snagOrBytesAvailable
       value <- read(reader)
