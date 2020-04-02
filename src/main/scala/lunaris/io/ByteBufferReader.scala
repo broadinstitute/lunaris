@@ -58,6 +58,12 @@ class ByteBufferReader(val refiller: ByteBufferRefiller) {
       unzippedBytes
     }
   }
+
+  def readBytes(nBytes: Int): Either[Snag, Array[Byte]] = readField("bytes", nBytes){ buffer =>
+    val bytes = new Array[Byte](nBytes)
+    buffer.get(bytes)
+    bytes
+  }
 }
 
 object ByteBufferReader {
