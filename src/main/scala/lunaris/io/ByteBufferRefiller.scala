@@ -29,8 +29,6 @@ trait ByteBufferRefiller {
   }
 
   def read[T](nBytesNeeded: Int)(reader: ByteBuffer => T): Either[Snag, T] = {
-    println("bytes available: " + buffer.remaining())
-    println("bytes needed: " + nBytesNeeded)
     val snagOrBytesAvailable = makeAvailable(nBytesNeeded)
     for {
       _ <- snagOrBytesAvailable
@@ -50,7 +48,6 @@ object ByteBufferRefiller {
     buffer.flip()
 
     override def refill(nBytesNeeded: Int): Either[Snag, Int] = {
-      println("Refill!")
       try {
         buffer.compact()
         val nBytesRead = channel.read(buffer)

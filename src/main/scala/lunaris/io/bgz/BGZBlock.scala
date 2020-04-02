@@ -7,7 +7,7 @@ import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class BGZBlock(header: BGZHeader, footer: BGZFooter, unzippedData: BGZUnzippedData) {
-
+  def isEOFMarker: Boolean = unzippedData.bytes.length == 0  // per BGZF specs, EOF block with empty payload
 }
 
 object BGZBlock {
@@ -20,25 +20,32 @@ object BGZBlock {
     readBlock(reader)
   }
 
-  def readThreeBlocks(readChannel: ReadableByteChannel): Either[Snag, (BGZBlock, BGZBlock, BGZBlock)] = {
+  def readAllBlocks(readChannel: ReadableByteChannel): Either[Snag, Seq[BGZBlock]] = {
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
     refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
+    var snagOpt: Option[Snag] = None
+    var blocks: Seq[BGZBlock] = Seq.empty
     val reader = ByteBufferReader(refiller)
-    val snagOrBlock1 = readBlock(reader)
-    println(snagOrBlock1)
-    val snagOrBlock2 = readBlock(reader)
-    println(snagOrBlock2)
-    val snagOrBlock3 = readBlock(reader)
-    println(snagOrBlock3)
-    for {
-      block1 <- snagOrBlock1
-      block2 <- snagOrBlock2
-      block3 <- snagOrBlock3
-    } yield (block1, block2, block3)
+    var moreBlocksExpected: Boolean = true
+    while(moreBlocksExpected && snagOpt.isEmpty) {
+      readBlock(reader) match {
+        case Left(snag) => snagOpt = Some(snag)
+        case Right(block) =>
+          if(block.isEOFMarker) {
+            moreBlocksExpected = false
+          } else {
+            blocks :+= block
+          }
+      }
+    }
+    snagOpt match {
+      case Some(snag) => Left(snag)
+      case None => Right(blocks)
+    }
   }
 
   def readBlock(reader: ByteBufferReader): Either[Snag, BGZBlock] = {
-    val blockStartPos = reader.refiller.buffer.mark()
+    reader.refiller.buffer.mark()
     for {
       header <- {
         BGZHeader.read(reader)
