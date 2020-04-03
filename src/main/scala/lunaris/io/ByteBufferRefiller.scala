@@ -72,6 +72,9 @@ object ByteBufferRefiller {
   class FromByteArrayEitherator(bytesEitherator: Eitherator[Array[Byte]], val bufferSize: Int)
     extends ByteBufferRefiller {
     override val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
+    var currentBytesOpt: Option[CurrentBytes] = None
+    writeToBuffer(1)
+    buffer.flip()
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {
       def nBytesAvailable: Int = bytes.length - nAlreadyRead
@@ -86,7 +89,9 @@ object ByteBufferRefiller {
       }
     }
 
-    var currentBytesOpt: Option[CurrentBytes] = None
+    private def debug(buffer: ByteBuffer): Unit = {
+      println(s"Buffer position ${buffer.position()}, limit ${buffer.limit()}, capacity ${buffer.capacity()}")
+    }
 
     private def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
       if (buffer.position() >= nBytesNeeded) {
@@ -96,8 +101,7 @@ object ByteBufferRefiller {
       } else {
         var nBytesRead: Int = 0
         var snagOpt: Option[Snag] = None
-        var mayHaveMoreData: Boolean = true
-        while (snagOpt.isEmpty && buffer.position() < nBytesNeeded && mayHaveMoreData) {
+        while (snagOpt.isEmpty && buffer.position() < nBytesNeeded) {
           currentBytesOpt match {
             case Some(currentBytes) =>
               val nBytesBufferSpace = buffer.capacity() - buffer.position()
@@ -113,7 +117,8 @@ object ByteBufferRefiller {
               case Left(snag) => snagOpt = Some(snag)
               case Right(None) => snagOpt =
                 Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
-              case Right(Some(bytes)) => currentBytesOpt = Some(new CurrentBytes(bytes, 0))
+              case Right(Some(bytes)) =>
+                currentBytesOpt = Some(new CurrentBytes(bytes, 0))
             }
           }
         }
