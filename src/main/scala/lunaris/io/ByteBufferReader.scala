@@ -32,6 +32,12 @@ class ByteBufferReader(val refiller: ByteBufferRefiller) {
     } yield valueAgain
   }
 
+  def readByteField(name: String): Either[Snag, Byte] =
+    readField(name, 1)(_.get())
+
+  def readByteFieldAssert(name: String, expected: Byte): Either[Snag, Byte] =
+    readFieldAssert(name, expected, 1)(_.get())
+
   def readUnsignedByteField(name: String): Either[Snag, UnsignedByte] =
     readField(name, 1)(buffer => UnsignedByte(buffer.get()))
 
@@ -43,6 +49,12 @@ class ByteBufferReader(val refiller: ByteBufferRefiller) {
 
   def readUnsignedShortFieldAssert(name: String, expected: UnsignedShort): Either[Snag, UnsignedShort] =
     readFieldAssert(name, expected, 2)(buffer => UnsignedShort(buffer.getShort()))
+
+  def readIntField(name: String): Either[Snag, Int] =
+    readField(name, 4)(_.getInt())
+
+  def readIntFieldAssert(name: String, expected: Int): Either[Snag, Int] =
+    readFieldAssert(name, expected, 4)(_.getInt())
 
   def readUnsignedIntField(name: String): Either[Snag, UnsignedInt] =
     readField(name, 4)(buffer => UnsignedInt(buffer.getInt()))
