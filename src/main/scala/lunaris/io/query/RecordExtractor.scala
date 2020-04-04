@@ -1,7 +1,5 @@
 package lunaris.io.query
 
-import java.nio.channels.ReadableByteChannel
-
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Regions
 import lunaris.io.tbi.TBIFileHeader
