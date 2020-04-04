@@ -14,7 +14,7 @@ object CodeExamples {
       DataSources.simDataOnTerra
     val bufferSize = 100000
     dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
-      val refiller = ByteBufferRefiller(BGZBlock.newBlockEitherator(readChannel).map(_.unzippedData.bytes), bufferSize)
+      val refiller = ByteBufferRefiller.bgunzip(readChannel, bufferSize)
       val reader = new ByteBufferReader(refiller)
       var snags: Seq[Snag] = Seq.empty
       var string: String  = ""

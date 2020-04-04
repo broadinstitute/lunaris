@@ -3,6 +3,7 @@ package lunaris.io
 import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
+import lunaris.io.bgz.BGZBlock
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -41,6 +42,7 @@ trait ByteBufferRefiller {
 object ByteBufferRefiller {
 
   def apply(channel: ReadableByteChannel, bufferSize: Int): FromChannel = new FromChannel(channel, bufferSize)
+
   def apply(bytesEitherator: Eitherator[Array[Byte]], bufferSize: Int): FromByteArrayEitherator =
     new FromByteArrayEitherator(bytesEitherator, bufferSize)
 
@@ -68,6 +70,9 @@ object ByteBufferRefiller {
       }
     }
   }
+
+  def bgunzip(readChannel: ReadableByteChannel, bufferSize: Int): FromByteArrayEitherator =
+    ByteBufferRefiller(BGZBlock.newBlockEitherator(readChannel).map(_.unzippedData.bytes), bufferSize)
 
   class FromByteArrayEitherator(bytesEitherator: Eitherator[Array[Byte]], val bufferSize: Int)
     extends ByteBufferRefiller {
@@ -106,13 +111,13 @@ object ByteBufferRefiller {
             case Some(currentBytes) =>
               val nBytesBufferSpace = buffer.capacity() - buffer.position()
               val nBytesAvailable = currentBytes.nBytesAvailable
-              val nBytesToRead = if(nBytesAvailable > nBytesBufferSpace) nBytesBufferSpace else nBytesAvailable
+              val nBytesToRead = if (nBytesAvailable > nBytesBufferSpace) nBytesBufferSpace else nBytesAvailable
               buffer.put(currentBytes.bytes, currentBytes.nAlreadyRead, nBytesToRead)
               nBytesRead += nBytesToRead
               currentBytesOpt = currentBytes.afterReadingOpt(nBytesRead)
             case None => ()
           }
-          if(buffer.position() < nBytesNeeded) {
+          if (buffer.position() < nBytesNeeded) {
             bytesEitherator.next() match {
               case Left(snag) => snagOpt = Some(snag)
               case Right(None) => snagOpt =
