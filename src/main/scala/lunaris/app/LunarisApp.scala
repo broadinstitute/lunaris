@@ -1,8 +1,8 @@
 package lunaris.app
 
 import lunaris.data.DataSources
-import lunaris.io.tbi.TBIFileHeader
-import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
+import lunaris.genomics.{Chromosome, Region, Regions}
+import lunaris.io.query.RecordExtractor
 
 object LunarisApp {
   def main(args: Array[String]): Unit = {
@@ -11,12 +11,10 @@ object LunarisApp {
       DataSources.simDataOnOliversOldLaptop
     else
       DataSources.simDataOnTerra
-    dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
-      val bufferSize = 10000
-      val refiller = ByteBufferRefiller.bgunzip(readChannel, bufferSize)
-      val reader = new ByteBufferReader(refiller)
-      val snagOrTbiHeader = TBIFileHeader.read(reader)
-      println(snagOrTbiHeader)
+    val regions = Regions(Map(Chromosome(1) -> Seq(Region(1, 100000))))
+    val recordEitherator = RecordExtractor.extract(dataSourceWithIndex, regions)
+    recordEitherator.foreach { record =>
+      println(record)
     }
   }
 }

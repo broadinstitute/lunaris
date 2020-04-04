@@ -4,18 +4,21 @@ import java.nio.channels.ReadableByteChannel
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Regions
-import lunaris.io.ByteBufferRefiller
+import lunaris.io.tbi.TBIFileHeader
+import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
 
 object RecordExtractor {
 
-  def extract(dataReadChannel: ReadableByteChannel, indexReadChannel: ReadableByteChannel,
-              regions: Regions): Eitherator[Record] = {
-    val indexBufferSize = 100000
-    val indexRefiller = ByteBufferRefiller.bgunzip(indexReadChannel, indexBufferSize)
-
-    ???
+  def extract(dataSourceWithIndex: DataSourceWithIndex, regions: Regions): Eitherator[Record] = {
+    dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { indexReadChannel =>
+      val bufferSize = 10000
+      val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
+      val snagOrTbiHeader = TBIFileHeader.read(indexReader)
+      println(snagOrTbiHeader)
+    }
+    Eitherator.empty
   }
 
 }

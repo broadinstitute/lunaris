@@ -1,5 +1,7 @@
 package lunaris.io.tbi
 
+import java.nio.ByteOrder
+
 import lunaris.io.ByteBufferReader
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -45,6 +47,7 @@ object TBIFileHeader {
   }
 
   def read(reader: ByteBufferReader): Either[Snag, TBIFileHeader] = {
+    reader.refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
     for {
       _ <- reader.readByteFieldAssert("magic1", 'T'.toByte)
       _ <- reader.readByteFieldAssert("magic2", 'B'.toByte)

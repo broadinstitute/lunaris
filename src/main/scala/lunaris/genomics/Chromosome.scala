@@ -1,11 +1,14 @@
 package lunaris.genomics
 
-trait Chromosome {
+sealed trait Chromosome {
   def asString: String
 
 }
 
 object Chromosome {
+  def apply(number: Int): Autosome = Autosome(number)
+
+  def apply(letter: Char): Allosome = Allosome(letter)
 
   case class Autosome(number: Int) extends Chromosome {
     override def asString: String = number.toString
@@ -42,3 +45,4 @@ object Chromosome {
   }
 
 }
+

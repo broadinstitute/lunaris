@@ -1,19 +1,22 @@
 package lunaris.ex
 
-import lunaris.data.DataSources
+import lunaris.data.{DataSourceWithIndex, DataSources}
+import lunaris.io.tbi.TBIFileHeader
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
-import lunaris.io.bgz.BGZBlock
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object CodeExamples {
-  def readingChunksOfUnzippedData(): Unit = {
+  def getDataSourceWithIndex: DataSourceWithIndex = {
     val usingLocalSimulatedDataOnOliversLaptop: Boolean = true
-    val dataSourceWithIndex = if (usingLocalSimulatedDataOnOliversLaptop)
+    if (usingLocalSimulatedDataOnOliversLaptop)
       DataSources.simDataOnOliversOldLaptop
     else
       DataSources.simDataOnTerra
+  }
+
+  def readingChunksOfUnzippedData(): Unit = {
     val bufferSize = 100000
-    dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
+    getDataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
       val refiller = ByteBufferRefiller.bgunzip(readChannel, bufferSize)
       val reader = new ByteBufferReader(refiller)
       var snags: Seq[Snag] = Seq.empty
@@ -35,6 +38,16 @@ object CodeExamples {
         println(snag.message)
         println(snag.report)
       }
+    }
+  }
+
+  def readTbiFileHeader(): Unit = {
+    getDataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
+      val bufferSize = 10000
+      val refiller = ByteBufferRefiller.bgunzip(readChannel, bufferSize)
+      val reader = new ByteBufferReader(refiller)
+      val snagOrTbiHeader = TBIFileHeader.read(reader)
+      println(snagOrTbiHeader)
     }
   }
 }
