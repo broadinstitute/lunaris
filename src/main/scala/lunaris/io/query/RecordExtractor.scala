@@ -2,8 +2,8 @@ package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Regions
-import lunaris.io.tbi.{TBIFileHeader, TBIFileReader}
-import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
+import lunaris.io.tbi.{TBIFileHeader, TBIFileReader, TbiVirtualFileOffset}
+import lunaris.io.{ByteBufferReader, ByteBufferRefiller, IntegersIO, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -15,24 +15,57 @@ object RecordExtractor {
       println("Now extracting records")
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
-      val tbiConsumer = new RecordTbiConsumer()
+      val tbiConsumer = new RecordTbiConsumer(new LimitedLogger(50000))
       TBIFileReader.readFile(indexReader, tbiConsumer)
       println("Done extracting records!")
       Eitherator.empty
     }
   }
 
-  class RecordTbiConsumer extends TBIFileReader.TBIConsumer {
+  class LimitedLogger(limit: Int) extends (String => Unit) {
+    var count: Int = 0
+    override def apply(line: String): Unit = {
+      if(count < limit) {
+        println(line)
+        count += 1
+      }
+    }
+  }
+
+  class RecordTbiConsumer(logger: String => Unit) extends TBIFileReader.TBIConsumer {
     override def consumeHeader(header: TBIFileHeader): Unit = {
-      println("TBI file header: " + header)
+      logger("TBI file header: " + header)
     }
 
     override def startSequenceIndex(name: String): Unit = {
-      println("Starting sequence index for " + name)
+      logger("Starting sequence index for " + name)
     }
 
     override def consumeNBins(nBins: Int): Unit = {
-      println("Number of bins is: " + nBins)
+      logger("Number of bins is: " + nBins)
+    }
+    override def consumeBinNumber(bin: IntegersIO.UnsignedInt): Unit = {
+      logger("Bin number is " + bin.toPositiveLong.toString)
+    }
+
+    override def consumeNChunks(nChunks: Int): Unit = {
+      logger("Number of chunks is: " + nChunks)
+    }
+
+    override def consumeChunk(chunk: TBIFileReader.Chunk): Unit = {
+      logger("Chunk is " + chunk)
+    }
+
+    override def consumeNIntervals(nIntervals: Int): Unit = {
+      logger("Number of intervals is " + nIntervals)
+    }
+
+    override def consumeIntervalOffset(offset: TbiVirtualFileOffset): Unit = {
+      logger("Interval offset is : " + offset)
+    }
+
+    override def doneWithSequenceIndex(name: String): Unit = {
+      logger("Done with sequence index for " + name)
     }
 
     override def consumeSnag(snag: Snag): Unit = {
