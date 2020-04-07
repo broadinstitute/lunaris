@@ -3,6 +3,7 @@ package lunaris.io.tbi
 import lunaris.io.ByteBufferReader
 import lunaris.io.IntegersIO.UnsignedInt
 import org.broadinstitute.yootilz.core.snag.Snag
+import scala.collection.Factory
 
 object TBIFileReader {
 
@@ -36,36 +37,28 @@ object TBIFileReader {
     either
   }
 
-  def traverse[A, B](aSeq: Seq[A])(fun: A => Either[Snag, B]): Either[Snag, Seq[B]] = {
-    var snagOpt: Option[Snag] = None
-    var bSeq: Seq[B] = Seq.empty
-    val aIter = aSeq.iterator
-    while(snagOpt.isEmpty && aIter.hasNext) {
-      fun(aIter.next()) match {
-        case Left(snag) => snagOpt = Some(snag)
-        case Right(b) => bSeq :+= b
-      }
+  def foreach[A, B](xs: Seq[A])(f: A => Either[Snag, B]): Either[Snag, Unit] = {
+    val i = xs.iterator
+    while (i.hasNext) f(i.next) match {
+      case Right(_) => ()
+      case Left(e) => return Left(e)
     }
-    snagOpt match {
-      case Some(snag) => Left(snag)
-      case None => Right(bSeq)
-    }
+    Right(())
   }
 
-  def repeat[A](n: Int)(fun: => Either[Snag, A]): Either[Snag, Seq[A]] = {
+  def repeat[A](n: Int)(fun: => Either[Snag, A]): Either[Snag, Unit] = {
     var snagOpt: Option[Snag] = None
-    var seq: Seq[A] = Seq.empty
     var i: Int = 0
-    while(snagOpt.isEmpty && i < n) {
+    while (snagOpt.isEmpty && i < n) {
       fun match {
         case Left(snag) => snagOpt = Some(snag)
-        case Right(value) => seq :+= value
+        case Right(_) => ()
       }
       i += 1
     }
     snagOpt match {
       case Some(snag) => Left(snag)
-      case None => Right(seq)
+      case None => Right(())
     }
   }
 
@@ -78,7 +71,7 @@ object TBIFileReader {
         for {
           _ <- consume(reader.readUnsignedIntField("bin"))(consumer.consumeBinNumber)(consumer.consumeSnag)
           nChunks <- consume(reader.readIntField("n_chunk"))(consumer.consumeNChunks)(consumer.consumeSnag)
-          _ <- repeat(nChunks){
+          _ <- repeat(nChunks) {
             val snagOrChunk = for {
               chunkBegin <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
               chunkEnd <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
@@ -95,7 +88,7 @@ object TBIFileReader {
     for {
       nIntervals <- consume(reader.readIntField("n_intv"))(consumer.consumeNIntervals)(consumer.consumeSnag)
       _ <- repeat(nIntervals) {
-        consume{
+        consume {
           reader.readLongField("ioff").map(TbiVirtualFileOffset(_))
         }(consumer.consumeIntervalOffset)(consumer.consumeSnag)
       }
@@ -114,7 +107,7 @@ object TBIFileReader {
   def readFile(reader: ByteBufferReader, consumer: TBIConsumer): Unit = {
     for {
       header <- consume(TBIFileHeader.read(reader))(consumer.consumeHeader)(consumer.consumeSnag)
-      _ <- traverse(header.names) { name =>
+      _ <- foreach(header.names) { name =>
         readSequenceIndex(reader, name, consumer)
       }
     } yield ()
