@@ -1,9 +1,11 @@
 package lunaris.io.tbi
 
+import lunaris.genomics.Region
 import lunaris.io.ByteBufferReader
 import lunaris.io.IntegersIO.UnsignedInt
 import org.broadinstitute.yootilz.core.snag.Snag
-import scala.collection.Factory
+
+import scala.collection.mutable
 
 object TBIFileReader {
 
@@ -12,13 +14,9 @@ object TBIFileReader {
 
     def startSequenceIndex(name: String): Unit
 
-    def consumeNBins(nBins: Int): Unit
+    def regionsOverlappingBin(bin: UnsignedInt): Set[Region]
 
-    def consumeBinNumber(bin: UnsignedInt): Unit
-
-    def consumeNChunks(nChunks: Int): Unit
-
-    def consumeChunk(chunk: Chunk): Unit
+    def consumeChunks(chunks: Seq[Chunk]): Unit
 
     def consumeNIntervals(nIntervals: Int): Unit
 
@@ -62,26 +60,74 @@ object TBIFileReader {
     }
   }
 
+  def traverse[A, B](xs: Seq[A])(f: A => Either[Snag, B]): Either[Snag, Seq[B]] = {
+    val builder = Seq.newBuilder[B]
+    val iter = xs.iterator
+    while (iter.hasNext) {
+      f(iter.next) match {
+        case Right(b) => builder += b
+        case Left(snag) => return Left(snag)
+      }
+    }
+    Right(builder.result)
+  }
+
+  def fill[A](n: Int)(f: => Either[Snag, A]): Either[Snag, Seq[A]] = {
+    val builder = Seq.newBuilder[A]
+    var i: Int = 0
+    while (i < n) {
+      f match {
+        case Right(b) => builder += b
+        case Left(snag) => return Left[Snag, Seq[A]](snag)
+      }
+      i += 1
+    }
+    Right(builder.result)
+  }
+
+
+
   case class Chunk(begin: TbiVirtualFileOffset, end: TbiVirtualFileOffset)
 
-  private def readBinningIndex(reader: ByteBufferReader, consumer: TBIConsumer): Either[Snag, Unit] = {
-    for {
-      nBins <- consume(reader.readIntField("n_bin"))(consumer.consumeNBins)(consumer.consumeSnag)
+  private def readBinningIndex(reader: ByteBufferReader,
+                               consumer: TBIConsumer): Either[Snag, Map[Region, Seq[Chunk]]] = {
+    var chunksByRegion: Map[Region, mutable.Builder[Chunk, Seq[Chunk]]] = Map.empty
+    val snagOrUnit = for {
+      nBins <- reader.readIntField("n_bin")
       _ <- repeat(nBins) {
-        for {
-          _ <- consume(reader.readUnsignedIntField("bin"))(consumer.consumeBinNumber)(consumer.consumeSnag)
-          nChunks <- consume(reader.readIntField("n_chunk"))(consumer.consumeNChunks)(consumer.consumeSnag)
-          _ <- repeat(nChunks) {
-            val snagOrChunk = for {
-              chunkBegin <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
-              chunkEnd <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
-            } yield Chunk(chunkBegin, chunkEnd)
-            snagOrChunk.fold(consumer.consumeSnag, consumer.consumeChunk)
-            snagOrChunk
+        val snagOrRegionsAndChunks = for {
+          bin <- reader.readUnsignedIntField("bin")
+          nChunks <- reader.readIntField("n_chunk")
+          regions = consumer.regionsOverlappingBin(bin)
+          chunks <- {
+            if (regions.nonEmpty) {
+              val snagOrChunks = fill(nChunks) {
+                val snagOrChunk = for {
+                  chunkBegin <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
+                  chunkEnd <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
+                } yield Chunk(chunkBegin, chunkEnd)
+                snagOrChunk
+              }
+              snagOrChunks.fold(consumer.consumeSnag, consumer.consumeChunks)
+              snagOrChunks
+            } else {
+              val bytesPerChunk = 16
+              reader.skip(nChunks*bytesPerChunk).map(_ => Seq.empty[Chunk])
+            }
           }
-        } yield ()
+        } yield (regions, chunks)
+        snagOrRegionsAndChunks.map {
+          case (regions, chunks) =>
+          regions.foreach { region =>
+            val builder = chunksByRegion.getOrElse(region, Seq.newBuilder[Chunk])
+            builder ++= chunks
+          }
+        }
       }
     } yield ()
+    snagOrUnit.map { _ =>
+      chunksByRegion.view.mapValues(_.result()).toMap
+    }
   }
 
   private def readLinearIndex(reader: ByteBufferReader, consumer: TBIConsumer): Either[Snag, Unit] = {

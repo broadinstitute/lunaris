@@ -9,14 +9,19 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 class ByteBufferReader(val refiller: ByteBufferRefiller) {
 
-  def underflowExceptionToSnagLeft[T](ex: BufferUnderflowException, fieldName: String): Left[Snag, T] =
-    Left(Snag(s"Could not read field $fieldName", Snag(ex)))
+  def skip(nBytesNeeded: Int): Either[Snag, Unit] = {
+    try {
+      refiller.skip(nBytesNeeded)
+    } catch {
+      case ex: BufferUnderflowException => Left(Snag(s"Could not skip $nBytesNeeded bytes.", Snag(ex)))
+    }
+  }
 
   def readField[T](name: String, nBytesNeeded: Int)(read: ByteBuffer => T): Either[Snag, T] = {
     try {
       refiller.read(nBytesNeeded)(read)
     } catch {
-      case ex: BufferUnderflowException => underflowExceptionToSnagLeft(ex, name)
+      case ex: BufferUnderflowException => Left(Snag(s"Could not read field $name", Snag(ex)))
     }
   }
 

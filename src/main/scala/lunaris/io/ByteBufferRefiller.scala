@@ -31,11 +31,17 @@ trait ByteBufferRefiller {
   }
 
   def read[T](nBytesNeeded: Int)(reader: ByteBuffer => T): Either[Snag, T] = {
-    val snagOrBytesAvailable = makeAvailable(nBytesNeeded)
     for {
-      _ <- snagOrBytesAvailable
+      _ <- makeAvailable(nBytesNeeded)
       value <- read(reader)
     } yield value
+  }
+
+  def skip[T](nBytesNeeded: Int): Either[Snag, Unit] = {
+    for {
+      _ <- makeAvailable(nBytesNeeded)
+      _ = buffer.position(buffer.position() + nBytesNeeded)
+    } yield ()
   }
 }
 
