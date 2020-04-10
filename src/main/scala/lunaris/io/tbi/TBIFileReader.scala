@@ -130,7 +130,9 @@ object TBIFileReader {
     }
   }
 
-  private def readLinearIndex(reader: ByteBufferReader, consumer: TBIConsumer): Either[Snag, Unit] = {
+  private def readLinearIndex(reader: ByteBufferReader,
+                              chunksByRegion: Map[Region, Seq[Chunk]],
+                              consumer: TBIConsumer): Either[Snag, Unit] = {
     for {
       nIntervals <- consume(reader.readIntField("n_intv"))(consumer.consumeNIntervals)(consumer.consumeSnag)
       _ <- repeat(nIntervals) {
@@ -144,8 +146,8 @@ object TBIFileReader {
   private def readSequenceIndex(reader: ByteBufferReader, name: String, consumer: TBIConsumer): Either[Snag, Unit] = {
     consumer.startSequenceIndex(name)
     for {
-      _ <- readBinningIndex(reader, consumer)
-      _ <- readLinearIndex(reader, consumer)
+      chunksByRegion <- readBinningIndex(reader, consumer)
+      _ <- readLinearIndex(reader, chunksByRegion, consumer)
       _ = consumer.doneWithSequenceIndex(name)
     } yield ()
   }
