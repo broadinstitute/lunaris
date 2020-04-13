@@ -2,7 +2,7 @@ package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.{Chromosome, Region, Regions}
-import lunaris.io.tbi.{TBIBins, TBIFileHeader, TBIFileReader, TbiVirtualFileOffset}
+import lunaris.io.tbi.{TBIBins, TBIChunk, TBIFileHeader, TBIFileReader, TbiVirtualFileOffset}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, IntegersIO, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
@@ -67,7 +67,7 @@ object RecordExtractor {
       }.toSet
     }
 
-    override def consumeChunks(chunks: Seq[TBIFileReader.Chunk]): Unit = {
+    override def consumeChunks(chunks: Seq[TBIChunk]): Unit = {
       logger("Chunks: " + chunks)
     }
 
@@ -77,6 +77,11 @@ object RecordExtractor {
 
     override def consumeIntervalOffset(offset: TbiVirtualFileOffset): Unit = {
       logger("Interval offset is : " + offset)
+    }
+
+    override def consumeChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]]): Unit = {
+      logger(s"Sequence: $name, chunks by region: $chunksByRegion.")
+      println(chunksByRegion)
     }
 
     override def doneWithSequenceIndex(name: String): Unit = {
@@ -89,6 +94,7 @@ object RecordExtractor {
       println(snag.message)
       println(snag.report)
     }
+
   }
 
 }

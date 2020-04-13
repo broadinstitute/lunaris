@@ -16,11 +16,13 @@ object TBIFileReader {
 
     def regionsOverlappingBin(bin: UnsignedInt): Set[Region]
 
-    def consumeChunks(chunks: Seq[Chunk]): Unit
+    def consumeChunks(chunks: Seq[TBIChunk]): Unit
 
     def consumeNIntervals(nIntervals: Int): Unit
 
     def consumeIntervalOffset(offset: TbiVirtualFileOffset): Unit
+
+    def consumeChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
 
     def doneWithSequenceIndex(name: String): Unit
 
@@ -85,13 +87,9 @@ object TBIFileReader {
     Right(builder.result)
   }
 
-
-
-  case class Chunk(begin: TbiVirtualFileOffset, end: TbiVirtualFileOffset)
-
   private def readBinningIndex(reader: ByteBufferReader,
-                               consumer: TBIConsumer): Either[Snag, Map[Region, Seq[Chunk]]] = {
-    var chunksByRegion: Map[Region, mutable.Builder[Chunk, Seq[Chunk]]] = Map.empty
+                               consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
+    var chunksByRegion: Map[Region, mutable.Builder[TBIChunk, Seq[TBIChunk]]] = Map.empty
     val snagOrUnit = for {
       nBins <- reader.readIntField("n_bin")
       _ <- repeat(nBins) {
@@ -105,49 +103,59 @@ object TBIFileReader {
                 val snagOrChunk = for {
                   chunkBegin <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
                   chunkEnd <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
-                } yield Chunk(chunkBegin, chunkEnd)
+                } yield TBIChunk(chunkBegin, chunkEnd)
                 snagOrChunk
               }
               snagOrChunks.fold(consumer.consumeSnag, consumer.consumeChunks)
               snagOrChunks
             } else {
               val bytesPerChunk = 16
-              reader.skip(nChunks*bytesPerChunk).map(_ => Seq.empty[Chunk])
+              reader.skip(nChunks * bytesPerChunk).map(_ => Seq.empty[TBIChunk])
             }
           }
         } yield (regions, chunks)
         snagOrRegionsAndChunks.map {
           case (regions, chunks) =>
-          regions.foreach { region =>
-            val builder = chunksByRegion.getOrElse(region, Seq.newBuilder[Chunk])
-            builder ++= chunks
-          }
+            regions.foreach { region =>
+              val builder = chunksByRegion.getOrElse(region, Seq.newBuilder[TBIChunk])
+              builder ++= chunks
+            }
         }
       }
     } yield ()
     snagOrUnit.map { _ =>
-      chunksByRegion.view.mapValues(_.result()).toMap
+      chunksByRegion.view.mapValues(_.result().sorted).toMap
     }
   }
 
   private def readLinearIndex(reader: ByteBufferReader,
-                              chunksByRegion: Map[Region, Seq[Chunk]],
-                              consumer: TBIConsumer): Either[Snag, Unit] = {
+                              chunksByRegion: Map[Region, Seq[TBIChunk]],
+                              consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
+    var trimmedChunksByRegion: Map[Region, Seq[TBIChunk]] = chunksByRegion
     for {
       nIntervals <- consume(reader.readIntField("n_intv"))(consumer.consumeNIntervals)(consumer.consumeSnag)
-      _ <- repeat(nIntervals) {
-        consume {
-          reader.readLongField("ioff").map(TbiVirtualFileOffset(_))
-        }(consumer.consumeIntervalOffset)(consumer.consumeSnag)
+      _ <- traverse(0 until nIntervals) { iInterval =>
+        for {
+          offset <- consume {
+            reader.readLongField("ioff").map(TbiVirtualFileOffset(_))
+          }(consumer.consumeIntervalOffset)(consumer.consumeSnag)
+          _ = for((region, chunks) <- trimmedChunksByRegion) {
+            if(TBIIntervals.firstOverlappingIntervalFor(region) == iInterval) {
+              val trimmedChunks = TBIIntervals.trimChunks(chunks, offset)
+              trimmedChunksByRegion += (region -> trimmedChunks)
+            }
+          }
+        } yield ()
       }
-    } yield ()
+    } yield trimmedChunksByRegion
   }
 
   private def readSequenceIndex(reader: ByteBufferReader, name: String, consumer: TBIConsumer): Either[Snag, Unit] = {
     consumer.startSequenceIndex(name)
     for {
       chunksByRegion <- readBinningIndex(reader, consumer)
-      _ <- readLinearIndex(reader, chunksByRegion, consumer)
+      trimmedChunksByRegion <- readLinearIndex(reader, chunksByRegion, consumer)
+      _ = consumer.consumeChunksForSequence(name, trimmedChunksByRegion)
       _ = consumer.doneWithSequenceIndex(name)
     } yield ()
   }
