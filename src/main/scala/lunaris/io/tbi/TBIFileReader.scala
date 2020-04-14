@@ -2,7 +2,6 @@ package lunaris.io.tbi
 
 import lunaris.genomics.Region
 import lunaris.io.ByteBufferReader
-import lunaris.io.IntegersIO.UnsignedInt
 import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -11,9 +10,7 @@ import scala.collection.mutable
 object TBIFileReader {
 
   trait TBIConsumer {
-    def startSequenceIndex(name: String): Unit
-
-    def regionsOverlappingBin(bin: UnsignedInt): Set[Region]
+    def regionsBySequence: Map[String, Seq[Region]]
 
     def consumeChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]]): Unit
 
@@ -21,6 +18,7 @@ object TBIFileReader {
   }
 
   private def readBinningIndex(reader: ByteBufferReader,
+                               sequence: String,
                                consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     var chunksByRegion: Map[Region, mutable.Builder[TBIChunk, Seq[TBIChunk]]] = Map.empty
     val snagOrUnit = for {
@@ -29,7 +27,8 @@ object TBIFileReader {
         val snagOrRegionsAndChunks = for {
           bin <- reader.readUnsignedIntField("bin")
           nChunks <- reader.readIntField("n_chunk")
-          regions = consumer.regionsOverlappingBin(bin)
+          binAsRegion = TBIBins.binAsRegion(bin.int)
+          regions = consumer.regionsBySequence.getOrElse(sequence, Seq.empty).filter(_.overlaps(binAsRegion))
           chunks <- {
             if (regions.nonEmpty) {
               val snagOrChunks = EitherSeqUtils.fill(nChunks) {
@@ -67,8 +66,7 @@ object TBIFileReader {
   }
 
   private def readLinearIndex(reader: ByteBufferReader,
-                              chunksByRegion: Map[Region, Seq[TBIChunk]],
-                              consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
+                              chunksByRegion: Map[Region, Seq[TBIChunk]]): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     var trimmedChunksByRegion: Map[Region, Seq[TBIChunk]] = chunksByRegion
     for {
       nIntervals <- reader.readIntField("n_intv")
@@ -87,10 +85,9 @@ object TBIFileReader {
   }
 
   private def readSequenceIndex(reader: ByteBufferReader, name: String, consumer: TBIConsumer): Either[Snag, Unit] = {
-    consumer.startSequenceIndex(name)
     for {
-      chunksByRegion <- readBinningIndex(reader, consumer)
-      trimmedChunksByRegion <- readLinearIndex(reader, chunksByRegion, consumer)
+      chunksByRegion <- readBinningIndex(reader, name, consumer)
+      trimmedChunksByRegion <- readLinearIndex(reader, chunksByRegion)
       _ = consumer.consumeChunksForSequence(name, trimmedChunksByRegion)
     } yield ()
   }

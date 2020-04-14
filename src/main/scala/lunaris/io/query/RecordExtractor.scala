@@ -1,7 +1,7 @@
 package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
-import lunaris.genomics.{Chromosome, Region, Regions}
+import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIBins, TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, IntegersIO, ResourceConfig}
 import lunaris.stream.Record
@@ -10,12 +10,13 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordExtractor {
 
-  def extract(dataSourceWithIndex: DataSourceWithIndex, regions: Regions): Eitherator[Record] = {
+  def extract(dataSourceWithIndex: DataSourceWithIndex,
+              regionsBySequence: Map[String, Seq[Region]]): Eitherator[Record] = {
     dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { indexReadChannel =>
       println("Now extracting records")
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
-      val tbiConsumer = new RecordTbiConsumer(regions, new LimitedLogger(50000))
+      val tbiConsumer = new RecordTbiConsumer(regionsBySequence, new LimitedLogger(50000))
       TBIFileReader.readFile(indexReader, tbiConsumer)
       println("Done extracting records!")
       Eitherator.empty
@@ -24,8 +25,9 @@ object RecordExtractor {
 
   class LimitedLogger(limit: Int) extends (String => Unit) {
     var count: Int = 0
+
     override def apply(line: String): Unit = {
-      if(count < limit) {
+      if (count < limit) {
         println(line)
         count += 1
       }
@@ -36,36 +38,19 @@ object RecordExtractor {
 
   object SequenceInfo {
     def empty: SequenceInfo = SequenceInfo("", Seq.empty, Map.empty)
+
     def apply(name: String, regions: Seq[Region]): SequenceInfo = {
       val bins = TBIBins.binsOverlappingRegions(regions)
       new SequenceInfo(name, regions, bins)
     }
   }
 
-  class RecordTbiConsumer(regions: Regions, logger: String => Unit) extends TBIFileReader.TBIConsumer {
+  class RecordTbiConsumer(val regionsBySequence: Map[String, Seq[Region]],
+                          logger: String => Unit) extends TBIFileReader.TBIConsumer {
     var snagOpt: Option[Snag] = None
-    var sequenceInfo: SequenceInfo = SequenceInfo.empty
-    override def startSequenceIndex(name: String): Unit = {
-      Chromosome.parse(name) match {
-        case None => consumeSnag(Snag(s"Cannot parse chromosome name $name."))
-        case Some(chromosome) =>
-          val regionsForChromosome = regions.regionsByChromosome.getOrElse(chromosome, Seq.empty)
-          val bins = TBIBins.binsOverlappingRegions(regionsForChromosome)
-          sequenceInfo = SequenceInfo(name, regionsForChromosome, bins)
-          logger("Starting sequence index for " + name)
-      }
-    }
-
-    override def regionsOverlappingBin(bin: IntegersIO.UnsignedInt): Set[Region] = {
-      val uBin = bin.toPositiveIntOpt.get
-      sequenceInfo.binsByRegion.collect {
-        case (region, bins) if bins(uBin) => region
-      }.toSet
-    }
 
     override def consumeChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]]): Unit = {
       logger(s"Sequence: $name, chunks by region: $chunksByRegion.")
-      println(chunksByRegion)
     }
 
     override def consumeSnag(snag: Snag): Unit = {

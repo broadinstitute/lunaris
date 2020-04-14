@@ -1,7 +1,7 @@
 package lunaris.app
 
 import lunaris.data.DataSources
-import lunaris.genomics.{Chromosome, Region, Regions}
+import lunaris.genomics.Region
 import lunaris.io.query.RecordExtractor
 
 object LunarisApp {
@@ -11,8 +11,8 @@ object LunarisApp {
       DataSources.simDataOnOliversOldLaptop
     else
       DataSources.simDataOnTerra
-    val regions = Regions(Map(Chromosome(1) -> Seq(Region(1, 100000))))
-    val recordEitherator = RecordExtractor.extract(dataSourceWithIndex, regions)
+    val regionsBySequence = Map("1" -> Seq(Region(1, 100000)))
+    val recordEitherator = RecordExtractor.extract(dataSourceWithIndex, regionsBySequence)
     recordEitherator.foreach { record =>
       println(record)
     }
