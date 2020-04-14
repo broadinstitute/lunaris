@@ -2,7 +2,7 @@ package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.{Chromosome, Region, Regions}
-import lunaris.io.tbi.{TBIBins, TBIChunk, TBIFileHeader, TBIFileReader, TbiVirtualFileOffset}
+import lunaris.io.tbi.{TBIBins, TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, IntegersIO, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
@@ -45,10 +45,6 @@ object RecordExtractor {
   class RecordTbiConsumer(regions: Regions, logger: String => Unit) extends TBIFileReader.TBIConsumer {
     var snagOpt: Option[Snag] = None
     var sequenceInfo: SequenceInfo = SequenceInfo.empty
-    override def consumeHeader(header: TBIFileHeader): Unit = {
-      logger("TBI file header: " + header)
-    }
-
     override def startSequenceIndex(name: String): Unit = {
       Chromosome.parse(name) match {
         case None => consumeSnag(Snag(s"Cannot parse chromosome name $name."))
@@ -67,25 +63,9 @@ object RecordExtractor {
       }.toSet
     }
 
-    override def consumeChunks(chunks: Seq[TBIChunk]): Unit = {
-      logger("Chunks: " + chunks)
-    }
-
-    override def consumeNIntervals(nIntervals: Int): Unit = {
-      logger("Number of intervals is " + nIntervals)
-    }
-
-    override def consumeIntervalOffset(offset: TbiVirtualFileOffset): Unit = {
-      logger("Interval offset is : " + offset)
-    }
-
     override def consumeChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]]): Unit = {
       logger(s"Sequence: $name, chunks by region: $chunksByRegion.")
       println(chunksByRegion)
-    }
-
-    override def doneWithSequenceIndex(name: String): Unit = {
-      logger("Done with sequence index for " + name)
     }
 
     override def consumeSnag(snag: Snag): Unit = {
