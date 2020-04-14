@@ -2,7 +2,7 @@ package lunaris.io.tbi
 
 import lunaris.genomics.Region
 import lunaris.io.ByteBufferReader
-import lunaris.utils.EitherSeqUtils
+import lunaris.utils.{EitherSeqUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.collection.mutable
@@ -84,12 +84,13 @@ object TBIFileReader {
     } yield trimmedChunksByRegion
   }
 
-  private def readSequenceIndex(reader: ByteBufferReader, name: String, consumer: TBIConsumer): Either[Snag, Unit] = {
+  private def readSequenceIndex(reader: ByteBufferReader, name: String,
+                                consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     for {
       chunksByRegion <- readBinningIndex(reader, name, consumer)
       trimmedChunksByRegion <- readLinearIndex(reader, chunksByRegion)
       _ = consumer.consumeChunksForSequence(name, trimmedChunksByRegion)
-    } yield ()
+    } yield trimmedChunksByRegion
   }
 
   def readFile(reader: ByteBufferReader, consumer: TBIConsumer): Unit = {
@@ -99,5 +100,32 @@ object TBIFileReader {
         readSequenceIndex(reader, name, consumer)
       }
     } yield ()
+  }
+
+  case class TBIChunksPerSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
+
+  class TBIFileReadEitherator(reader: ByteBufferReader) extends Eitherator[TBIChunksPerSequence] {
+    var snagOpt: Option[Snag] = None
+
+    private def recordSnag[T](snagOrValue: Either[Snag, T]): Either[Snag, T] = {
+      snagOrValue match {
+        case Left(snag) =>
+          snagOpt = Some(snag)
+          Left(snag)
+        case Right(value) => Right(value)
+      }
+    }
+
+    val snagOrHeader: Either[Snag, TBIFileHeader] = recordSnag(TBIFileHeader.read(reader))
+
+
+
+    override def next(): Either[Snag, Option[TBIChunksPerSequence]] = {
+      snagOpt match {
+        case Some(snag) => Left(snag)
+        case None => ???
+
+      }
+    }
   }
 }
