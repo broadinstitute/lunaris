@@ -22,16 +22,16 @@ object BGZBlock {
   }
 
   class BlockEitherator(reader: ByteBufferReader) extends Eitherator[BGZBlock] {
-    var haveReadEORBlock: Boolean = false
+    var haveReadEOFBlock: Boolean = false
     override def next(): Either[Snag, Option[BGZBlock]] = {
-      if(haveReadEORBlock) {
+      if(haveReadEOFBlock) {
         Right(None)
       } else {
         readBlock(reader) match {
           case Left(snag) => Left(Snag("Could not read next block", snag))
           case Right(block) =>
             if(block.isEOFMarker) {
-              haveReadEORBlock = true
+              haveReadEOFBlock = true
               Right(None)
             } else {
               Right(Some(block))

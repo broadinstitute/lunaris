@@ -49,9 +49,6 @@ object ByteBufferRefiller {
 
   def apply(channel: ReadableByteChannel, bufferSize: Int): FromChannel = new FromChannel(channel, bufferSize)
 
-  def apply(bytesEitherator: Eitherator[Array[Byte]], bufferSize: Int): FromByteArrayEitherator =
-    new FromByteArrayEitherator(bytesEitherator, bufferSize)
-
   class FromChannel(val channel: ReadableByteChannel, val bufferSize: Int) extends ByteBufferRefiller {
     val bytes: Array[Byte] = new Array[Byte](bufferSize)
     override val buffer: ByteBuffer = ByteBuffer.wrap(bytes)
@@ -77,11 +74,12 @@ object ByteBufferRefiller {
     }
   }
 
-  def bgunzip(readChannel: ReadableByteChannel, bufferSize: Int): FromByteArrayEitherator =
-    ByteBufferRefiller(BGZBlock.newBlockEitherator(readChannel).map(_.unzippedData.bytes), bufferSize)
+  def bgunzip(rawReadChannel: ReadableByteChannel, bufferSize: Int): BGUnzipByteBufferRefiller =
+    BGUnzipByteBufferRefiller(rawReadChannel, bufferSize)
 
-  class FromByteArrayEitherator(bytesEitherator: Eitherator[Array[Byte]], val bufferSize: Int)
+  class BGUnzipByteBufferRefiller(rawReadChannel: ReadableByteChannel, val bufferSize: Int)
     extends ByteBufferRefiller {
+    val bgzBlockEitherator: BGZBlock.BlockEitherator = BGZBlock.newBlockEitherator(rawReadChannel)
     override val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
     var currentBytesOpt: Option[CurrentBytes] = None
     writeToBuffer(1)
@@ -104,6 +102,11 @@ object ByteBufferRefiller {
       println(s"Buffer position ${buffer.position()}, limit ${buffer.limit()}, capacity ${buffer.capacity()}")
     }
 
+    private def consumeNextBlock(bgzBlock: BGZBlock): Unit = {
+      val bytes = bgzBlock.unzippedData.bytes
+      currentBytesOpt = Some(new CurrentBytes(bytes, 0))
+    }
+
     private def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
       if (buffer.position() >= nBytesNeeded) {
         Right(0)
@@ -124,12 +127,12 @@ object ByteBufferRefiller {
             case None => ()
           }
           if (buffer.position() < nBytesNeeded) {
-            bytesEitherator.next() match {
+            bgzBlockEitherator.next() match {
               case Left(snag) => snagOpt = Some(snag)
               case Right(None) => snagOpt =
                 Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
-              case Right(Some(bytes)) =>
-                currentBytesOpt = Some(new CurrentBytes(bytes, 0))
+              case Right(Some(bgzBlock)) =>
+                consumeNextBlock(bgzBlock)
             }
           }
         }
@@ -148,5 +151,9 @@ object ByteBufferRefiller {
     }
   }
 
+  object BGUnzipByteBufferRefiller {
+    def apply(rawReadChannel: ReadableByteChannel, bufferSize: Int): BGUnzipByteBufferRefiller =
+      new BGUnzipByteBufferRefiller(rawReadChannel, bufferSize)
+  }
 
 }

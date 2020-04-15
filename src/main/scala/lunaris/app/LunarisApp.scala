@@ -11,7 +11,7 @@ object LunarisApp {
       DataSources.simDataOnOliversOldLaptop
     else
       DataSources.simDataOnTerra
-    val regionsBySequence = Map("1" -> Seq(Region(1, 100000)))
+    val regionsBySequence = Map("1" -> Seq(Region(100000, 200000), Region(100000, 200001)))
     val recordEitherator = RecordExtractor.extract(dataSourceWithIndex, regionsBySequence)
     recordEitherator.foreach { record =>
       println(record)
