@@ -3,7 +3,7 @@ package lunaris.io.query
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIBins, TBIChunk, TBIFileReader}
-import lunaris.io.{ByteBufferReader, ByteBufferRefiller, IntegersIO, ResourceConfig}
+import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -17,7 +17,22 @@ object RecordExtractor {
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
       val tbiConsumer = new RecordTbiConsumer(regionsBySequence, new LimitedLogger(50000))
-      TBIFileReader.readFile(indexReader, tbiConsumer)
+      val indexEitherator = TBIFileReader.readFile(indexReader, tbiConsumer)
+      var keepGoing: Boolean = true
+      while(keepGoing) {
+        indexEitherator.next() match {
+          case Left(snag) =>
+            println("Problem!")
+            println(snag.message)
+            println(snag.report)
+            keepGoing = false
+          case Right(None) =>
+            println("Done!")
+            keepGoing = false
+          case Right(Some(chunksPerSequence)) =>
+            println(chunksPerSequence)
+        }
+      }
       println("Done extracting records!")
       Eitherator.empty
     }

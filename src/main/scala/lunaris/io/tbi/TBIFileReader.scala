@@ -2,6 +2,7 @@ package lunaris.io.tbi
 
 import lunaris.genomics.Region
 import lunaris.io.ByteBufferReader
+import lunaris.io.tbi.TBIFileReader.TBIFileReadEitherator.OKState
 import lunaris.utils.{EitherSeqUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -93,7 +94,7 @@ object TBIFileReader {
     } yield trimmedChunksByRegion
   }
 
-  def readFile(reader: ByteBufferReader, consumer: TBIConsumer): Unit = {
+  def readFileOld(reader: ByteBufferReader, consumer: TBIConsumer): Unit = {
     for {
       header <- TBIFileHeader.read(reader)
       _ <- EitherSeqUtils.foreach(header.names) { name =>
@@ -102,30 +103,48 @@ object TBIFileReader {
     } yield ()
   }
 
+  def readFile(reader: ByteBufferReader, consumer: TBIConsumer): TBIFileReadEitherator =
+    TBIFileReadEitherator(reader, consumer)
+
   case class TBIChunksPerSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
 
-  class TBIFileReadEitherator(reader: ByteBufferReader) extends Eitherator[TBIChunksPerSequence] {
-    var snagOpt: Option[Snag] = None
-
-    private def recordSnag[T](snagOrValue: Either[Snag, T]): Either[Snag, T] = {
-      snagOrValue match {
-        case Left(snag) =>
-          snagOpt = Some(snag)
-          Left(snag)
-        case Right(value) => Right(value)
-      }
-    }
-
-    val snagOrHeader: Either[Snag, TBIFileHeader] = recordSnag(TBIFileHeader.read(reader))
-
-
+  class TBIFileReadEitherator(reader: ByteBufferReader, consumer: TBIConsumer) extends Eitherator[TBIChunksPerSequence] {
+    var snagOrState: Either[Snag, OKState] = TBIFileHeader.read(reader).map(OKState(_))
 
     override def next(): Either[Snag, Option[TBIChunksPerSequence]] = {
-      snagOpt match {
-        case Some(snag) => Left(snag)
-        case None => ???
-
+      snagOrState match {
+        case Left(snag) => Left(snag)
+        case Right(state) =>
+          if (state.namesIter.hasNext) {
+            val name = state.namesIter.next()
+            TBIFileReader.readSequenceIndex(reader, name, consumer) match {
+              case Left(snag) =>
+                snagOrState = Left(snag)
+                Left(snag)
+              case Right(chunksByRegion) =>
+                Right(Some(TBIChunksPerSequence(name, chunksByRegion)))
+            }
+          } else {
+            Right(None)
+          }
       }
     }
   }
+
+  object TBIFileReadEitherator {
+
+    def apply(reader: ByteBufferReader, consumer: TBIConsumer): TBIFileReadEitherator =
+      new TBIFileReadEitherator(reader, consumer)
+
+    class OKState(val header: TBIFileHeader, val namesIter: Iterator[String])
+
+    object OKState {
+      def apply(header: TBIFileHeader): OKState = {
+        val namesIter = header.names.iterator
+        new OKState(header, namesIter)
+      }
+    }
+
+  }
+
 }
