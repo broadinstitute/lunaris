@@ -10,17 +10,8 @@ import scala.collection.mutable
 
 object TBIFileReader {
 
-  trait TBIConsumer {
-    def regionsBySequence: Map[String, Seq[Region]]
-
-    def consumeChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]]): Unit
-
-    def consumeSnag(snag: Snag): Unit
-  }
-
   private def readBinningIndex(reader: ByteBufferReader,
-                               sequence: String,
-                               consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
+                               regions: Seq[Region]): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     var chunksByRegion: Map[Region, mutable.Builder[TBIChunk, Seq[TBIChunk]]] = Map.empty
     val snagOrUnit = for {
       nBins <- reader.readIntField("n_bin")
@@ -29,9 +20,9 @@ object TBIFileReader {
           bin <- reader.readUnsignedIntField("bin")
           nChunks <- reader.readIntField("n_chunk")
           binAsRegion = TBIBins.binAsRegion(bin.int)
-          regions = consumer.regionsBySequence.getOrElse(sequence, Seq.empty).filter(_.overlaps(binAsRegion))
+          overlappingRegions = regions.filter(_.overlaps(binAsRegion))
           chunks <- {
-            if (regions.nonEmpty) {
+            if (overlappingRegions.nonEmpty) {
               val snagOrChunks = EitherSeqUtils.fill(nChunks) {
                 val snagOrChunk = for {
                   chunkBegin <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
@@ -86,29 +77,20 @@ object TBIFileReader {
   }
 
   private def readSequenceIndex(reader: ByteBufferReader, name: String,
-                                consumer: TBIConsumer): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
+                                regions: Seq[Region]): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     for {
-      chunksByRegion <- readBinningIndex(reader, name, consumer)
+      chunksByRegion <- readBinningIndex(reader, regions)
       trimmedChunksByRegion <- readLinearIndex(reader, chunksByRegion)
-      _ = consumer.consumeChunksForSequence(name, trimmedChunksByRegion)
     } yield trimmedChunksByRegion
   }
 
-  def readFileOld(reader: ByteBufferReader, consumer: TBIConsumer): Unit = {
-    for {
-      header <- TBIFileHeader.read(reader)
-      _ <- EitherSeqUtils.foreach(header.names) { name =>
-        readSequenceIndex(reader, name, consumer)
-      }
-    } yield ()
-  }
-
-  def readFile(reader: ByteBufferReader, consumer: TBIConsumer): TBIFileReadEitherator =
-    TBIFileReadEitherator(reader, consumer)
+  def readFile(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIFileReadEitherator =
+    TBIFileReadEitherator(reader, regionsBySequence)
 
   case class TBIChunksPerSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
 
-  class TBIFileReadEitherator(reader: ByteBufferReader, consumer: TBIConsumer) extends Eitherator[TBIChunksPerSequence] {
+  class TBIFileReadEitherator(reader: ByteBufferReader,
+                              regionsBySequence: Map[String, Seq[Region]]) extends Eitherator[TBIChunksPerSequence] {
     var snagOrState: Either[Snag, OKState] = TBIFileHeader.read(reader).map(OKState(_))
 
     override def next(): Either[Snag, Option[TBIChunksPerSequence]] = {
@@ -117,7 +99,8 @@ object TBIFileReader {
         case Right(state) =>
           if (state.namesIter.hasNext) {
             val name = state.namesIter.next()
-            TBIFileReader.readSequenceIndex(reader, name, consumer) match {
+            val regions = regionsBySequence.getOrElse(name, Seq.empty)
+            TBIFileReader.readSequenceIndex(reader, name, regions) match {
               case Left(snag) =>
                 snagOrState = Left(snag)
                 Left(snag)
@@ -133,8 +116,8 @@ object TBIFileReader {
 
   object TBIFileReadEitherator {
 
-    def apply(reader: ByteBufferReader, consumer: TBIConsumer): TBIFileReadEitherator =
-      new TBIFileReadEitherator(reader, consumer)
+    def apply(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIFileReadEitherator =
+      new TBIFileReadEitherator(reader, regionsBySequence)
 
     class OKState(val header: TBIFileHeader, val namesIter: Iterator[String])
 
