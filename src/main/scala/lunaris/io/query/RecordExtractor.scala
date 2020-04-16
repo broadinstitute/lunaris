@@ -2,7 +2,7 @@ package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Region
-import lunaris.io.tbi.TBIFileReader
+import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
@@ -27,8 +27,9 @@ object RecordExtractor {
           case Right(None) =>
             println("Done!")
             keepGoing = false
-          case Right(Some(chunksPerSequence)) =>
-            println(chunksPerSequence)
+          case Right(Some(chunksForSequence)) =>
+            val chunks = TBIChunk.consolidateSeqsOfChunks(chunksForSequence.chunksByRegion.values)
+            println(chunksForSequence.name + " has chunks " + chunks)
         }
       }
       println("Done extracting records!")

@@ -87,13 +87,13 @@ object TBIFileReader {
   def readFile(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIFileReadEitherator =
     TBIFileReadEitherator(reader, regionsBySequence)
 
-  case class TBIChunksPerSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
+  case class TBIChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
 
   class TBIFileReadEitherator(reader: ByteBufferReader,
-                              regionsBySequence: Map[String, Seq[Region]]) extends Eitherator[TBIChunksPerSequence] {
+                              regionsBySequence: Map[String, Seq[Region]]) extends Eitherator[TBIChunksForSequence] {
     var snagOrState: Either[Snag, OKState] = TBIFileHeader.read(reader).map(OKState(_))
 
-    override def next(): Either[Snag, Option[TBIChunksPerSequence]] = {
+    override def next(): Either[Snag, Option[TBIChunksForSequence]] = {
       snagOrState match {
         case Left(snag) => Left(snag)
         case Right(state) =>
@@ -105,7 +105,7 @@ object TBIFileReader {
                 snagOrState = Left(snag)
                 Left(snag)
               case Right(chunksByRegion) =>
-                Right(Some(TBIChunksPerSequence(name, chunksByRegion)))
+                Right(Some(TBIChunksForSequence(name, chunksByRegion)))
             }
           } else {
             Right(None)
