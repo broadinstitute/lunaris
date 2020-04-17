@@ -1,9 +1,7 @@
 package lunaris.io
 
-import java.io.{BufferedReader, InputStream, PrintWriter, RandomAccessFile}
+import java.io.RandomAccessFile
 import java.nio.channels.{Channels, FileChannel, ReadableByteChannel, WritableByteChannel}
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 
 import better.files.File
 import com.google.auth.oauth2.{GoogleCredentials, ServiceAccountCredentials}
@@ -12,7 +10,6 @@ import com.google.cloud.{ReadChannel, WriteChannel}
 import lunaris.io.Disposable.Disposer
 import org.broadinstitute.yootilz.gcp.storage.GoogleStorageUtils
 
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 trait IoId {
@@ -23,6 +20,8 @@ trait IoId {
 
 trait InputId extends IoId {
   def newReadChannelDisposable(resourceConfig: ResourceConfig): Disposable[ReadableByteChannel]
+
+  def newReadChannelOffsetDisposable(pos: Long, resourceConfig: ResourceConfig): Disposable[ReadableByteChannel]
 }
 
 object InputId {
@@ -43,23 +42,33 @@ object OutputId {
 
 trait FileIoId extends IoId {
   def file: File
+
   override def asString: String = file.toString()
-  def newFileChannelDisposable(mode: String): Disposable[FileChannel] = {
+
+  def newFileChannelDisposable(mode: String, pos: Long): Disposable[FileChannel] = {
     val raf = new RandomAccessFile(file.toJava, mode)
+    if(pos != 0) {
+      raf.seek(pos)
+    }
     Disposable(raf.getChannel)(Disposer.ForCloseable(raf))
   }
 }
 
 case class FileInputId(file: File) extends InputId with FileIoId {
   override def newReadChannelDisposable(resourceConfig: ResourceConfig): Disposable[ReadableByteChannel] =
-    newFileChannelDisposable("r")
+    newFileChannelDisposable("r", 0)
+
+  override def newReadChannelOffsetDisposable(pos: Long,
+                                              resourceConfig: ResourceConfig): Disposable[ReadableByteChannel] = {
+    newFileChannelDisposable("r", pos)
+  }
 }
 
 case class FileOutputId(file: File) extends OutputId with FileIoId {
   override def asString: String = file.toString()
 
   override def newWriteChannelDisposable(resourceConfig: ResourceConfig): Disposable[WritableByteChannel] =
-    newFileChannelDisposable("rw")
+    newFileChannelDisposable("rw", 0)
 }
 
 trait GcpBlobId extends IoId {
@@ -104,6 +113,13 @@ case class GcpBlobInputId(blobId: BlobId) extends GcpBlobId with InputId {
 
   override def newReadChannelDisposable(resourceConfig: ResourceConfig): Disposable[ReadableByteChannel] = {
     val readChannel = newReadChannel(resourceConfig)
+    Disposable(readChannel)(Disposer.ForCloseable(readChannel))
+  }
+
+  override def newReadChannelOffsetDisposable(pos: Long,
+                                              resourceConfig: ResourceConfig): Disposable[ReadableByteChannel] = {
+    val readChannel = newReadChannel(resourceConfig)
+    readChannel.seek(pos)
     Disposable(readChannel)(Disposer.ForCloseable(readChannel))
   }
 }
