@@ -4,7 +4,7 @@ import java.nio.ByteOrder
 import java.nio.channels.ReadableByteChannel
 
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
-import lunaris.utils.Eitherator
+import lunaris.utils.{Eitherator, ReadableByteChannelUtils}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class BGZBlock(header: BGZHeader, footer: BGZFooter, unzippedData: BGZUnzippedData) {
@@ -21,8 +21,9 @@ object BGZBlock {
     readBlock(reader)
   }
 
-  class BlockEitherator(reader: ByteBufferReader) extends Eitherator[BGZBlock] {
+  class BlockEitherator(reader: ByteBufferReader, startPos: Long) extends Eitherator[BGZBlock] {
     var haveReadEOFBlock: Boolean = false
+    var nextBlockStart: Long = startPos
     override def next(): Either[Snag, Option[BGZBlock]] = {
       if(haveReadEOFBlock) {
         Right(None)
@@ -30,6 +31,7 @@ object BGZBlock {
         readBlock(reader) match {
           case Left(snag) => Left(Snag("Could not read next block", snag))
           case Right(block) =>
+            nextBlockStart += block.header.bsize.toPositiveLong
             if(block.isEOFMarker) {
               haveReadEOFBlock = true
               Right(None)
@@ -41,11 +43,14 @@ object BGZBlock {
     }
   }
 
-  def newBlockEitherator(readChannel: ReadableByteChannel): BlockEitherator  = {
+  def newBlockEitherator(readChannel: ReadableByteChannel, pos: Long = 0): BlockEitherator  = {
+    if(pos != 0) {
+      ReadableByteChannelUtils.seek(readChannel, pos)
+    }
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
     refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
     val reader = ByteBufferReader(refiller)
-    new BlockEitherator(reader)
+    new BlockEitherator(reader, pos)
   }
 
   def readAllBlocks(readChannel: ReadableByteChannel): Either[Snag, Seq[BGZBlock]] = {
