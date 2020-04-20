@@ -8,11 +8,11 @@ import lunaris.utils.{Eitherator, ReadableByteChannelUtils}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class BGZBlock(header: BGZHeader, footer: BGZFooter, unzippedData: BGZUnzippedData) {
-  def isEOFMarker: Boolean = unzippedData.bytes.length == 0  // per BGZF specs, EOF block with empty payload
+  def isEOFMarker: Boolean = unzippedData.bytes.length == 0 // per BGZF specs, EOF block with empty payload
 }
 
 object BGZBlock {
-  val maxBlockSize: Int = 65536  //  Math.pow(2, 16).toInt, per BGZF specs
+  val maxBlockSize: Int = 65536 //  Math.pow(2, 16).toInt, per BGZF specs
 
   def readBlock(readChannel: ReadableByteChannel): Either[Snag, BGZBlock] = {
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
@@ -21,18 +21,21 @@ object BGZBlock {
     readBlock(reader)
   }
 
-  class BlockEitherator(reader: ByteBufferReader, startPos: Long) extends Eitherator[BGZBlock] {
+  class BlockEitherator(refiller: ByteBufferRefiller.Seekable) extends Eitherator[BGZBlock] {
+    refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
+    val reader: ByteBufferReader = ByteBufferReader(refiller)
     var haveReadEOFBlock: Boolean = false
-    var nextBlockStart: Long = startPos
+    var nextBlockStart: Long = 0
+
     override def next(): Either[Snag, Option[BGZBlock]] = {
-      if(haveReadEOFBlock) {
+      if (haveReadEOFBlock) {
         Right(None)
       } else {
         readBlock(reader) match {
           case Left(snag) => Left(Snag("Could not read next block", snag))
           case Right(block) =>
             nextBlockStart += block.header.bsize.toPositiveLong
-            if(block.isEOFMarker) {
+            if (block.isEOFMarker) {
               haveReadEOFBlock = true
               Right(None)
             } else {
@@ -41,19 +44,17 @@ object BGZBlock {
         }
       }
     }
+
     def skipToOffset(offsetOfBlock: Long): Unit = {
-      ???
+      refiller.skipTo(offsetOfBlock)
+      nextBlockStart = offsetOfBlock
+      haveReadEOFBlock = false
     }
   }
 
-  def newBlockEitherator(readChannel: ReadableByteChannel, pos: Long = 0): BlockEitherator  = {
-    if(pos != 0) {
-      ReadableByteChannelUtils.seek(readChannel, pos)
-    }
+  def newBlockEitherator(readChannel: ReadableByteChannel): BlockEitherator = {
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
-    refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
-    val reader = ByteBufferReader(refiller)
-    new BlockEitherator(reader, pos)
+    new BlockEitherator(refiller)
   }
 
   def readAllBlocks(readChannel: ReadableByteChannel): Either[Snag, Seq[BGZBlock]] = {
@@ -63,11 +64,11 @@ object BGZBlock {
     var blocks: Seq[BGZBlock] = Seq.empty
     val reader = ByteBufferReader(refiller)
     var moreBlocksExpected: Boolean = true
-    while(moreBlocksExpected && snagOpt.isEmpty) {
+    while (moreBlocksExpected && snagOpt.isEmpty) {
       readBlock(reader) match {
         case Left(snag) => snagOpt = Some(snag)
         case Right(block) =>
-          if(block.isEOFMarker) {
+          if (block.isEOFMarker) {
             moreBlocksExpected = false
           } else {
             blocks :+= block

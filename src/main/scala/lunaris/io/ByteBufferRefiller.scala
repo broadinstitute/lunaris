@@ -4,6 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
 import lunaris.io.bgz.BGZBlock
+import lunaris.io.tbi.TBIChunk
 import lunaris.utils.ReadableByteChannelUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -87,10 +88,11 @@ object ByteBufferRefiller {
 
   class BGUnzipByteBufferRefiller(rawReadChannel: ReadableByteChannel, val bufferSize: Int)
     extends ByteBufferRefiller {
+    var currentChunk: TBIChunk = TBIChunk.wholeFile
     val bgzBlockEitherator: BGZBlock.BlockEitherator = BGZBlock.newBlockEitherator(rawReadChannel)
     override val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
     var currentBytesOpt: Option[CurrentBytes] = None
-    writeToBuffer(1)
+    //writeToBuffer(1)
     buffer.flip()
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {

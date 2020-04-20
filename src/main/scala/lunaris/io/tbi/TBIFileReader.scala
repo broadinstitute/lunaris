@@ -2,7 +2,7 @@ package lunaris.io.tbi
 
 import lunaris.genomics.Region
 import lunaris.io.ByteBufferReader
-import lunaris.io.tbi.TBIFileReader.TBIFileReadEitherator.OKState
+import lunaris.io.tbi.TBIFileReader.TBIChunksForSequenceEitherator.OKState
 import lunaris.utils.{EitherSeqUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -84,13 +84,14 @@ object TBIFileReader {
     } yield trimmedChunksByRegion
   }
 
-  def readFile(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIFileReadEitherator =
-    TBIFileReadEitherator(reader, regionsBySequence)
+  def readChunksForSequence(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIChunksForSequenceEitherator =
+    TBIChunksForSequenceEitherator(reader, regionsBySequence)
 
   case class TBIChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
 
-  class TBIFileReadEitherator(reader: ByteBufferReader,
-                              regionsBySequence: Map[String, Seq[Region]]) extends Eitherator[TBIChunksForSequence] {
+  class TBIChunksForSequenceEitherator(reader: ByteBufferReader,
+                                       regionsBySequence: Map[String, Seq[Region]])
+    extends Eitherator[TBIChunksForSequence] {
     var snagOrState: Either[Snag, OKState] = TBIFileHeader.read(reader).map(OKState(_))
 
     override def next(): Either[Snag, Option[TBIChunksForSequence]] = {
@@ -114,10 +115,10 @@ object TBIFileReader {
     }
   }
 
-  object TBIFileReadEitherator {
+  object TBIChunksForSequenceEitherator {
 
-    def apply(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIFileReadEitherator =
-      new TBIFileReadEitherator(reader, regionsBySequence)
+    def apply(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIChunksForSequenceEitherator =
+      new TBIChunksForSequenceEitherator(reader, regionsBySequence)
 
     class OKState(val header: TBIFileHeader, val namesIter: Iterator[String])
 
@@ -129,5 +130,17 @@ object TBIFileReader {
     }
 
   }
+
+  case class TBIChunkWithSequenceAndRegion(chunk: TBIChunk, name: String, regions: Set[Region])
+
+  def readChunksWithSequenceAndRegions(reader: ByteBufferReader,
+                                       regionsBySequence: Map[String, Seq[Region]]):
+  Eitherator[TBIChunkWithSequenceAndRegion] = {
+    readChunksForSequence(reader, regionsBySequence).flatMap { chunksForSequence =>
+      ???  //  TODO
+    }
+  }
+
+
 
 }

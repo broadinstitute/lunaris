@@ -15,7 +15,7 @@ object RecordExtractor {
       println("Now extracting records")
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
-      val indexEitherator = TBIFileReader.readFile(indexReader, regionsBySequence)
+      val indexEitherator = TBIFileReader.readChunksForSequence(indexReader, regionsBySequence)
       dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { dataReadChannel =>
         var keepGoing: Boolean = true
         while (keepGoing) {
