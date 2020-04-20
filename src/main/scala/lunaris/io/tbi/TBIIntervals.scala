@@ -16,7 +16,7 @@ object TBIIntervals {
 
   def firstOverlappingIntervalFor(region: Region): Int = region.start >> 14
 
-  def trimChunks(chunks: Seq[TBIChunk], offset: TbiVirtualFileOffset): Seq[TBIChunk] = {
+  def trimChunks(chunks: Seq[TBIChunk], offset: TBIVirtualFileOffset): Seq[TBIChunk] = {
     chunks.flatMap { chunk =>
       if (chunk.begin >= offset) {
         Some(chunk)

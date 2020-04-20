@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
 import lunaris.io.bgz.BGZBlock
-import lunaris.utils.Eitherator
+import lunaris.utils.ReadableByteChannelUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.util.control.NonFatal
@@ -47,9 +47,13 @@ trait ByteBufferRefiller {
 
 object ByteBufferRefiller {
 
+  trait Seekable extends ByteBufferRefiller {
+    def skipTo(pos: Long): Unit
+  }
+
   def apply(channel: ReadableByteChannel, bufferSize: Int): FromChannel = new FromChannel(channel, bufferSize)
 
-  class FromChannel(val channel: ReadableByteChannel, val bufferSize: Int) extends ByteBufferRefiller {
+  class FromChannel(val channel: ReadableByteChannel, val bufferSize: Int) extends ByteBufferRefiller.Seekable {
     val bytes: Array[Byte] = new Array[Byte](bufferSize)
     override val buffer: ByteBuffer = ByteBuffer.wrap(bytes)
     channel.read(buffer)
@@ -71,6 +75,10 @@ object ByteBufferRefiller {
       } catch {
         case NonFatal(ex) => Left(Snag("Exception while trying to refill buffer", Snag(ex)))
       }
+    }
+
+    override def skipTo(pos: Long): Unit = {
+      ReadableByteChannelUtils.seek(channel, pos)
     }
   }
 

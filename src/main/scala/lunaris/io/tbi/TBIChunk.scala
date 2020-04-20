@@ -2,7 +2,7 @@ package lunaris.io.tbi
 
 import lunaris.utils.IteratorUtils
 
-case class TBIChunk(begin: TbiVirtualFileOffset, end: TbiVirtualFileOffset) extends Ordered[TBIChunk] {
+case class TBIChunk(begin: TBIVirtualFileOffset, end: TBIVirtualFileOffset) extends Ordered[TBIChunk] {
   override def compare(that: TBIChunk): Int = {
     val compareBegin = begin.compare(that.begin)
     if (compareBegin != 0) {
@@ -14,6 +14,8 @@ case class TBIChunk(begin: TbiVirtualFileOffset, end: TbiVirtualFileOffset) exte
 }
 
 object TBIChunk {
+  val wholeFile: TBIChunk = TBIChunk(TBIVirtualFileOffset.startOfFile, TBIVirtualFileOffset.endOfFile)
+
   def consolidateTwoChunks(chunk1: TBIChunk, chunk2: TBIChunk): Seq[TBIChunk] = {
     if (chunk1.end < chunk2.begin) {
       Seq(chunk1, chunk2)
@@ -55,28 +57,28 @@ object TBIChunk {
     } else {
       var iterators = seqsOfChunks.map(IteratorUtils.newBufferedIterator).filter(_.hasNext)
       val builder = Seq.newBuilder[TBIChunk]
-      while(iterators.nonEmpty) {
+      while (iterators.nonEmpty) {
         var nextChunk = {
           val iterIter = iterators.iterator
           var iterOfNext = iterIter.next()
-          while(iterIter.hasNext) {
+          while (iterIter.hasNext) {
             val nextIter = iterIter.next()
-            if(nextIter.head < iterOfNext.head) {
+            if (nextIter.head < iterOfNext.head) {
               iterOfNext = nextIter
             }
           }
           iterOfNext.next()
         }
         var consolidating: Boolean = true
-        while(consolidating) {
+        while (consolidating) {
           consolidating = false
           iterators = iterators.filter(_.hasNext)
-          for(iterator <- iterators) {
+          for (iterator <- iterators) {
             val head = iterator.head
-            if(head.begin <= nextChunk.end) {
+            if (head.begin <= nextChunk.end) {
               consolidating = true
               iterator.next()
-              if(head.end > nextChunk.end) {
+              if (head.end > nextChunk.end) {
                 nextChunk = TBIChunk(nextChunk.begin, head.end)
               }
             }

@@ -41,6 +41,9 @@ object BGZBlock {
         }
       }
     }
+    def skipToOffset(offsetOfBlock: Long): Unit = {
+      ???
+    }
   }
 
   def newBlockEitherator(readChannel: ReadableByteChannel, pos: Long = 0): BlockEitherator  = {

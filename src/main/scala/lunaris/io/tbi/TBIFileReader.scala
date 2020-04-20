@@ -25,8 +25,8 @@ object TBIFileReader {
             if (overlappingRegions.nonEmpty) {
               val snagOrChunks = EitherSeqUtils.fill(nChunks) {
                 val snagOrChunk = for {
-                  chunkBegin <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
-                  chunkEnd <- reader.readLongField("cnk_beg").map(TbiVirtualFileOffset(_))
+                  chunkBegin <- reader.readLongField("cnk_beg").map(TBIVirtualFileOffset(_))
+                  chunkEnd <- reader.readLongField("cnk_beg").map(TBIVirtualFileOffset(_))
                 } yield TBIChunk(chunkBegin, chunkEnd)
                 snagOrChunk
               }
@@ -64,7 +64,7 @@ object TBIFileReader {
       nIntervals <- reader.readIntField("n_intv")
       _ <- EitherSeqUtils.traverse(0 until nIntervals) { iInterval =>
         for {
-          offset <- reader.readLongField("ioff").map(TbiVirtualFileOffset(_))
+          offset <- reader.readLongField("ioff").map(TBIVirtualFileOffset(_))
           _ = for ((region, chunks) <- trimmedChunksByRegion) {
             if (TBIIntervals.firstOverlappingIntervalFor(region) == iInterval) {
               val trimmedChunks = TBIIntervals.trimChunks(chunks, offset)
