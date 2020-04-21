@@ -1,5 +1,7 @@
 package lunaris.io.tbi
 
+import lunaris.genomics.Region
+import lunaris.io.tbi.TBIFileReader.{TBIChunkWithSequenceAndRegions, TBIChunksForSequence}
 import lunaris.utils.IteratorUtils
 
 case class TBIChunk(begin: TBIVirtualFileOffset, end: TBIVirtualFileOffset) extends Ordered[TBIChunk] {
@@ -52,42 +54,83 @@ object TBIChunk {
   }
 
   def consolidateSeqsOfChunks(seqsOfChunks: Iterable[Seq[TBIChunk]]): Seq[TBIChunk] = {
-    if (seqsOfChunks.isEmpty || seqsOfChunks.forall(_.isEmpty)) {
-      Seq.empty
-    } else {
-      var iterators = seqsOfChunks.map(IteratorUtils.newBufferedIterator).filter(_.hasNext)
-      val builder = Seq.newBuilder[TBIChunk]
-      while (iterators.nonEmpty) {
-        var nextChunk = {
-          val iterIter = iterators.iterator
-          var iterOfNext = iterIter.next()
-          while (iterIter.hasNext) {
-            val nextIter = iterIter.next()
-            if (nextIter.head < iterOfNext.head) {
-              iterOfNext = nextIter
-            }
-          }
-          iterOfNext.next()
-        }
-        var consolidating: Boolean = true
-        while (consolidating) {
-          consolidating = false
-          iterators = iterators.filter(_.hasNext)
-          for (iterator <- iterators) {
-            val head = iterator.head
-            if (head.begin <= nextChunk.end) {
-              consolidating = true
-              iterator.next()
-              if (head.end > nextChunk.end) {
-                nextChunk = TBIChunk(nextChunk.begin, head.end)
-              }
-            }
+    var iterators = seqsOfChunks.map(IteratorUtils.newBufferedIterator).filter(_.hasNext)
+    val builder = Seq.newBuilder[TBIChunk]
+    while (iterators.nonEmpty) {
+      var nextChunk = {
+        val iterIter = iterators.iterator
+        var iterOfNext = iterIter.next()
+        while (iterIter.hasNext) {
+          val nextIter = iterIter.next()
+          if (nextIter.head < iterOfNext.head) {
+            iterOfNext = nextIter
           }
         }
-        builder += nextChunk
-        iterators = iterators.filter(_.hasNext)
+        iterOfNext.next()
       }
-      builder.result()
+      var consolidating: Boolean = true
+      while (consolidating) {
+        consolidating = false
+        iterators = iterators.filter(_.hasNext)
+        for (iterator <- iterators) {
+          val head = iterator.head
+          if (head.begin <= nextChunk.end) {
+            consolidating = true
+            iterator.next()
+            if (head.end > nextChunk.end) {
+              nextChunk = TBIChunk(nextChunk.begin, head.end)
+            }
+          }
+        }
+      }
+      builder += nextChunk
+      iterators = iterators.filter(_.hasNext)
     }
+    builder.result()
+  }
+
+  case class TBIChunkWithRegions(chunk: TBIChunk, regions: Set[Region])
+
+  def consolidateChunksByRegion(chunksByRegion: Map[Region, Seq[TBIChunk]]): Seq[TBIChunkWithRegions] = {
+    var iterators = chunksByRegion.collect {
+      case (region, chunks) => (region, IteratorUtils.newBufferedIterator(chunks))
+    }.filter(_._2.hasNext)
+    val builder = Seq.newBuilder[TBIChunkWithRegions]
+    while (iterators.nonEmpty) {
+      var nextChunkWithRegion = {
+        val iterIter = iterators.iterator
+        var iterOfNext = iterIter.next()
+        while (iterIter.hasNext) {
+          val nextIter = iterIter.next()
+          if (nextIter._2.head < iterOfNext._2.head) {
+            iterOfNext = nextIter
+          }
+        }
+        TBIChunkWithRegions(iterOfNext._2.next(), Set(iterOfNext._1))
+      }
+      var consolidating: Boolean = true
+      while (consolidating) {
+        consolidating = false
+        iterators = iterators.filter(_._2.hasNext)
+        for (iterator <- iterators) {
+          val region = iterator._1
+          val chunkIter = iterator._2
+          val head = chunkIter.head
+          if (head.begin <= nextChunkWithRegion.chunk.end) {
+            consolidating = true
+            chunkIter.next()
+            nextChunkWithRegion = nextChunkWithRegion.copy(regions = nextChunkWithRegion.regions + region)
+            if (head.end > nextChunkWithRegion.chunk.end) {
+              nextChunkWithRegion =
+                TBIChunkWithRegions(TBIChunk(nextChunkWithRegion.chunk.begin, head.end),
+                  nextChunkWithRegion.regions + region)
+            }
+          }
+        }
+      }
+      builder += nextChunkWithRegion
+      iterators = iterators.filter(_._2.hasNext)
+    }
+    builder.result()
   }
 }

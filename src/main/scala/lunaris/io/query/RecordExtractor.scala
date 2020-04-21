@@ -29,7 +29,7 @@ object RecordExtractor {
               println("Done!")
               keepGoing = false
             case Right(Some(chunksForSequence)) =>
-              val chunks = TBIChunk.consolidateSeqsOfChunks(chunksForSequence.chunksByRegion.values)
+              val chunks = TBIChunk.consolidateChunksByRegion(chunksForSequence.chunksByRegion)
               println(chunksForSequence.name + " has chunks " + chunks)
 
 

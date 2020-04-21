@@ -131,11 +131,11 @@ object TBIFileReader {
 
   }
 
-  case class TBIChunkWithSequenceAndRegion(chunk: TBIChunk, name: String, regions: Set[Region])
+  case class TBIChunkWithSequenceAndRegions(chunk: TBIChunk, name: String, regions: Set[Region])
 
   def readChunksWithSequenceAndRegions(reader: ByteBufferReader,
                                        regionsBySequence: Map[String, Seq[Region]]):
-  Eitherator[TBIChunkWithSequenceAndRegion] = {
+  Eitherator[TBIChunkWithSequenceAndRegions] = {
     readChunksForSequence(reader, regionsBySequence).flatMap { chunksForSequence =>
       ???  //  TODO
     }
