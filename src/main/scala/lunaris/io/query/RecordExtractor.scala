@@ -15,11 +15,13 @@ object RecordExtractor {
       println("Now extracting records")
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
-      val indexEitherator = TBIFileReader.readChunksForSequence(indexReader, regionsBySequence)
+//      val indexEitherator = TBIFileReader.readChunksForSequence(indexReader, regionsBySequence)
+      val chunksPlusEitherator =
+        TBIFileReader.readChunksWithSequenceAndRegions(indexReader, regionsBySequence)
       dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { dataReadChannel =>
         var keepGoing: Boolean = true
         while (keepGoing) {
-          indexEitherator.next() match {
+          chunksPlusEitherator.next() match {
             case Left(snag) =>
               println("Problem!")
               println(snag.message)
@@ -28,11 +30,8 @@ object RecordExtractor {
             case Right(None) =>
               println("Done!")
               keepGoing = false
-            case Right(Some(chunksForSequence)) =>
-              val chunks = TBIChunk.consolidateChunksByRegion(chunksForSequence.chunksByRegion)
-              println(chunksForSequence.name + " has chunks " + chunks)
-
-
+            case Right(Some(chunkPlus)) =>
+              println(chunkPlus)
           }
         }
       }

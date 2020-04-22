@@ -84,7 +84,8 @@ object TBIFileReader {
     } yield trimmedChunksByRegion
   }
 
-  def readChunksForSequence(reader: ByteBufferReader, regionsBySequence: Map[String, Seq[Region]]): TBIChunksForSequenceEitherator =
+  def readChunksForSequence(reader: ByteBufferReader,
+                            regionsBySequence: Map[String, Seq[Region]]): TBIChunksForSequenceEitherator =
     TBIChunksForSequenceEitherator(reader, regionsBySequence)
 
   case class TBIChunksForSequence(name: String, chunksByRegion: Map[Region, Seq[TBIChunk]])
@@ -137,7 +138,11 @@ object TBIFileReader {
                                        regionsBySequence: Map[String, Seq[Region]]):
   Eitherator[TBIChunkWithSequenceAndRegions] = {
     readChunksForSequence(reader, regionsBySequence).flatMap { chunksForSequence =>
-      ???  //  TODO
+      val chunksWithRegions = TBIChunk.consolidateChunksByRegion(chunksForSequence.chunksByRegion)
+      val chunksWithSequenceAndRegions = chunksWithRegions.map { chunkWithRegions =>
+        TBIChunkWithSequenceAndRegions(chunkWithRegions.chunk, chunksForSequence.name, chunkWithRegions.regions)
+      }
+      Eitherator.fromSeq(chunksWithSequenceAndRegions)
     }
   }
 

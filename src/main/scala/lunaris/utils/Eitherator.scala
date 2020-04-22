@@ -28,12 +28,30 @@ object Eitherator {
     override def next(): Either[Snag, Option[Nothing]] = Right(None)
   }
 
+  def singleton[A](a: A): SingleEitherator[A] = new SingleEitherator[A](a)
+
   class SingleEitherator[+A](val a: A) extends Eitherator[A] {
     var hasNext: Boolean = true
     override def next(): Either[Snag, Option[A]] = {
       if(hasNext) {
         hasNext = false
         Right(Some(a))
+      } else {
+        Right(None)
+      }
+    }
+  }
+
+  object SingleEitherator {
+    def apply[A](a: A): SingleEitherator[A] = new SingleEitherator[A](a)
+  }
+
+  def fromSeq[A](seq: Seq[A]): IteratorEitherator[A] = new IteratorEitherator[A](seq.iterator)
+
+  class IteratorEitherator[+A](iterator: Iterator[A]) extends Eitherator[A] {
+    override def next(): Either[Snag, Option[A]] = {
+      if(iterator.hasNext) {
+        Right(Some(iterator.next()))
       } else {
         Right(None)
       }
