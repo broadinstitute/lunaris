@@ -86,9 +86,10 @@ object ByteBufferRefiller {
   def bgunzip(rawReadChannel: ReadableByteChannel, bufferSize: Int): BGUnzipByteBufferRefiller =
     BGUnzipByteBufferRefiller(rawReadChannel, bufferSize)
 
-  class BGUnzipByteBufferRefiller(rawReadChannel: ReadableByteChannel, val bufferSize: Int)
+  class BGUnzipByteBufferRefiller(rawReadChannel: ReadableByteChannel,
+                                  val bufferSize: Int)
     extends ByteBufferRefiller {
-    var currentChunk: TBIChunk = TBIChunk.wholeFile
+    private var _currentChunk: TBIChunk = TBIChunk.wholeFile
     val bgzBlockEitherator: BGZBlock.BlockEitherator = BGZBlock.newBlockEitherator(rawReadChannel)
     override val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
     var currentBytesOpt: Option[CurrentBytes] = None
@@ -106,6 +107,22 @@ object ByteBufferRefiller {
           None
         }
       }
+    }
+
+    def currentChunk: TBIChunk = _currentChunk
+
+    def currentChunk_=(chunk: TBIChunk): Unit = {
+      _currentChunk = chunk
+      val blockStartNew = chunk.begin.offsetOfBlock
+      if(bgzBlockEitherator.currentBlockStart == blockStartNew) {
+        println("same block")
+      } else if(bgzBlockEitherator.nextBlockStart == blockStartNew) {
+        println("next block")
+      } else {
+        println("different block")
+      }
+
+      println("Current chunk set to " + _currentChunk)
     }
 
     private def debug(buffer: ByteBuffer): Unit = {

@@ -25,6 +25,7 @@ object BGZBlock {
     refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
     val reader: ByteBufferReader = ByteBufferReader(refiller)
     var haveReadEOFBlock: Boolean = false
+    var currentBlockStart: Long = 0
     var nextBlockStart: Long = 0
 
     override def next(): Either[Snag, Option[BGZBlock]] = {
@@ -34,6 +35,7 @@ object BGZBlock {
         readBlock(reader) match {
           case Left(snag) => Left(Snag("Could not read next block", snag))
           case Right(block) =>
+            currentBlockStart = nextBlockStart
             nextBlockStart += block.header.bsize.toPositiveLong
             if (block.isEOFMarker) {
               haveReadEOFBlock = true

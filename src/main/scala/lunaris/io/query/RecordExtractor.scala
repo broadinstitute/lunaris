@@ -2,6 +2,7 @@ package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Region
+import lunaris.io.tbi.TBIFileReader.TBIChunkWithSequenceAndRegions
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import lunaris.stream.Record
@@ -19,20 +20,20 @@ object RecordExtractor {
       val chunksPlusEitherator =
         TBIFileReader.readChunksWithSequenceAndRegions(indexReader, regionsBySequence)
       dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { dataReadChannel =>
-        var keepGoing: Boolean = true
-        while (keepGoing) {
-          chunksPlusEitherator.next() match {
-            case Left(snag) =>
-              println("Problem!")
-              println(snag.message)
-              println(snag.report)
-              keepGoing = false
-            case Right(None) =>
-              println("Done!")
-              keepGoing = false
-            case Right(Some(chunkPlus)) =>
-              println(chunkPlus)
-          }
+        val dataBufferSize = 65536
+        val dataRefiller = ByteBufferRefiller.bgunzip(dataReadChannel, dataBufferSize)
+        val dataReader = ByteBufferReader(dataRefiller)
+        chunksPlusEitherator.flatMap { chunkWithSequenceAndRegions =>
+          dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
+          Eitherator.singleton(chunkWithSequenceAndRegions)
+        }.foreach { chunkWithSequenceAndRegions =>
+          println(chunkWithSequenceAndRegions)
+        } match {
+          case Left(snag) =>
+            println("Problem!")
+            println(snag.message)
+            println(snag.report)
+          case _ => ()
         }
       }
       println("Done extracting records!")

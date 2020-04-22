@@ -18,6 +18,7 @@ trait Eitherator[+A] {
     } while (lastNext.fold(_ => false, _.nonEmpty))
     lastNext
   }
+
 }
 
 object Eitherator {
