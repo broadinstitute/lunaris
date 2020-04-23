@@ -13,7 +13,33 @@ import scala.util.control.NonFatal
 trait ByteBufferRefiller {
   def buffer: ByteBuffer
 
-  def refill(nBytesNeeded: Int): Either[Snag, Int]
+  private var bufferStartOffset0: Long = 0
+
+  final def bufferStartOffset: Long = bufferStartOffset0
+
+  def totalPos: Long = bufferStartOffset + buffer.position()
+
+  protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int]
+
+  final def refill(nBytesNeeded: Int): Either[Snag, Int] = {
+    bufferStartOffset0 += buffer.position()
+    buffer.compact()
+    val snagOrBytesWritten = for {
+      nBytesWritten <- writeToBuffer(nBytesNeeded)
+      _ <- {
+        val nBytesRemaining = buffer.position()
+        if (nBytesRemaining < nBytesNeeded) {
+          Left(Snag(
+            s"Even after trying to refill buffer, only have $nBytesRemaining bytes remaining, but need $nBytesNeeded"
+          ))
+        } else {
+          Right(())
+        }
+      }
+    } yield nBytesWritten
+    buffer.flip()
+    snagOrBytesWritten
+  }
 
   def makeAvailable(nBytesNeeded: Int): Either[Snag, Int] = {
     if (buffer.remaining() < nBytesNeeded) {
@@ -60,19 +86,9 @@ object ByteBufferRefiller {
     channel.read(buffer)
     buffer.flip()
 
-    override def refill(nBytesNeeded: Int): Either[Snag, Int] = {
+    protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
       try {
-        buffer.compact()
-        val nBytesRead = channel.read(buffer)
-        buffer.flip()
-        val nBytesRemaining = buffer.remaining()
-        if (buffer.remaining() < nBytesNeeded) {
-          Left(Snag(
-            s"Even after trying to refill buffer, only have $nBytesRemaining bytes remaining, but need $nBytesNeeded"
-          ))
-        } else {
-          Right(nBytesRead)
-        }
+        Right(channel.read(buffer))
       } catch {
         case NonFatal(ex) => Left(Snag("Exception while trying to refill buffer", Snag(ex)))
       }
@@ -114,9 +130,9 @@ object ByteBufferRefiller {
     def currentChunk_=(chunk: TBIChunk): Unit = {
       _currentChunk = chunk
       val blockStartNew = chunk.begin.offsetOfBlock
-      if(bgzBlockEitherator.currentBlockStart == blockStartNew) {
+      if (bgzBlockEitherator.currentBlockStart == blockStartNew) {
         println("same block")
-      } else if(bgzBlockEitherator.nextBlockStart == blockStartNew) {
+      } else if (bgzBlockEitherator.nextBlockStart == blockStartNew) {
         println("next block")
       } else {
         println("different block")
@@ -134,7 +150,7 @@ object ByteBufferRefiller {
       currentBytesOpt = Some(new CurrentBytes(bytes, 0))
     }
 
-    private def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
+    protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
       if (buffer.position() >= nBytesNeeded) {
         Right(0)
       } else if (nBytesNeeded > buffer.capacity()) {
@@ -168,13 +184,6 @@ object ByteBufferRefiller {
           case None => Right(nBytesRead)
         }
       }
-    }
-
-    override def refill(nBytesNeeded: Int): Either[Snag, Int] = {
-      buffer.compact()
-      val snagOrBytesWritten = writeToBuffer(nBytesNeeded)
-      buffer.flip()
-      snagOrBytesWritten
     }
   }
 
