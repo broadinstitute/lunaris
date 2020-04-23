@@ -109,8 +109,11 @@ object ByteBufferRefiller {
     val bgzBlockEitherator: BGZBlock.BlockEitherator = BGZBlock.newBlockEitherator(rawReadChannel)
     override val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
     var currentBytesOpt: Option[CurrentBytes] = None
-    //writeToBuffer(1)
     buffer.flip()
+
+    private var totalPosAtBlockStart: Long = 0
+
+    def posInBlock: Long = totalPos - totalPosAtBlockStart
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {
       def nBytesAvailable: Int = bytes.length - nAlreadyRead
@@ -130,7 +133,13 @@ object ByteBufferRefiller {
     def currentChunk_=(chunk: TBIChunk): Unit = {
       _currentChunk = chunk
       val blockStartNew = chunk.begin.offsetOfBlock
+      val offsetInBlockNew = chunk.begin.offsetInBlock
       if (bgzBlockEitherator.currentBlockStart == blockStartNew) {
+        if(offsetInBlockNew > posInBlock) {
+          skip((offsetInBlockNew - posInBlock).toInt)
+        } else if(offsetInBlockNew < posInBlock ) {
+          ???  //  TODO
+        }
         println("same block")
       } else if (bgzBlockEitherator.nextBlockStart == blockStartNew) {
         println("next block")
@@ -148,7 +157,10 @@ object ByteBufferRefiller {
     private def consumeNextBlock(bgzBlock: BGZBlock): Unit = {
       val bytes = bgzBlock.unzippedData.bytes
       currentBytesOpt = Some(new CurrentBytes(bytes, 0))
+      totalPosAtBlockStart = totalPos + (buffer.capacity() - buffer.position())
     }
+
+    private def offsetInBlock: Long = totalPos - totalPosAtBlockStart
 
     protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
       if (buffer.position() >= nBytesNeeded) {
