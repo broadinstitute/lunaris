@@ -128,6 +128,12 @@ object ByteBufferRefiller {
       }
     }
 
+    def clearUnzippedAndReadBlock(offsetInBlock: Int): Unit = {
+      currentBytesOpt = None
+      buffer.clear()
+      buffer.flip()
+    }
+
     def currentChunk: TBIChunk = _currentChunk
 
     def currentChunk_=(chunk: TBIChunk): Unit = {
@@ -138,15 +144,15 @@ object ByteBufferRefiller {
         if(offsetInBlockNew > posInBlock) {
           skip((offsetInBlockNew - posInBlock).toInt)
         } else if(offsetInBlockNew < posInBlock ) {
-          ???  //  TODO
+          ReadableByteChannelUtils.seek(rawReadChannel, blockStartNew)
+          clearUnzippedAndReadBlock(offsetInBlockNew)
         }
-        println("same block")
       } else if (bgzBlockEitherator.nextBlockStart == blockStartNew) {
-        println("next block")
+        clearUnzippedAndReadBlock(offsetInBlockNew)
       } else {
-        println("different block")
+        ReadableByteChannelUtils.seek(rawReadChannel, blockStartNew)
+        clearUnzippedAndReadBlock(offsetInBlockNew)
       }
-
       println("Current chunk set to " + _currentChunk)
     }
 
@@ -159,8 +165,6 @@ object ByteBufferRefiller {
       currentBytesOpt = Some(new CurrentBytes(bytes, 0))
       totalPosAtBlockStart = totalPos + (buffer.capacity() - buffer.position())
     }
-
-    private def offsetInBlock: Long = totalPos - totalPosAtBlockStart
 
     protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
       if (buffer.position() >= nBytesNeeded) {
