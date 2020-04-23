@@ -128,7 +128,7 @@ object ByteBufferRefiller {
       }
     }
 
-    def clearUnzippedAndReadBlock(offsetInBlock: Int): Unit = {
+    def clearUnzippedData(offsetInBlock: Int): Unit = {
       currentBytesOpt = None
       buffer.clear()
       buffer.flip()
@@ -145,13 +145,13 @@ object ByteBufferRefiller {
           skip((offsetInBlockNew - posInBlock).toInt)
         } else if(offsetInBlockNew < posInBlock ) {
           ReadableByteChannelUtils.seek(rawReadChannel, blockStartNew)
-          clearUnzippedAndReadBlock(offsetInBlockNew)
+          clearUnzippedData(offsetInBlockNew)
         }
       } else if (bgzBlockEitherator.nextBlockStart == blockStartNew) {
-        clearUnzippedAndReadBlock(offsetInBlockNew)
+        clearUnzippedData(offsetInBlockNew)
       } else {
         ReadableByteChannelUtils.seek(rawReadChannel, blockStartNew)
-        clearUnzippedAndReadBlock(offsetInBlockNew)
+        clearUnzippedData(offsetInBlockNew)
       }
       println("Current chunk set to " + _currentChunk)
     }
