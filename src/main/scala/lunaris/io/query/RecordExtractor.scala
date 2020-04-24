@@ -7,6 +7,7 @@ import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
+import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordExtractor {
 
@@ -25,6 +26,19 @@ object RecordExtractor {
         val dataReader = ByteBufferReader(dataRefiller)
         chunksPlusEitherator.flatMap { chunkWithSequenceAndRegions =>
           dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
+          var snagOpt: Option[Snag] = None
+          while(snagOpt.isEmpty && !dataRefiller.isAtChunkEnd) {
+            dataReader.readLine() match {
+              case Left(snag) =>
+                println("Problem!")
+                println(snag.message)
+                println(snag.report)
+                snagOpt = Some(snag)
+              case Right(line) =>
+                println("Line:")
+                println(line)
+            }
+          }
           Eitherator.singleton(chunkWithSequenceAndRegions)
         }.foreach { chunkWithSequenceAndRegions =>
           println(chunkWithSequenceAndRegions)

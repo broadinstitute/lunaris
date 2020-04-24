@@ -84,6 +84,27 @@ class ByteBufferReader(val refiller: ByteBufferRefiller) {
     buffer.get(bytes)
     bytes
   }
+
+  def readLine(): Either[Snag, String] = {
+    val arrayBuilder = Array.newBuilder[Byte]
+    var snagOpt: Option[Snag] = None
+    var eol: Boolean = false
+    while(!eol && snagOpt.isEmpty) {
+      readByteField("line") match {
+        case Left(snag) => snagOpt = Some(snag)
+        case Right(byte) =>
+          if(byte == '\n'.toByte) {
+            eol = true
+          } else {
+            arrayBuilder += byte
+          }
+      }
+    }
+    snagOpt match {
+      case Some(snag) => Left(snag)
+      case None => Right(new String(arrayBuilder.result()))
+    }
+  }
 }
 
 object ByteBufferReader {

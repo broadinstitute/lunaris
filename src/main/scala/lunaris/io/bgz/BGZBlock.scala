@@ -49,6 +49,7 @@ object BGZBlock {
 
     def skipToOffset(offsetOfBlock: Long): Unit = {
       refiller.skipTo(offsetOfBlock)
+      currentBlockStart = offsetOfBlock
       nextBlockStart = offsetOfBlock
       haveReadEOFBlock = false
     }
