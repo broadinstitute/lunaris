@@ -30,7 +30,7 @@ object RecordExtractor {
           while(snagOpt.isEmpty && !dataRefiller.isAtChunkEnd) {
             dataReader.readLine() match {
               case Left(snag) =>
-                println("Problem!")
+                println("Problem reading line!")
                 println(snag.message)
                 println(snag.report)
                 snagOpt = Some(snag)
@@ -44,7 +44,7 @@ object RecordExtractor {
           println(chunkWithSequenceAndRegions)
         } match {
           case Left(snag) =>
-            println("Problem!")
+            println("Problem reading chunks!")
             println(snag.message)
             println(snag.report)
           case _ => ()

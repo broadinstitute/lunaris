@@ -10,6 +10,11 @@ import scala.collection.mutable
 
 object TBIFileReader {
 
+  private def readVirtualFileOffset(reader: ByteBufferReader,
+                                    fieldName: String): Either[Snag, TBIVirtualFileOffset] = {
+    reader.readLongField(fieldName).map(TBIVirtualFileOffset(_))
+  }
+
   private def readBinningIndex(reader: ByteBufferReader,
                                regions: Seq[Region]): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     var chunksByRegion: Map[Region, mutable.Builder[TBIChunk, Seq[TBIChunk]]] = Map.empty
@@ -25,8 +30,8 @@ object TBIFileReader {
             if (overlappingRegions.nonEmpty) {
               val snagOrChunks = EitherSeqUtils.fill(nChunks) {
                 val snagOrChunk = for {
-                  chunkBegin <- reader.readLongField("cnk_beg").map(TBIVirtualFileOffset(_))
-                  chunkEnd <- reader.readLongField("cnk_beg").map(TBIVirtualFileOffset(_))
+                  chunkBegin <- readVirtualFileOffset(reader, "cnk_beg")
+                  chunkEnd <- readVirtualFileOffset(reader, "cnk_end")
                 } yield TBIChunk(chunkBegin, chunkEnd)
                 snagOrChunk
               }
@@ -64,7 +69,7 @@ object TBIFileReader {
       nIntervals <- reader.readIntField("n_intv")
       _ <- EitherSeqUtils.traverse(0 until nIntervals) { iInterval =>
         for {
-          offset <- reader.readLongField("ioff").map(TBIVirtualFileOffset(_))
+          offset <- readVirtualFileOffset(reader, "ioff")
           _ = for ((region, chunks) <- trimmedChunksByRegion) {
             if (TBIIntervals.firstOverlappingIntervalFor(region) == iInterval) {
               val trimmedChunks = TBIIntervals.trimChunks(chunks, offset)

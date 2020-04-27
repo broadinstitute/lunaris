@@ -22,26 +22,43 @@ object BGZBlock {
   }
 
   class BlockEitherator(refiller: ByteBufferRefiller.Seekable) extends Eitherator[BGZBlock] {
+
+    case class BlockWithPos(block: BGZBlock, pos: Long) {
+      def nextPos: Long = pos + block.header.bsize.toPositiveLong
+    }
+
     refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
     val reader: ByteBufferReader = ByteBufferReader(refiller)
+    var lastBlockWithPosOpt: Option[BlockWithPos] = None
     var haveReadEOFBlock: Boolean = false
-    var currentBlockStart: Long = 0
-    var nextBlockStart: Long = 0
+    var readPos: Long = 0
+
+    private def handleBlock(block: BGZBlock): Option[BGZBlock] = {
+      lastBlockWithPosOpt = Some(BlockWithPos(block, readPos))
+      readPos += block.header.bsize.toPositiveLong
+      if (block.isEOFMarker) {
+        haveReadEOFBlock = true
+        None
+      } else {
+        Some(block)
+      }
+    }
 
     override def next(): Either[Snag, Option[BGZBlock]] = {
       if (haveReadEOFBlock) {
+        lastBlockWithPosOpt = None
         Right(None)
       } else {
-        readBlock(reader) match {
-          case Left(snag) => Left(Snag("Could not read next block", snag))
-          case Right(block) =>
-            currentBlockStart = nextBlockStart
-            nextBlockStart += block.header.bsize.toPositiveLong
-            if (block.isEOFMarker) {
-              haveReadEOFBlock = true
-              Right(None)
-            } else {
-              Right(Some(block))
+        lastBlockWithPosOpt match {
+          case Some(BlockWithPos(block, pos)) if pos == readPos =>
+            println(s"Going to reuse block at $readPos.")
+            Right(handleBlock(block))
+          case _ =>
+            println(s"Going to read block at $readPos.")
+            readBlock(reader) match {
+              case Left(snag) => Left(Snag(s"Could not read next block at $readPos", snag))
+              case Right(block) =>
+                Right(handleBlock(block))
             }
         }
       }
@@ -49,8 +66,7 @@ object BGZBlock {
 
     def skipToOffset(offsetOfBlock: Long): Unit = {
       refiller.skipTo(offsetOfBlock)
-      currentBlockStart = offsetOfBlock
-      nextBlockStart = offsetOfBlock
+      readPos = offsetOfBlock
       haveReadEOFBlock = false
     }
   }

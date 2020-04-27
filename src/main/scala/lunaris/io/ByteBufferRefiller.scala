@@ -13,20 +13,9 @@ import scala.util.control.NonFatal
 trait ByteBufferRefiller {
   def buffer: ByteBuffer
 
-  private var latestRefillBufferOffset: Long = 0
-
-  // TODO
-
-  private var bufferStartOffset0: Long = 0
-
-  final def bufferStartOffset: Long = bufferStartOffset0
-
-  def totalPos: Long = bufferStartOffset + buffer.position()
-
   protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int]
 
   final def refill(nBytesNeeded: Int): Either[Snag, Int] = {
-    bufferStartOffset0 += buffer.position()
     buffer.compact()
     val snagOrBytesWritten = for {
       nBytesWritten <- writeToBuffer(nBytesNeeded)
@@ -99,6 +88,7 @@ object ByteBufferRefiller {
     }
 
     override def skipTo(pos: Long): Unit = {
+      println(s"Skipping to $pos")
       ReadableByteChannelUtils.seek(channel, pos)
     }
   }
@@ -115,15 +105,18 @@ object ByteBufferRefiller {
     var currentBytesOpt: Option[CurrentBytes] = None
     buffer.flip()
 
-    private var totalPosAtBlockStart: Long = 0
-
     private var bufferPosAtBlockStart: Long = 0
 
     def posInBlock: Long = buffer.position() - bufferPosAtBlockStart
 
-    def isAtChunkEnd: Boolean =
-      (_currentChunk.end.offsetOfBlock == bgzBlockEitherator.currentBlockStart) &&
-        (_currentChunk.end.offsetInBlock == posInBlock)
+    def isAtChunkEnd: Boolean = {
+      bgzBlockEitherator.lastBlockWithPosOpt match {
+        case Some(bgzBlockEitherator.BlockWithPos(_, pos)) =>
+          (_currentChunk.end.offsetOfBlock == pos) &&
+            (_currentChunk.end.offsetInBlock == posInBlock)
+        case None => false
+      }
+    }
 
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {
@@ -148,36 +141,14 @@ object ByteBufferRefiller {
 
     def currentChunk: TBIChunk = _currentChunk
 
-    private def posDebug(): Unit = {
-      println("Offset of block: " + bgzBlockEitherator.currentBlockStart + ", offset in block: " + posInBlock)
-    }
-
     def currentChunk_=(chunk: TBIChunk): Unit = {
       _currentChunk = chunk
       val blockStartNew = chunk.begin.offsetOfBlock
       val offsetInBlockNew = chunk.begin.offsetInBlock
-      if (bgzBlockEitherator.currentBlockStart == blockStartNew) {
-        if (offsetInBlockNew > posInBlock) {
-          println("Skipping within block")
-          skip((offsetInBlockNew - posInBlock).toInt)
-        } else if (offsetInBlockNew < posInBlock) {
-          println("Redoing current block.")
-          bgzBlockEitherator.skipToOffset(blockStartNew)
-          clearUnzippedData()
-          skip(offsetInBlockNew)
-        }
-      } else if (bgzBlockEitherator.nextBlockStart == blockStartNew) {
-        println("Continuing with next block")
-        clearUnzippedData()
-        skip(offsetInBlockNew)
-      } else {
-        println("Seeking new block")
-        bgzBlockEitherator.skipToOffset(blockStartNew)
-        clearUnzippedData()
-        skip(offsetInBlockNew)
-      }
+      bgzBlockEitherator.skipToOffset(blockStartNew)
+      clearUnzippedData()
+      skip(offsetInBlockNew)
       println("Current chunk set to " + _currentChunk)
-      posDebug()
     }
 
     private def debug(buffer: ByteBuffer): Unit = {
@@ -204,7 +175,7 @@ object ByteBufferRefiller {
             case None => ()
           }
           if (buffer.position() < nBytesNeeded) {
-            if (bgzBlockEitherator.nextBlockStart <= _currentChunk.end.offsetOfBlock) {
+            if (bgzBlockEitherator.readPos <= _currentChunk.end.offsetOfBlock) {
               bgzBlockEitherator.next() match {
                 case Left(snag) => snagOpt = Some(snag)
                 case Right(None) => snagOpt =
@@ -212,7 +183,8 @@ object ByteBufferRefiller {
                 case Right(Some(bgzBlock)) =>
                   val unzippedBytes = bgzBlock.unzippedData.bytes
                   val bytesForRefill =
-                    if (bgzBlockEitherator.currentBlockStart < _currentChunk.end.offsetOfBlock) {
+                    if (bgzBlockEitherator.lastBlockWithPosOpt.map(_.pos).getOrElse(0L)
+                      < _currentChunk.end.offsetOfBlock) {
                       unzippedBytes
                     } else {
                       println("Offset into unzipped")
@@ -221,7 +193,6 @@ object ByteBufferRefiller {
                       Array.copyOf(unzippedBytes, nBytesForRefill)
                     }
                   currentBytesOpt = Some(new CurrentBytes(bytesForRefill, 0))
-                  totalPosAtBlockStart = totalPos + (buffer.capacity() - buffer.position())
               }
             } else {
               snagOpt = Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
