@@ -4,8 +4,9 @@ import java.nio.ByteBuffer
 import java.nio.channels.ReadableByteChannel
 
 import lunaris.io.bgz.BGZBlock
+import lunaris.io.bgz.BGZBlock.BGZBlockWithPos
 import lunaris.io.tbi.TBIChunk
-import lunaris.utils.ReadableByteChannelUtils
+import lunaris.utils.{DebugUtils, ReadableByteChannelUtils}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.util.control.NonFatal
@@ -88,7 +89,7 @@ object ByteBufferRefiller {
     }
 
     override def skipTo(pos: Long): Unit = {
-      println(s"Skipping to $pos")
+      DebugUtils.println(s"Skipping to $pos")
       ReadableByteChannelUtils.seek(channel, pos)
     }
   }
@@ -103,21 +104,10 @@ object ByteBufferRefiller {
     val bgzBlockEitherator: BGZBlock.BlockEitherator = BGZBlock.newBlockEitherator(rawReadChannel)
     override val buffer: ByteBuffer = ByteBuffer.allocate(bufferSize)
     var currentBytesOpt: Option[CurrentBytes] = None
+    var usedLastBlock: Boolean = false
     buffer.flip()
 
-    private var bufferPosAtBlockStart: Long = 0
-
-    def posInBlock: Long = buffer.position() - bufferPosAtBlockStart
-
-    def isAtChunkEnd: Boolean = {
-      bgzBlockEitherator.lastBlockWithPosOpt match {
-        case Some(bgzBlockEitherator.BlockWithPos(_, pos)) =>
-          (_currentChunk.end.offsetOfBlock == pos) &&
-            (_currentChunk.end.offsetInBlock == posInBlock)
-        case None => false
-      }
-    }
-
+    def isAtChunkEnd: Boolean = usedLastBlock && buffer.remaining() == 0
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {
       def nBytesAvailable: Int = bytes.length - nAlreadyRead
@@ -136,7 +126,6 @@ object ByteBufferRefiller {
       currentBytesOpt = None
       buffer.clear()
       buffer.flip()
-      bufferPosAtBlockStart = 0
     }
 
     def currentChunk: TBIChunk = _currentChunk
@@ -144,15 +133,9 @@ object ByteBufferRefiller {
     def currentChunk_=(chunk: TBIChunk): Unit = {
       _currentChunk = chunk
       val blockStartNew = chunk.begin.offsetOfBlock
-      val offsetInBlockNew = chunk.begin.offsetInBlock
       bgzBlockEitherator.skipToOffset(blockStartNew)
       clearUnzippedData()
-      skip(offsetInBlockNew)
-      println("Current chunk set to " + _currentChunk)
-    }
-
-    private def debug(buffer: ByteBuffer): Unit = {
-      println(s"Buffer position ${buffer.position()}, limit ${buffer.limit()}, capacity ${buffer.capacity()}")
+      usedLastBlock = false
     }
 
     protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
@@ -180,17 +163,34 @@ object ByteBufferRefiller {
                 case Left(snag) => snagOpt = Some(snag)
                 case Right(None) => snagOpt =
                   Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
-                case Right(Some(bgzBlock)) =>
-                  val unzippedBytes = bgzBlock.unzippedData.bytes
+                case Right(Some(BGZBlockWithPos(block, pos))) =>
+                  val unzippedBytes = block.unzippedData.bytes
+                  val blockIsFirstInChunk = pos == _currentChunk.begin.offsetOfBlock
+                  val blockIsLastInChunk = pos == _currentChunk.end.offsetOfBlock
+                  usedLastBlock = blockIsLastInChunk
                   val bytesForRefill =
-                    if (bgzBlockEitherator.lastBlockWithPosOpt.map(_.pos).getOrElse(0L)
-                      < _currentChunk.end.offsetOfBlock) {
-                      unzippedBytes
-                    } else {
-                      println("Offset into unzipped")
-                      val offset = _currentChunk.end.offsetInBlock
-                      val nBytesForRefill = unzippedBytes.length - offset
-                      Array.copyOf(unzippedBytes, nBytesForRefill)
+                    (blockIsFirstInChunk, blockIsLastInChunk) match {
+                      case (false, false) =>
+                        DebugUtils.println(s"Internal block at $pos")
+                        unzippedBytes
+                      case (false, true) =>
+                        DebugUtils.println(s"End block at $pos")
+                        val nBytesForRefill = _currentChunk.end.offsetInBlock
+                        Array.copyOf(unzippedBytes, nBytesForRefill)
+                      case (true, _) =>
+                        val offset = _currentChunk.begin.offsetInBlock
+                        val endPos =
+                          if(blockIsLastInChunk) {
+                            DebugUtils.println(s"Only block at $pos")
+                            _currentChunk.end.offsetInBlock
+                          } else {
+                            DebugUtils.println(s"Start block at $pos")
+                            unzippedBytes.length
+                          }
+                        val nBytesForRefill = endPos - offset
+                        val byteForRefillNew = new Array[Byte](nBytesForRefill)
+                        Array.copy(unzippedBytes, offset, byteForRefillNew, 0, nBytesForRefill)
+                        byteForRefillNew
                     }
                   currentBytesOpt = Some(new CurrentBytes(bytesForRefill, 0))
               }

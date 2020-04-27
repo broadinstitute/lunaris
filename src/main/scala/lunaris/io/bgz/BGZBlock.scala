@@ -4,7 +4,7 @@ import java.nio.ByteOrder
 import java.nio.channels.ReadableByteChannel
 
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
-import lunaris.utils.{Eitherator, ReadableByteChannelUtils}
+import lunaris.utils.{DebugUtils, Eitherator, ReadableByteChannelUtils}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class BGZBlock(header: BGZHeader, footer: BGZFooter, unzippedData: BGZUnzippedData) {
@@ -14,6 +14,10 @@ case class BGZBlock(header: BGZHeader, footer: BGZFooter, unzippedData: BGZUnzip
 object BGZBlock {
   val maxBlockSize: Int = 65536 //  Math.pow(2, 16).toInt, per BGZF specs
 
+  case class BGZBlockWithPos(block: BGZBlock, pos: Long) {
+    def nextPos: Long = pos + block.header.blockSize
+  }
+
   def readBlock(readChannel: ReadableByteChannel): Either[Snag, BGZBlock] = {
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
     refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
@@ -21,40 +25,34 @@ object BGZBlock {
     readBlock(reader)
   }
 
-  class BlockEitherator(refiller: ByteBufferRefiller.Seekable) extends Eitherator[BGZBlock] {
-
-    case class BlockWithPos(block: BGZBlock, pos: Long) {
-      def nextPos: Long = pos + block.header.bsize.toPositiveLong
-    }
+  class BlockEitherator(refiller: ByteBufferRefiller.Seekable) extends Eitherator[BGZBlockWithPos] {
 
     refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
     val reader: ByteBufferReader = ByteBufferReader(refiller)
-    var lastBlockWithPosOpt: Option[BlockWithPos] = None
+    var lastBlockWithPosOpt: Option[BGZBlockWithPos] = None
     var haveReadEOFBlock: Boolean = false
     var readPos: Long = 0
 
-    private def handleBlock(block: BGZBlock): Option[BGZBlock] = {
-      lastBlockWithPosOpt = Some(BlockWithPos(block, readPos))
-      readPos += block.header.bsize.toPositiveLong
+    private def handleBlock(block: BGZBlock): Option[BGZBlockWithPos] = {
+      lastBlockWithPosOpt = Some(BGZBlockWithPos(block, readPos))
+      readPos += block.header.blockSize
       if (block.isEOFMarker) {
         haveReadEOFBlock = true
         None
       } else {
-        Some(block)
+        lastBlockWithPosOpt
       }
     }
 
-    override def next(): Either[Snag, Option[BGZBlock]] = {
+    override def next(): Either[Snag, Option[BGZBlockWithPos]] = {
       if (haveReadEOFBlock) {
         lastBlockWithPosOpt = None
         Right(None)
       } else {
         lastBlockWithPosOpt match {
-          case Some(BlockWithPos(block, pos)) if pos == readPos =>
-            println(s"Going to reuse block at $readPos.")
+          case Some(BGZBlockWithPos(block, pos)) if pos == readPos =>
             Right(handleBlock(block))
           case _ =>
-            println(s"Going to read block at $readPos.")
             readBlock(reader) match {
               case Left(snag) => Left(Snag(s"Could not read next block at $readPos", snag))
               case Right(block) =>
@@ -65,6 +63,7 @@ object BGZBlock {
     }
 
     def skipToOffset(offsetOfBlock: Long): Unit = {
+      DebugUtils.println(s"Skip to offset of block $offsetOfBlock")
       refiller.skipTo(offsetOfBlock)
       readPos = offsetOfBlock
       haveReadEOFBlock = false
