@@ -10,7 +10,9 @@ object ReadableByteChannelUtils {
   def seek(channel: ReadableByteChannel, pos: Long): Either[Snag, Unit] = {
     channel match {
       case seekableChannel: SeekableByteChannel =>
+        DebugUtils.println(s"Seekable byte channel is at ${seekableChannel.position()}.")
         seekableChannel.position(pos)
+        DebugUtils.println(s"Seekable byte channel is at ${seekableChannel.position()}.")
         Right(())
       case gcpReadChannel: ReadChannel =>
         gcpReadChannel.seek(pos)

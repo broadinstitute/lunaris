@@ -2,8 +2,7 @@ package lunaris.io.query
 
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Region
-import lunaris.io.tbi.TBIFileReader.TBIChunkWithSequenceAndRegions
-import lunaris.io.tbi.{TBIChunk, TBIFileReader}
+import lunaris.io.tbi.TBIFileReader
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import lunaris.stream.Record
 import lunaris.utils.Eitherator
@@ -17,7 +16,6 @@ object RecordExtractor {
       println("Now extracting records")
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
-//      val indexEitherator = TBIFileReader.readChunksForSequence(indexReader, regionsBySequence)
       val chunksPlusEitherator =
         TBIFileReader.readChunksWithSequenceAndRegions(indexReader, regionsBySequence)
       dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { dataReadChannel =>

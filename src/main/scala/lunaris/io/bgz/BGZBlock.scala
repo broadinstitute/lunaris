@@ -20,14 +20,14 @@ object BGZBlock {
 
   def readBlock(readChannel: ReadableByteChannel): Either[Snag, BGZBlock] = {
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
-    refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
+    refiller.byteBox.buffer.order(ByteOrder.LITTLE_ENDIAN)
     val reader = ByteBufferReader(refiller)
     readBlock(reader)
   }
 
   class BlockEitherator(refiller: ByteBufferRefiller.Seekable) extends Eitherator[BGZBlockWithPos] {
 
-    refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
+    refiller.byteBox.buffer.order(ByteOrder.LITTLE_ENDIAN)
     val reader: ByteBufferReader = ByteBufferReader(refiller)
     var lastBlockWithPosOpt: Option[BGZBlockWithPos] = None
     var haveReadEOFBlock: Boolean = false
@@ -77,7 +77,7 @@ object BGZBlock {
 
   def readAllBlocks(readChannel: ReadableByteChannel): Either[Snag, Seq[BGZBlock]] = {
     val refiller = ByteBufferRefiller(readChannel, maxBlockSize)
-    refiller.buffer.order(ByteOrder.LITTLE_ENDIAN)
+    refiller.byteBox.buffer.order(ByteOrder.LITTLE_ENDIAN)
     var snagOpt: Option[Snag] = None
     var blocks: Seq[BGZBlock] = Seq.empty
     val reader = ByteBufferReader(refiller)
@@ -100,20 +100,21 @@ object BGZBlock {
   }
 
   def readBlock(reader: ByteBufferReader): Either[Snag, BGZBlock] = {
-    reader.refiller.buffer.mark()
+    reader.refiller.byteBox.buffer.mark()
     for {
       header <- {
         BGZHeader.read(reader)
       }
       footer <- {
-        reader.refiller.buffer.reset()
+        reader.refiller.byteBox.buffer.reset()
         reader.refiller.makeAvailable(header.blockSize)
-        reader.refiller.buffer.mark()
-        reader.refiller.buffer.position(reader.refiller.buffer.position() + header.blockSize - BGZFooter.nFooterBytes)
+        reader.refiller.byteBox.buffer.mark()
+        reader.refiller.byteBox.buffer
+          .position(reader.refiller.byteBox.buffer.position() + header.blockSize - BGZFooter.nFooterBytes)
         BGZFooter.read(reader, header)
       }
       unzippedData <- {
-        reader.refiller.buffer.reset()
+        reader.refiller.byteBox.buffer.reset()
         BGZUnzippedData.read(reader, header.blockSize)
       }
     } yield BGZBlock(header, footer, unzippedData)
