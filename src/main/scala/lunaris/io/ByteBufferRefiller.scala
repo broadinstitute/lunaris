@@ -14,12 +14,12 @@ import scala.util.control.NonFatal
 trait ByteBufferRefiller {
   def byteBox: ByteBox
 
-  protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int]
+  protected def writeToBuffer(buffer: ByteBuffer, nBytesNeeded: Int): Either[Snag, Int]
 
   final def refill(nBytesNeeded: Int): Either[Snag, Int] = {
     byteBox.writeToBuffer { buffer =>
       for {
-        nBytesWritten <- writeToBuffer(nBytesNeeded)
+        nBytesWritten <- writeToBuffer(buffer, nBytesNeeded)
         _ <- {
           val nBytesRemaining = buffer.position()
           if (nBytesRemaining < nBytesNeeded) {
@@ -75,12 +75,10 @@ object ByteBufferRefiller {
 
   class FromChannel(val channel: ReadableByteChannel, val bufferSize: Int) extends ByteBufferRefiller.Seekable {
     override val byteBox: ByteBox = ByteBox(bufferSize)
-    channel.read(byteBox.buffer)
-    byteBox.buffer.flip()
 
-    protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
+    protected def writeToBuffer(buffer: ByteBuffer, nBytesNeeded: Int): Either[Snag, Int] = {
       try {
-        Right(channel.read(byteBox.buffer))
+        Right(channel.read(buffer))
       } catch {
         case NonFatal(ex) => Left(Snag("Exception while trying to refill buffer", Snag(ex)))
       }
@@ -88,6 +86,7 @@ object ByteBufferRefiller {
 
     override def skipTo(pos: Long): Unit = {
       DebugUtils.println(s"Skipping to $pos")
+      byteBox.clear()
       ReadableByteChannelUtils.seek(channel, pos)
     }
   }
@@ -103,9 +102,8 @@ object ByteBufferRefiller {
     override val byteBox: ByteBox = ByteBox(bufferSize)
     var currentBytesOpt: Option[CurrentBytes] = None
     var usedLastBlock: Boolean = false
-    byteBox.buffer.flip()
 
-    def isAtChunkEnd: Boolean = usedLastBlock && byteBox.buffer.remaining() == 0
+    def isAtChunkEnd: Boolean = usedLastBlock && currentBytesOpt.isEmpty && byteBox.remaining == 0
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {
       def nBytesAvailable: Int = bytes.length - nAlreadyRead
@@ -122,8 +120,7 @@ object ByteBufferRefiller {
 
     def clearUnzippedData(): Unit = {
       currentBytesOpt = None
-      byteBox.buffer.clear()
-      byteBox.buffer.flip()
+      byteBox.clear()
     }
 
     def currentChunk: TBIChunk = _currentChunk
@@ -136,31 +133,31 @@ object ByteBufferRefiller {
       usedLastBlock = false
     }
 
-    protected def writeToBuffer(nBytesNeeded: Int): Either[Snag, Int] = {
-      if (byteBox.buffer.position() >= nBytesNeeded) {
+    protected def writeToBuffer(buffer: ByteBuffer, nBytesNeeded: Int): Either[Snag, Int] = {
+      if (buffer.position() >= nBytesNeeded) {
         Right(0)
-      } else if (nBytesNeeded > byteBox.buffer.capacity()) {
-        Left(Snag(s"Need to read $nBytesNeeded, but buffer capacity is only ${byteBox.buffer.capacity()}."))
+      } else if (nBytesNeeded > buffer.capacity()) {
+        Left(Snag(s"Need to read $nBytesNeeded, but buffer capacity is only ${buffer.capacity()}."))
       } else {
         var nBytesRead: Int = 0
         var snagOpt: Option[Snag] = None
-        while (snagOpt.isEmpty && byteBox.buffer.position() < nBytesNeeded) {
+        while (snagOpt.isEmpty && buffer.position() < nBytesNeeded) {
           currentBytesOpt match {
             case Some(currentBytes) =>
-              val nBytesBufferSpace = byteBox.buffer.capacity() - byteBox.buffer.position()
+              val nBytesBufferSpace = buffer.capacity() - buffer.position()
               val nBytesAvailable = currentBytes.nBytesAvailable
               val nBytesToRead = if (nBytesAvailable > nBytesBufferSpace) nBytesBufferSpace else nBytesAvailable
-              byteBox.buffer.put(currentBytes.bytes, currentBytes.nAlreadyRead, nBytesToRead)
+              buffer.put(currentBytes.bytes, currentBytes.nAlreadyRead, nBytesToRead)
               nBytesRead += nBytesToRead
               currentBytesOpt = currentBytes.afterReadingOpt(nBytesRead)
             case None => ()
           }
-          if (byteBox.buffer.position() < nBytesNeeded) {
+          if (buffer.position() < nBytesNeeded) {
             if (bgzBlockEitherator.readPos <= _currentChunk.end.offsetOfBlock) {
               bgzBlockEitherator.next() match {
                 case Left(snag) => snagOpt = Some(snag)
                 case Right(None) => snagOpt =
-                  Some(Snag(s"Need $nBytesNeeded bytes, but only ${byteBox.buffer.position()} available."))
+                  Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
                 case Right(Some(BGZBlockWithPos(block, pos))) =>
                   val unzippedBytes = block.unzippedData.bytes
                   val blockIsFirstInChunk = pos == _currentChunk.begin.offsetOfBlock
@@ -193,7 +190,7 @@ object ByteBufferRefiller {
                   currentBytesOpt = Some(new CurrentBytes(bytesForRefill, 0))
               }
             } else {
-              snagOpt = Some(Snag(s"Need $nBytesNeeded bytes, but only ${byteBox.buffer.position()} available."))
+              snagOpt = Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
             }
           }
         }
