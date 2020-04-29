@@ -1,6 +1,6 @@
 package lunaris.stream
 
-import lunaris.genomics.Locus
-
-case class Record(locus: Locus, values: Seq[String]) {
+case class Record(header: Header, seq: String, begin: Int, end: Int, values: Seq[String]) {
 }
+
+

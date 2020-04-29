@@ -67,6 +67,12 @@ object Eitherator {
     }
   }
 
+  def forSnag[A](snag: Snag): Eitherator[A] = new SnaggedEitherator[A](snag)
+
+  case class SnaggedEitherator[+A](snag: Snag) extends Eitherator[A] {
+    override def next(): Either[Snag, Option[A]] = Left(snag)
+  }
+
   def singleton[A](a: A): SingleEitherator[A] = new SingleEitherator[A](a)
 
   class SingleEitherator[+A](val a: A) extends Eitherator[A] {

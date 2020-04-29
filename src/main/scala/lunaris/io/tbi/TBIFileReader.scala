@@ -100,6 +100,8 @@ object TBIFileReader {
     extends Eitherator[TBIChunksForSequence] {
     var snagOrState: Either[Snag, OKState] = TBIFileHeader.read(reader).map(OKState(_))
 
+    def snagOrHeader: Either[Snag, TBIFileHeader] = snagOrState.map(_.header)
+
     override def next(): Either[Snag, Option[TBIChunksForSequence]] = {
       snagOrState match {
         case Left(snag) => Left(snag)
@@ -139,16 +141,23 @@ object TBIFileReader {
 
   case class TBIChunkWithSequenceAndRegions(chunk: TBIChunk, name: String, regions: Set[Region])
 
+  class HeaderAndChunksEter(val snagOrHeader: Either[Snag, TBIFileHeader],
+                            val chunksPlusEter: Eitherator[TBIChunkWithSequenceAndRegions])
+
   def readChunksWithSequenceAndRegions(reader: ByteBufferReader,
                                        regionsBySequence: Map[String, Seq[Region]]):
-  Eitherator[TBIChunkWithSequenceAndRegions] = {
-    readChunksForSequence(reader, regionsBySequence).flatMap { chunksForSequence =>
-      val chunksWithRegions = TBIChunk.consolidateChunksByRegion(chunksForSequence.chunksByRegion)
+  HeaderAndChunksEter = {
+    val chunksForSequenceEter = readChunksForSequence(reader, regionsBySequence)
+    val chunksPlusEter = chunksForSequenceEter.flatMap { chunksForSequence =>
+      val chunksWithRegions =
+        TBIChunk.consolidateChunksByRegion(chunksForSequence.chunksByRegion)
       val chunksWithSequenceAndRegions = chunksWithRegions.map { chunkWithRegions =>
-        TBIChunkWithSequenceAndRegions(chunkWithRegions.chunk, chunksForSequence.name, chunkWithRegions.regions)
+        TBIChunkWithSequenceAndRegions(chunkWithRegions.chunk, chunksForSequence.name,
+          chunkWithRegions.regions)
       }
       Eitherator.fromSeq(chunksWithSequenceAndRegions)
     }
+    new HeaderAndChunksEter(chunksForSequenceEter.snagOrHeader, chunksPlusEter)
   }
 
 

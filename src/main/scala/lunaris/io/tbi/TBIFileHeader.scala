@@ -1,7 +1,5 @@
 package lunaris.io.tbi
 
-import java.nio.ByteOrder
-
 import lunaris.io.ByteBufferReader
 import org.broadinstitute.yootilz.core.snag.Snag
 
