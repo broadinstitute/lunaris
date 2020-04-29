@@ -85,7 +85,6 @@ object ByteBufferRefiller {
     }
 
     override def skipTo(pos: Long): Unit = {
-      DebugUtils.println(s"Skipping to $pos")
       byteBox.clear()
       ReadableByteChannelUtils.seek(channel, pos)
     }
@@ -166,20 +165,16 @@ object ByteBufferRefiller {
                   val bytesForRefill =
                     (blockIsFirstInChunk, blockIsLastInChunk) match {
                       case (false, false) =>
-                        DebugUtils.println(s"Internal block at $pos")
                         unzippedBytes
                       case (false, true) =>
-                        DebugUtils.println(s"End block at $pos")
                         val nBytesForRefill = _currentChunk.end.offsetInBlock
                         Array.copyOf(unzippedBytes, nBytesForRefill)
                       case (true, _) =>
                         val offset = _currentChunk.begin.offsetInBlock
                         val endPos =
                           if(blockIsLastInChunk) {
-                            DebugUtils.println(s"Only block at $pos")
                             _currentChunk.end.offsetInBlock
                           } else {
-                            DebugUtils.println(s"Start block at $pos")
                             unzippedBytes.length
                           }
                         val nBytesForRefill = endPos - offset

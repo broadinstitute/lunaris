@@ -60,7 +60,6 @@ object BGZBlock {
     }
 
     def skipToOffset(offsetOfBlock: Long): Unit = {
-      DebugUtils.println(s"Skip to offset of block $offsetOfBlock")
       refiller.skipTo(offsetOfBlock)
       readPos = offsetOfBlock
       haveReadEOFBlock = false

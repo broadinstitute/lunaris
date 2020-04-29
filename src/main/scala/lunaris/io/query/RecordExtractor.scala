@@ -25,17 +25,13 @@ object RecordExtractor {
         chunksPlusEitherator.flatMap { chunkWithSequenceAndRegions =>
           dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
           var snagOpt: Option[Snag] = None
-          while(snagOpt.isEmpty && !dataRefiller.isAtChunkEnd) {
-            dataReader.readLine() match {
-              case Left(snag) =>
-                println("Problem reading line!")
-                println(snag.message)
-                println(snag.report)
-                snagOpt = Some(snag)
-              case Right(line) =>
-                println("Line:")
-                println(line)
-            }
+          val lineEitherator = Eitherator.fromGenerator(!dataRefiller.isAtChunkEnd)(dataReader.readLine())
+          lineEitherator.snagOrForeach { snag =>
+            println("Problem reading line!")
+            println(snag.message)
+            println(snag.report)
+          } { line =>
+            println(line)
           }
           Eitherator.singleton(chunkWithSequenceAndRegions)
         }.foreach { chunkWithSequenceAndRegions =>

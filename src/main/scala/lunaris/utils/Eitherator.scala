@@ -19,6 +19,23 @@ trait Eitherator[+A] {
     lastNext
   }
 
+  def snagOrForeach[B](handler: Snag => B)(user: A => B): Option[B] = {
+    var bOpt: Option[B] = None
+    var keepGoing: Boolean = true
+    do {
+      next() match {
+        case Left(snag) =>
+          handler(snag)
+          keepGoing = false
+        case Right(Some(a)) =>
+          bOpt = Some(user(a))
+        case Right(None) =>
+          keepGoing = false
+      }
+    } while (keepGoing)
+    bOpt
+  }
+
 }
 
 object Eitherator {
@@ -29,12 +46,34 @@ object Eitherator {
     override def next(): Either[Snag, Option[Nothing]] = Right(None)
   }
 
+  def fromGenerator[A](cond: => Boolean)(generator: => Either[Snag, A]): Eitherator[A] =
+    new GeneratorEitherator[A](cond)(generator)
+
+  class GeneratorEitherator[+A](cond: => Boolean)(generator: => Either[Snag, A]) extends Eitherator[A] {
+    var snagOpt: Option[Snag] = None
+
+    override def next(): Either[Snag, Option[A]] = {
+      snagOpt match {
+        case Some(snag) =>
+          snagOpt = Some(snag)
+          Left(snag)
+        case None =>
+          if (cond) {
+            generator.map(Some(_))
+          } else {
+            Right(None)
+          }
+      }
+    }
+  }
+
   def singleton[A](a: A): SingleEitherator[A] = new SingleEitherator[A](a)
 
   class SingleEitherator[+A](val a: A) extends Eitherator[A] {
     var hasNext: Boolean = true
+
     override def next(): Either[Snag, Option[A]] = {
-      if(hasNext) {
+      if (hasNext) {
         hasNext = false
         Right(Some(a))
       } else {
@@ -51,7 +90,7 @@ object Eitherator {
 
   class IteratorEitherator[+A](iterator: Iterator[A]) extends Eitherator[A] {
     override def next(): Either[Snag, Option[A]] = {
-      if(iterator.hasNext) {
+      if (iterator.hasNext) {
         Right(Some(iterator.next()))
       } else {
         Right(None)
@@ -81,7 +120,7 @@ object Eitherator {
 
     override def next(): Either[Snag, Option[B]] = {
       var valueOpt: Option[B] = None
-      while(snagOpt.isEmpty && !exhausted && valueOpt.isEmpty) {
+      while (snagOpt.isEmpty && !exhausted && valueOpt.isEmpty) {
         subEitheratorOpt match {
           case Some(subEitherator) =>
             subEitherator.next() match {
@@ -102,4 +141,5 @@ object Eitherator {
       }
     }
   }
+
 }
