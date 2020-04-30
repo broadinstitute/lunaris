@@ -44,7 +44,7 @@ object RecordExtractor {
                   } { line =>
                     println(line)
                   }
-                  Eitherator.singleton(chunkWithSequenceAndRegions)
+                  Eitherator.singleValue(chunkWithSequenceAndRegions)
                 }.foreach { chunkWithSequenceAndRegions =>
                   println(chunkWithSequenceAndRegions)
                 } match {

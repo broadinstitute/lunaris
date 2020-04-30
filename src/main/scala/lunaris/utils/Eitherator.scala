@@ -1,6 +1,6 @@
 package lunaris.utils
 
-import lunaris.utils.Eitherator.{FlatMappedEitherator, MappedEitherator}
+import lunaris.utils.Eitherator.{CollectEitherator, FlatMappedEitherator, MappedEitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 trait Eitherator[+A] {
@@ -36,6 +36,7 @@ trait Eitherator[+A] {
     bOpt
   }
 
+  def collect[B](fun: A => Option[B]): CollectEitherator[A, B] = new CollectEitherator[A, B](this)(fun)
 }
 
 object Eitherator {
@@ -73,9 +74,9 @@ object Eitherator {
     override def next(): Either[Snag, Option[A]] = Left(snag)
   }
 
-  def singleton[A](a: A): SingleEitherator[A] = new SingleEitherator[A](a)
+  def singleValue[A](a: A): SingleValueEitherator[A] = new SingleValueEitherator[A](a)
 
-  class SingleEitherator[+A](val a: A) extends Eitherator[A] {
+  class SingleValueEitherator[+A](val a: A) extends Eitherator[A] {
     var hasNext: Boolean = true
 
     override def next(): Either[Snag, Option[A]] = {
@@ -88,8 +89,8 @@ object Eitherator {
     }
   }
 
-  object SingleEitherator {
-    def apply[A](a: A): SingleEitherator[A] = new SingleEitherator[A](a)
+  object SingleValueEitherator {
+    def apply[A](a: A): SingleValueEitherator[A] = new SingleValueEitherator[A](a)
   }
 
   def fromSeq[A](seq: Seq[A]): IteratorEitherator[A] = new IteratorEitherator[A](seq.iterator)
@@ -144,6 +145,25 @@ object Eitherator {
       snagOpt match {
         case Some(snag) => Left(snag)
         case None => Right(valueOpt)
+      }
+    }
+  }
+
+  class CollectEitherator[+A, B](underlying: Eitherator[A])(fun: A => Option[B]) extends Eitherator[B] {
+    override def next(): Either[Snag, Option[B]] = {
+      var snagOpt: Option[Snag] = None
+      var bOpt: Option[B] = None
+      var underlyingExhausted: Boolean = false
+      while(snagOpt.isEmpty && bOpt.isEmpty && !underlyingExhausted) {
+        underlying.next() match {
+          case Left(snag) => snagOpt = Some(snag)
+          case Right(Some(a)) => bOpt = fun(a)
+          case Right(None) => underlyingExhausted = true
+        }
+      }
+      snagOpt match {
+        case Some(snag) => Left(snag)
+        case None => Right(bOpt)
       }
     }
   }
