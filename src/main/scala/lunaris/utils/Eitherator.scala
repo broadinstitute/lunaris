@@ -1,6 +1,6 @@
 package lunaris.utils
 
-import lunaris.utils.Eitherator.{CollectEitherator, FlatMappedEitherator, MappedEitherator}
+import lunaris.utils.Eitherator.{CollectEitherator, FlatMappedEitherator, MappedEitherator, ProcessorEitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 trait Eitherator[+A] {
@@ -37,6 +37,9 @@ trait Eitherator[+A] {
   }
 
   def collect[B](fun: A => Option[B]): CollectEitherator[A, B] = new CollectEitherator[A, B](this)(fun)
+
+  def process[B](processor: A => Either[Snag, Option[B]]): ProcessorEitherator[A, B] =
+    new ProcessorEitherator[A, B](this)(processor)
 }
 
 object Eitherator {
@@ -168,4 +171,32 @@ object Eitherator {
     }
   }
 
+  class ProcessorEitherator[+A, B](underlying: Eitherator[A])(processor: A => Either[Snag, Option[B]])
+    extends Eitherator[B] {
+    var snagOpt: Option[Snag] = None
+    var underlyingExhausted: Boolean = false
+    override def next(): Either[Snag, Option[B]] = {
+      snagOpt match {
+        case Some(snag) => Left(snag)
+        case None =>
+          var bOpt: Option[B] = None
+          while(snagOpt.isEmpty && bOpt.isEmpty && !underlyingExhausted) {
+            underlying.next() match {
+              case Left(snag) => snagOpt = Some(snag)
+              case Right(Some(a)) =>
+                processor(a) match {
+                  case Left(snag) => snagOpt = Some(snag)
+                  case Right(Some(b)) => bOpt = Some(b)
+                  case Right(None) => ()
+                }
+              case Right(None) => underlyingExhausted = true
+            }
+          }
+          snagOpt match {
+            case Some(snag) => Left(snag)
+            case None => Right(bOpt)
+          }
+      }
+    }
+  }
 }

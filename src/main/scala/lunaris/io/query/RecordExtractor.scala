@@ -10,8 +10,11 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordExtractor {
 
+  type ParsedRecordHandler = Either[Snag, Record] => Either[Snag, Option[Record]]
+
   def extract(dataSourceWithIndex: DataSourceWithIndex,
-              regionsBySequence: Map[String, Seq[Region]]): Eitherator[Record] = {
+              regionsBySequence: Map[String, Seq[Region]],
+              parsedRecordHandler: ParsedRecordHandler): Eitherator[Record] = {
     dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { indexReadChannel =>
       println("Now extracting records")
       val bufferSize = 10000
@@ -37,22 +40,11 @@ object RecordExtractor {
                 headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
                   dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
                   val lineEitherator = Eitherator.fromGenerator(!dataRefiller.isAtChunkEnd)(dataReader.readLine())
-                  lineEitherator.snagOrForeach { snag =>
-                    println("Problem reading line!")
-                    println(snag.message)
-                    println(snag.report)
-                  } { line =>
-                    println(line)
+                  lineEitherator.process { line =>
+
+                    ???
                   }
                   Eitherator.singleValue(chunkWithSequenceAndRegions)
-                }.foreach { chunkWithSequenceAndRegions =>
-                  println(chunkWithSequenceAndRegions)
-                } match {
-                  case Left(snag) =>
-                    println("Problem reading chunks!")
-                    println(snag.message)
-                    println(snag.report)
-                  case _ => ()
                 }
             }
           }
@@ -61,4 +53,30 @@ object RecordExtractor {
       }
     }
   }
+
+  object ParsedRecordHandler {
+    val failOnFaultyRecord: ParsedRecordHandler = {
+      case Left(snag) => Left(snag)
+      case Right(record) => Right(Some(record))
+    }
+    val ignoreFaultyRecords: ParsedRecordHandler = {
+      case Left(snag) => Right(None)
+      case Right(record) => Right(Some(record))
+    }
+
+    def newFaultyRecordsLogger(): ParsedRecordHandler = new ParsedRecordHandler {
+      var snags: Seq[Snag] = Vector.empty
+
+      override def apply(snagOrRecord: Either[Snag, Record]): Either[Snag, Option[Record]] = {
+        snagOrRecord match {
+          case Left(snag) =>
+            snags :+= snag
+            Right(None)
+          case Right(record) =>
+            Right(Some(record))
+        }
+      }
+    }
+  }
+
 }
