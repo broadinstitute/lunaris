@@ -3,7 +3,7 @@ package lunaris.io.tbi
 import lunaris.genomics.Region
 import lunaris.io.ByteBufferReader
 import lunaris.io.tbi.TBIFileReader.TBIChunksForSequenceEitherator.OKState
-import lunaris.utils.{EitherSeqUtils, Eitherator}
+import lunaris.utils.{DebugUtils, EitherSeqUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.collection.mutable

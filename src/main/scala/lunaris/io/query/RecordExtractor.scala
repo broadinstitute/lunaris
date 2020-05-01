@@ -37,14 +37,19 @@ object RecordExtractor {
               case Left(snag) => Eitherator.forSnag(snag)
               case Right(header) =>
                 DebugUtils.println(header)
+                DebugUtils.println("yo!")
                 headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
+                  DebugUtils.println("yo!")
                   dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
-                  val lineEitherator = Eitherator.fromGenerator(!dataRefiller.isAtChunkEnd)(dataReader.readLine())
+                  DebugUtils.println(dataRefiller.isAtChunkEnd)
+                  val lineEitherator =
+                    Eitherator.fromGenerator(!dataRefiller.isAtChunkEnd)(dataReader.readLine())
                   lineEitherator.process { line =>
-
-                    ???
-                  }
+                    parsedRecordHandler(Record.parse(line, header))
+                  }.foreach(println)
                   Eitherator.singleValue(chunkWithSequenceAndRegions)
+                }.foreach {
+                  println
                 }
             }
           }
