@@ -2,7 +2,9 @@ package lunaris.stream
 
 import org.broadinstitute.yootilz.core.snag.Snag
 
-case class Header(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: Int)
+case class Header(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: Int) {
+  def asString: String = "#" + colNames.mkString("\t")
+}
 
 object Header {
   def parse(line: String, seqCol: Int, beginCol: Int, endCol: Int): Either[Snag, Header] = {

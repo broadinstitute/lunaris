@@ -41,6 +41,7 @@ object Disposable {
       o match {
         case Disposer.Noop =>  this
         case Disposer.Composite(disposers) => Disposer.Composite(this +: disposers)
+        case _ => Disposer.Composite(Seq(this, o))
       }
     }
   }

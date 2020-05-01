@@ -5,6 +5,7 @@ import lunaris.utils.NumberParser
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class Record(header: Header, seq: String, region: Region, values: Seq[String]) {
+  def asString: String = values.mkString("\t")
 }
 
 object Record {
@@ -36,13 +37,13 @@ object Record {
   def parse(line: String, header: Header): Either[Snag, Record] = {
     val values = line.trim.split("\t").toSeq
     for {
-      seq <- pickField(values, "sequence", header.seqCol)
-      begin <- parseField(values, "begin", header.beginCol)(NumberParser.parseInt)
+      seq <- pickField(values, "sequence", header.seqCol - 1)
+      begin <- parseField(values, "begin", header.beginCol - 1)(NumberParser.parseInt)
       end <-
         if(header.beginCol == header.endCol) {
           Right(begin + 1)  // at least, tabix assumes that for indexing
         } else {
-          parseField(values, "end", header.endCol)(NumberParser.parseInt)
+          parseField(values, "end", header.endCol - 1)(NumberParser.parseInt)
         }
     } yield Record(header, seq, Region(begin, end), values)
   }

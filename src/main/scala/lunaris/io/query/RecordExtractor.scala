@@ -3,7 +3,7 @@ package lunaris.io.query
 import lunaris.data.DataSourceWithIndex
 import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
-import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
+import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
 import lunaris.stream.{Header, Record}
 import lunaris.utils.{DebugUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -12,19 +12,20 @@ object RecordExtractor {
 
   type ParsedRecordHandler = Either[Snag, Record] => Either[Snag, Option[Record]]
 
+  case class HeaderAndRecordEtor(header: Header, recordEtor: Eitherator[Record])
+
   def extract(dataSourceWithIndex: DataSourceWithIndex,
               regionsBySequence: Map[String, Seq[Region]],
-              parsedRecordHandler: ParsedRecordHandler): Eitherator[Record] = {
-    dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).useUp { indexReadChannel =>
-      println("Now extracting records")
+              parsedRecordHandler: ParsedRecordHandler): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
+    dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).flatMap { indexReadChannel =>
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
       val headerAndChunksPlusEitherator =
         TBIFileReader.readChunksWithSequenceAndRegions(indexReader, regionsBySequence)
       headerAndChunksPlusEitherator.snagOrHeader match {
-        case Left(snag) => Eitherator.forSnag(snag)
+        case Left(snag) => Disposable(Left(snag))(Disposable.Disposer.Noop)
         case Right(indexHeader) =>
-          dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { dataReadChannel =>
+          dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).map { dataReadChannel =>
             val dataBufferSize = 65536
             val dataRefiller = ByteBufferRefiller.bgunzip(dataReadChannel, dataBufferSize)
             val dataReader = ByteBufferReader(dataRefiller)
@@ -34,27 +35,23 @@ object RecordExtractor {
               header <- Header.parse(line, indexHeader.col_seq, indexHeader.col_beg, indexHeader.col_end)
             } yield header
             snagOrHeader match {
-              case Left(snag) => Eitherator.forSnag(snag)
+              case Left(snag) => Left(snag)
               case Right(header) =>
-                DebugUtils.println(header)
-                DebugUtils.println("yo!")
-                headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
-                  DebugUtils.println("yo!")
+                val recordsEtor = headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
                   dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
-                  DebugUtils.println(dataRefiller.isAtChunkEnd)
                   val lineEitherator =
                     Eitherator.fromGenerator(!dataRefiller.isAtChunkEnd)(dataReader.readLine())
                   lineEitherator.process { line =>
                     parsedRecordHandler(Record.parse(line, header))
-                  }.foreach(println)
-                  Eitherator.singleValue(chunkWithSequenceAndRegions)
-                }.foreach {
-                  println
+                  }.filter { record =>
+                    val sequence = chunkWithSequenceAndRegions.name
+                    val regions = chunkWithSequenceAndRegions.regions
+                    record.seq == sequence && regions.exists(_.overlaps(record.region))
+                  }
                 }
+                Right(HeaderAndRecordEtor(header, recordsEtor))
             }
           }
-          println("Done extracting records!")
-          Eitherator.empty
       }
     }
   }
