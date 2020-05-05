@@ -1,22 +1,20 @@
 package lunaris.io.query
 
-import lunaris.data.DataSourceWithIndex
+import lunaris.data.BlockGzippedWithIndex
 import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
-import lunaris.stream.{Header, Record}
+import lunaris.stream.{Header, Record, RecordProcessor}
 import lunaris.utils.{DebugUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordExtractor {
 
-  type ParsedRecordHandler = Either[Snag, Record] => Either[Snag, Option[Record]]
-
   case class HeaderAndRecordEtor(header: Header, recordEtor: Eitherator[Record])
 
-  def extract(dataSourceWithIndex: DataSourceWithIndex,
+  def extract(dataSourceWithIndex: BlockGzippedWithIndex,
               regionsBySequence: Map[String, Seq[Region]],
-              parsedRecordHandler: ParsedRecordHandler): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
+              recordProcessor: RecordProcessor): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
     dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).flatMap { indexReadChannel =>
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
@@ -25,7 +23,7 @@ object RecordExtractor {
       headerAndChunksPlusEitherator.snagOrHeader match {
         case Left(snag) => Disposable(Left(snag))(Disposable.Disposer.Noop)
         case Right(indexHeader) =>
-          dataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).map { dataReadChannel =>
+          dataSourceWithIndex.data.newReadChannelDisposable(ResourceConfig.empty).map { dataReadChannel =>
             val dataBufferSize = 65536
             val dataRefiller = ByteBufferRefiller.bgunzip(dataReadChannel, dataBufferSize)
             val dataReader = ByteBufferReader(dataRefiller)
@@ -39,11 +37,7 @@ object RecordExtractor {
               case Right(header) =>
                 val recordsEtor = headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
                   dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
-                  val lineEitherator =
-                    Eitherator.fromGenerator(!dataRefiller.isAtChunkEnd)(dataReader.readLine())
-                  lineEitherator.process { line =>
-                    parsedRecordHandler(Record.parse(line, header))
-                  }.filter { record =>
+                  Record.newEitherator(dataReader, header, recordProcessor).filter { record =>
                     val sequence = chunkWithSequenceAndRegions.name
                     val regions = chunkWithSequenceAndRegions.regions
                     record.seq == sequence && regions.exists(_.overlaps(record.region))
@@ -55,30 +49,4 @@ object RecordExtractor {
       }
     }
   }
-
-  object ParsedRecordHandler {
-    val failOnFaultyRecord: ParsedRecordHandler = {
-      case Left(snag) => Left(snag)
-      case Right(record) => Right(Some(record))
-    }
-    val ignoreFaultyRecords: ParsedRecordHandler = {
-      case Left(snag) => Right(None)
-      case Right(record) => Right(Some(record))
-    }
-
-    def newFaultyRecordsLogger(): ParsedRecordHandler = new ParsedRecordHandler {
-      var snags: Seq[Snag] = Vector.empty
-
-      override def apply(snagOrRecord: Either[Snag, Record]): Either[Snag, Option[Record]] = {
-        snagOrRecord match {
-          case Left(snag) =>
-            snags :+= snag
-            Right(None)
-          case Right(record) =>
-            Right(Some(record))
-        }
-      }
-    }
-  }
-
 }

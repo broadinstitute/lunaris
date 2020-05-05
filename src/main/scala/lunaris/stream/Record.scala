@@ -1,7 +1,8 @@
 package lunaris.stream
 
 import lunaris.genomics.Region
-import lunaris.utils.NumberParser
+import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
+import lunaris.utils.{DebugUtils, Eitherator, NumberParser}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class Record(header: Header, seq: String, region: Region, values: Seq[String]) {
@@ -35,7 +36,9 @@ object Record {
   }
 
   def parse(line: String, header: Header): Either[Snag, Record] = {
+    DebugUtils.println(line)
     val values = line.trim.split("\t").toSeq
+    DebugUtils.println(values)
     for {
       seq <- pickField(values, "sequence", header.seqCol - 1)
       begin <- parseField(values, "begin", header.beginCol - 1)(NumberParser.parseInt)
@@ -46,6 +49,16 @@ object Record {
           parseField(values, "end", header.endCol - 1)(NumberParser.parseInt)
         }
     } yield Record(header, seq, Region(begin, end), values)
+  }
+
+  def newEitherator(reader: ByteBufferReader,
+                    header: Header,
+                    recordProcessor: RecordProcessor): Eitherator[Record] = {
+    val lineEitherator =
+      Eitherator.fromGenerator(!reader.refiller.isExhausted)(reader.readLine())
+    lineEitherator.process { line =>
+      recordProcessor(Record.parse(line, header))
+    }
   }
 }
 

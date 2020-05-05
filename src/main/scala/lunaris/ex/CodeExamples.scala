@@ -1,22 +1,22 @@
 package lunaris.ex
 
-import lunaris.data.{DataSourceWithIndex, DataSources}
+import lunaris.data.{BlockGzippedWithIndex, DataSources}
 import lunaris.io.tbi.TBIFileHeader
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, ResourceConfig}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object CodeExamples {
-  def getDataSourceWithIndex: DataSourceWithIndex = {
+  def getDataSourceWithIndex: BlockGzippedWithIndex = {
     val usingLocalSimulatedDataOnOliversLaptop: Boolean = true
     if (usingLocalSimulatedDataOnOliversLaptop)
-      DataSources.simDataOnOliversOldLaptop
+      DataSources.simDataOnOliversOldLaptop.data
     else
-      DataSources.simDataOnTerra
+      DataSources.simDataOnTerra.data
   }
 
   def readingChunksOfUnzippedData(): Unit = {
     val bufferSize = 100000
-    getDataSourceWithIndex.dataSource.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
+    getDataSourceWithIndex.data.newReadChannelDisposable(ResourceConfig.empty).useUp { readChannel =>
       val refiller = ByteBufferRefiller.bgunzip(readChannel, bufferSize)
       val reader = new ByteBufferReader(refiller)
       var snags: Seq[Snag] = Seq.empty

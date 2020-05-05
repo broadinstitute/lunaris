@@ -16,6 +16,8 @@ trait ByteBufferRefiller {
 
   protected def writeToBuffer(buffer: ByteBuffer, nBytesNeeded: Int): Either[Snag, Int]
 
+  def isExhausted: Boolean
+
   final def refill(nBytesNeeded: Int): Either[Snag, Int] = {
     byteBox.writeToBuffer { buffer =>
       for {
@@ -76,9 +78,13 @@ object ByteBufferRefiller {
   class FromChannel(val channel: ReadableByteChannel, val bufferSize: Int) extends ByteBufferRefiller.Seekable {
     override val byteBox: ByteBox = ByteBox(bufferSize)
 
+    private var nBytesWrittenOpt: Option[Int] = None
+
     protected def writeToBuffer(buffer: ByteBuffer, nBytesNeeded: Int): Either[Snag, Int] = {
       try {
-        Right(channel.read(buffer))
+        val nBytesWritten = channel.read(buffer)
+        nBytesWrittenOpt = Some(nBytesWritten)
+        Right(nBytesWritten)
       } catch {
         case NonFatal(ex) => Left(Snag("Exception while trying to refill buffer", Snag(ex)))
       }
@@ -88,6 +94,8 @@ object ByteBufferRefiller {
       byteBox.clear()
       ReadableByteChannelUtils.seek(channel, pos)
     }
+
+    override def isExhausted: Boolean = nBytesWrittenOpt.contains(0) && byteBox.remaining == 0
   }
 
   def bgunzip(rawReadChannel: ReadableByteChannel, bufferSize: Int): BGUnzipByteBufferRefiller =
@@ -102,7 +110,7 @@ object ByteBufferRefiller {
     var currentBytesOpt: Option[CurrentBytes] = None
     var usedLastBlock: Boolean = false
 
-    def isAtChunkEnd: Boolean = usedLastBlock && currentBytesOpt.isEmpty && byteBox.remaining == 0
+    override def isExhausted: Boolean = usedLastBlock && currentBytesOpt.isEmpty && byteBox.remaining == 0
 
     class CurrentBytes(val bytes: Array[Byte], val nAlreadyRead: Int) {
       def nBytesAvailable: Int = bytes.length - nAlreadyRead
