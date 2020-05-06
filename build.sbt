@@ -2,7 +2,7 @@ import sbt.project
 
 val lunarisV = "0.0.1"
 val scalaV = "2.13.1"
-val yootilzV = "0.1.2"
+val yootilzV = "0.1.3"
 val scalaTestV = "3.1.1"
 val betterFilesV = "3.8.0"
 val googleCloudNioV = "0.107.0-alpha"

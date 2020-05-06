@@ -1,7 +1,7 @@
 package lunaris.utils
 
 import lunaris.utils.Eitherator.{CollectEitherator, FilterEitherator, FlatMappedEitherator, MappedEitherator, ProcessorEitherator}
-import org.broadinstitute.yootilz.core.snag.Snag
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
 trait Eitherator[+A] {
   def next(): Either[Snag, Option[A]]
@@ -52,7 +52,7 @@ object Eitherator {
     override def next(): Either[Snag, Option[Nothing]] = Right(None)
   }
 
-  def fromGenerator[A](cond: => Boolean)(generator: => Either[Snag, A]): Eitherator[A] =
+  def fromGeneratorUntil[A](cond: => Boolean)(generator: => Either[Snag, A]): Eitherator[A] =
     new GeneratorEitherator[A](cond)(generator)
 
   class GeneratorEitherator[+A](cond: => Boolean)(generator: => Either[Snag, A]) extends Eitherator[A] {
@@ -68,6 +68,46 @@ object Eitherator {
             generator.map(Some(_))
           } else {
             Right(None)
+          }
+      }
+    }
+  }
+
+  def fromGeneratorUntilTag[A](tag: SnagTag)(generator: => Either[Snag, A]): Eitherator[A] =
+    new GeneratorRecoveryEitherator[A](endAtTags = Set(tag))(generator)
+
+  class GeneratorRecoveryEitherator[A](endAtTags: Set[SnagTag] = Set.empty,
+                                       ignoreTags: Set[SnagTag] = Set.empty)(generator: => Either[Snag, A])
+    extends Eitherator[A] {
+    var isExhausted: Boolean = false
+    var snagOpt: Option[Snag] = None
+
+    override def next(): Either[Snag, Option[A]] = {
+      snagOpt match {
+        case Some(snag) => Left(snag)
+        case None =>
+          if (isExhausted) {
+            Right(None)
+          } else {
+            var aOpt: Option[A] = None
+            while (snagOpt.isEmpty && aOpt.isEmpty && !isExhausted) {
+              generator match {
+                case Left(snag) =>
+                  if (endAtTags.intersect(snag.tags).nonEmpty) {
+                    isExhausted = true
+                  } else if (ignoreTags.intersect(snag.tags).nonEmpty) {
+                    ()
+                  } else {
+                    snagOpt = Some(snag)
+                  }
+                case Right(a) =>
+                  aOpt = Some(a)
+              }
+            }
+            snagOpt match {
+              case Some(snag) => Left(snag)
+              case None => Right(aOpt)
+            }
           }
       }
     }
@@ -157,12 +197,13 @@ object Eitherator {
   class FilterEitherator[+A](underlying: Eitherator[A])(pred: A => Boolean) extends Eitherator[A] {
     var snagOpt: Option[Snag] = None
     var underlyingExhausted: Boolean = false
+
     override def next(): Either[Snag, Option[A]] = {
       var aOpt: Option[A] = None
-      while(snagOpt.isEmpty && aOpt.isEmpty && !underlyingExhausted) {
+      while (snagOpt.isEmpty && aOpt.isEmpty && !underlyingExhausted) {
         underlying.next() match {
           case Left(snag) => snagOpt = Some(snag)
-          case Right(Some(a)) => if(pred(a)) aOpt = Some(a)
+          case Right(Some(a)) => if (pred(a)) aOpt = Some(a)
           case Right(None) => underlyingExhausted = true
         }
       }
@@ -178,7 +219,7 @@ object Eitherator {
       var snagOpt: Option[Snag] = None
       var bOpt: Option[B] = None
       var underlyingExhausted: Boolean = false
-      while(snagOpt.isEmpty && bOpt.isEmpty && !underlyingExhausted) {
+      while (snagOpt.isEmpty && bOpt.isEmpty && !underlyingExhausted) {
         underlying.next() match {
           case Left(snag) => snagOpt = Some(snag)
           case Right(Some(a)) => bOpt = fun(a)
@@ -196,12 +237,13 @@ object Eitherator {
     extends Eitherator[B] {
     var snagOpt: Option[Snag] = None
     var underlyingExhausted: Boolean = false
+
     override def next(): Either[Snag, Option[B]] = {
       snagOpt match {
         case Some(snag) => Left(snag)
         case None =>
           var bOpt: Option[B] = None
-          while(snagOpt.isEmpty && bOpt.isEmpty && !underlyingExhausted) {
+          while (snagOpt.isEmpty && bOpt.isEmpty && !underlyingExhausted) {
             underlying.next() match {
               case Left(snag) => snagOpt = Some(snag)
               case Right(Some(a)) =>
@@ -220,4 +262,5 @@ object Eitherator {
       }
     }
   }
+
 }

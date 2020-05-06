@@ -36,6 +36,7 @@ object RecordExtractor {
               case Left(snag) => Left(snag)
               case Right(header) =>
                 val recordsEtor = headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
+                  DebugUtils.println(chunkWithSequenceAndRegions)
                   dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
                   Record.newEitherator(dataReader, header, recordProcessor).filter { record =>
                     val sequence = chunkWithSequenceAndRegions.name

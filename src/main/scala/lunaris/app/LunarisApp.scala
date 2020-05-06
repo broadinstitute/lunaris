@@ -20,6 +20,7 @@ object LunarisApp {
         println(snag.message)
         println(snag.report)
       case Right(regionsBySequence) =>
+        println(regionsBySequence)
         println("Now going to extract records")
         RecordExtractor.extract(dataSources.data, regionsBySequence,
           RecordProcessor.failOnFaultyRecord).useUp {

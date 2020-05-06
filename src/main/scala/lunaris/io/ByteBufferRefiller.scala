@@ -6,8 +6,8 @@ import java.nio.channels.ReadableByteChannel
 import lunaris.io.bgz.BGZBlock
 import lunaris.io.bgz.BGZBlock.BGZBlockWithPos
 import lunaris.io.tbi.TBIChunk
-import lunaris.utils.{ByteBox, DebugUtils, ReadableByteChannelUtils}
-import org.broadinstitute.yootilz.core.snag.Snag
+import lunaris.utils.{ByteBox, ReadableByteChannelUtils}
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
 import scala.util.control.NonFatal
 
@@ -26,7 +26,9 @@ trait ByteBufferRefiller {
           val nBytesRemaining = buffer.position()
           if (nBytesRemaining < nBytesNeeded) {
             Left(Snag(
-              s"Even after trying to refill buffer, only have $nBytesRemaining bytes remaining, but need $nBytesNeeded"
+              s"Even after trying to refill buffer, only have $nBytesRemaining bytes remaining" +
+                s", but need $nBytesNeeded",
+              SnagTag.endOfData
             ))
           } else {
             Right(())
@@ -180,7 +182,7 @@ object ByteBufferRefiller {
                       case (true, _) =>
                         val offset = _currentChunk.begin.offsetInBlock
                         val endPos =
-                          if(blockIsLastInChunk) {
+                          if (blockIsLastInChunk) {
                             _currentChunk.end.offsetInBlock
                           } else {
                             unzippedBytes.length
