@@ -30,7 +30,7 @@ object LunarisApp {
             println(snag.report)
           case Right(HeaderAndRecordEtor(header, recordEtor)) =>
             println(header.asString)
-            recordEtor.foreach(record => println(record.asString))
+            println(recordEtor.foreach(record => println(record.asString)))
         }
     }
     println("Done!")

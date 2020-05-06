@@ -166,7 +166,7 @@ object ByteBufferRefiller {
               bgzBlockEitherator.next() match {
                 case Left(snag) => snagOpt = Some(snag)
                 case Right(None) => snagOpt =
-                  Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
+                  Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available.", SnagTag.endOfData))
                 case Right(Some(BGZBlockWithPos(block, pos))) =>
                   val unzippedBytes = block.unzippedData.bytes
                   val blockIsFirstInChunk = pos == _currentChunk.begin.offsetOfBlock
@@ -195,7 +195,8 @@ object ByteBufferRefiller {
                   currentBytesOpt = Some(new CurrentBytes(bytesForRefill, 0))
               }
             } else {
-              snagOpt = Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available."))
+              snagOpt =
+                Some(Snag(s"Need $nBytesNeeded bytes, but only ${buffer.position()} available.", SnagTag.endOfData))
             }
           }
         }
