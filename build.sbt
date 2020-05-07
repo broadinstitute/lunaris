@@ -6,12 +6,16 @@ val yootilzV = "0.1.3"
 val scalaTestV = "3.1.1"
 val betterFilesV = "3.8.0"
 val googleCloudNioV = "0.107.0-alpha"
+val circeV = "0.13.0"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
   "org.broadinstitute" %% "yootilz-gcp" % yootilzV,
   "com.github.pathikrit" %% "better-files" % betterFilesV,
-  "com.google.cloud" % "google-cloud-nio" % googleCloudNioV
+  "com.google.cloud" % "google-cloud-nio" % googleCloudNioV,
+  "io.circe" %% "circe-core" % circeV,
+  "io.circe" %% "circe-generic" % circeV,
+  "io.circe" %% "circe-parser" % circeV
 )
 
 lazy val testDeps = Set(

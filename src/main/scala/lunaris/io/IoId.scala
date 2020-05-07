@@ -19,9 +19,11 @@ trait IoId {
 }
 
 trait InputId extends IoId {
-  def newReadChannelDisposable(resourceConfig: ResourceConfig): Disposable[ReadableByteChannel]
+  def newReadChannelDisposable(resourceConfig: ResourceConfig = ResourceConfig.empty): Disposable[ReadableByteChannel]
 
-  def newReadChannelOffsetDisposable(pos: Long, resourceConfig: ResourceConfig): Disposable[ReadableByteChannel]
+  def newReadChannelOffsetDisposable(pos: Long,
+                                     resourceConfig: ResourceConfig = ResourceConfig.empty):
+  Disposable[ReadableByteChannel]
 }
 
 object InputId {
@@ -31,7 +33,8 @@ object InputId {
 }
 
 trait OutputId extends IoId {
-  def newWriteChannelDisposable(resourceConfig: ResourceConfig): Disposable[WritableByteChannel]
+  def newWriteChannelDisposable(resourceConfig: ResourceConfig = ResourceConfig.empty):
+  Disposable[WritableByteChannel]
 }
 
 object OutputId {
