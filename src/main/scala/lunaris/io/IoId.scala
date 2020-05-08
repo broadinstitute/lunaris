@@ -16,6 +16,8 @@ trait IoId {
   def asString: String
 
   override def toString: String = asString
+
+  def +(suffix: String): IoId
 }
 
 trait InputId extends IoId {
@@ -24,6 +26,8 @@ trait InputId extends IoId {
   def newReadChannelOffsetDisposable(pos: Long,
                                      resourceConfig: ResourceConfig = ResourceConfig.empty):
   Disposable[ReadableByteChannel]
+
+  def +(suffix: String): InputId
 }
 
 object InputId {
@@ -35,6 +39,8 @@ object InputId {
 trait OutputId extends IoId {
   def newWriteChannelDisposable(resourceConfig: ResourceConfig = ResourceConfig.empty):
   Disposable[WritableByteChannel]
+
+  def +(suffix: String): OutputId
 }
 
 object OutputId {
@@ -50,11 +56,13 @@ trait FileIoId extends IoId {
 
   def newFileChannelDisposable(mode: String, pos: Long): Disposable[FileChannel] = {
     val raf = new RandomAccessFile(file.toJava, mode)
-    if(pos != 0) {
+    if (pos != 0) {
       raf.seek(pos)
     }
     Disposable(raf.getChannel)(Disposer.ForCloseable(raf))
   }
+
+  def +(suffix: String): FileIoId
 }
 
 case class FileInputId(file: File) extends InputId with FileIoId {
@@ -65,6 +73,8 @@ case class FileInputId(file: File) extends InputId with FileIoId {
                                               resourceConfig: ResourceConfig): Disposable[ReadableByteChannel] = {
     newFileChannelDisposable("r", pos)
   }
+
+  override def +(suffix: String): FileInputId = FileInputId(File(file.toString + suffix))
 }
 
 case class FileOutputId(file: File) extends OutputId with FileIoId {
@@ -72,6 +82,8 @@ case class FileOutputId(file: File) extends OutputId with FileIoId {
 
   override def newWriteChannelDisposable(resourceConfig: ResourceConfig): Disposable[WritableByteChannel] =
     newFileChannelDisposable("rw", 0)
+
+  override def +(suffix: String): FileOutputId = FileOutputId(File(file.toString + suffix))
 }
 
 trait GcpBlobId extends IoId {
@@ -91,6 +103,8 @@ trait GcpBlobId extends IoId {
     //    val credentials = OAuthUtils.getCredentials(keyFileInputStreamOpt)
     GoogleStorageUtils(creds, resourceConfig.gcpProjectOpt)
   }
+
+  def +(suffix: String): GcpBlobId
 }
 
 object GcpBlobId {
@@ -109,6 +123,8 @@ object GcpBlobId {
       None
     }
   }
+
+  def addSuffix(blobId: BlobId, suffix: String): BlobId = BlobId.of(blobId.getBucket, blobId.getName + suffix)
 }
 
 case class GcpBlobInputId(blobId: BlobId) extends GcpBlobId with InputId {
@@ -125,6 +141,8 @@ case class GcpBlobInputId(blobId: BlobId) extends GcpBlobId with InputId {
     readChannel.seek(pos)
     Disposable(readChannel)(Disposer.ForCloseable(readChannel))
   }
+
+  override def +(suffix: String): GcpBlobInputId = GcpBlobInputId(GcpBlobId.addSuffix(blobId, suffix))
 }
 
 case class GcpBlobOutputId(blobId: BlobId) extends GcpBlobId with OutputId {
@@ -136,5 +154,7 @@ case class GcpBlobOutputId(blobId: BlobId) extends GcpBlobId with OutputId {
     val writeChannel = newWriteChannel(resourceConfig)
     Disposable(writeChannel)(Disposer.ForCloseable(writeChannel))
   }
+
+  override def +(suffix: String): GcpBlobOutputId = GcpBlobOutputId(GcpBlobId.addSuffix(blobId, suffix))
 }
 

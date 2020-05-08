@@ -23,15 +23,12 @@ object LunarisApp {
         case Left(snag) =>
           println(snag.message)
         case Right(request) =>
-          val usingLocalSimulatedDataOnOliversLaptop: Boolean = true
-          val dataSources = if (usingLocalSimulatedDataOnOliversLaptop)
-            DataSources.simDataOnOliversOldLaptop
-          else
-            DataSources.simDataOnTerra
+          val usingLocalSimulatedDataOnOliversLaptop: Boolean = false
+          val data = DataSources.T2D.variants
           val regionsBySequence = request.regions
           println(regionsBySequence)
           println("Now going to extract records")
-          RecordExtractor.extract(dataSources.data, regionsBySequence,
+          RecordExtractor.extract(data, regionsBySequence,
             RecordProcessor.failOnFaultyRecord).useUp {
             case Left(snag) =>
               println("Problem!")

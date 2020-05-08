@@ -9,9 +9,9 @@ object CodeExamples {
   def getDataSourceWithIndex: BlockGzippedWithIndex = {
     val usingLocalSimulatedDataOnOliversLaptop: Boolean = true
     if (usingLocalSimulatedDataOnOliversLaptop)
-      DataSources.simDataOnOliversOldLaptop.data
+      DataSources.Sim.simDataOnOliversOldLaptop
     else
-      DataSources.simDataOnTerra.data
+      DataSources.Sim.simDataOnTerra
   }
 
   def readingChunksOfUnzippedData(): Unit = {
