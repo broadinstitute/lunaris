@@ -84,9 +84,14 @@ object ByteBufferRefiller {
 
     protected def writeToBuffer(buffer: ByteBuffer, nBytesNeeded: Int): Either[Snag, Int] = {
       try {
-        val nBytesWritten = channel.read(buffer)
-        nBytesWrittenOpt = Some(nBytesWritten)
-        Right(nBytesWritten)
+        var nBytesWrittenLast: Int = 0
+        var nBytesWrittenTotal: Int = 0
+        do {
+          nBytesWrittenLast = channel.read(buffer)
+          nBytesWrittenTotal += nBytesWrittenLast
+        } while(nBytesWrittenLast > 0)
+        nBytesWrittenOpt = Some(nBytesWrittenTotal)
+        Right(nBytesWrittenTotal)
       } catch {
         case NonFatal(ex) => Left(Snag("Exception while trying to refill buffer", Snag(ex)))
       }
