@@ -1,4 +1,4 @@
-package lunaris.stream
+package lunaris.streams
 
 import lunaris.genomics.Region
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller}

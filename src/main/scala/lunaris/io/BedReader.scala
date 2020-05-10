@@ -2,7 +2,7 @@ package lunaris.io
 
 import lunaris.genomics.Region
 import lunaris.io
-import lunaris.stream.{Header, Record, RecordProcessor}
+import lunaris.streams.{Header, Record, RecordProcessor}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.collection.mutable

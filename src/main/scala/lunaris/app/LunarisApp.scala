@@ -5,7 +5,7 @@ import lunaris.io.InputId
 import lunaris.io.query.RecordExtractor
 import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
 import lunaris.io.request.{RequestExamples, RequestJson}
-import lunaris.stream.RecordProcessor
+import lunaris.streams.RecordProcessor
 import lunaris.utils.IOUtils
 
 object LunarisApp {
