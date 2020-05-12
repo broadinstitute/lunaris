@@ -8,9 +8,10 @@ object DataFileReader extends Tool {
 
   override def resultType: LunType = LunType.RecordStreamType
 
-  override def params: Seq[Tool.Param] =
-    Seq(
-      Tool.Param("file", LunType.FileType, isRef = false, isRequired = true),
-        Tool.Param("index", LunType.FileType, isRef = false, isRequired = false)
-    )
+  object Params {
+    val file: Tool.ValueParam = Tool.ValueParam("file", LunType.FileType, isRequired = true)
+    val index: Tool.RefParam = Tool.RefParam("index", LunType.FileType, isRequired = false)
+  }
+
+  override def params: Seq[Tool.Param] = Seq(Params.file, Params.index)
 }
