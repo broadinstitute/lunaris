@@ -80,8 +80,10 @@ case class FileInputId(file: File) extends InputId with FileIoId {
 case class FileOutputId(file: File) extends OutputId with FileIoId {
   override def asString: String = file.toString()
 
-  override def newWriteChannelDisposable(resourceConfig: ResourceConfig): Disposable[WritableByteChannel] =
+  override def newWriteChannelDisposable(resourceConfig: ResourceConfig): Disposable[WritableByteChannel] = {
+    file.clear()
     newFileChannelDisposable("rw", 0)
+  }
 
   override def +(suffix: String): FileOutputId = FileOutputId(File(file.toString + suffix))
 }
