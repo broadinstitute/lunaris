@@ -4,7 +4,9 @@ import lunaris.streams.tools.Tool.Param
 import lunaris.streams.values.LunType
 
 trait Tool {
-  def name: String
+  def name: String = getClass.getSimpleName.filterNot(_ == '$')
+
+  def stage: Tool.Stage
 
   def resultType: LunType
 
@@ -21,6 +23,13 @@ object Tool {
     def lunType: LunType
 
     def isRequired: Boolean
+  }
+
+  trait Stage
+  object Stage {
+    case object Input extends Stage
+    case object Transformation extends Stage
+    case object Output extends Stage
   }
 
   case class ValueParam(name: String, lunType: LunType.PrimitiveType, isRequired: Boolean) extends Param
