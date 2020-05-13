@@ -16,7 +16,7 @@ object RequestExamples {
       Map("1" -> Seq(Region(100000, 200000)), "5" -> Seq(Region(200000, 300000)), "7" -> Seq(Region(0, 200000))),
       Recipe(Map(
         "read" -> ToolCall(IndexedDataReader, Map(
-          "file" ->
+          IndexedDataReader.Params.Keys.file ->
             ValueArg(IndexedDataReader.Params.file,
               FileValue("gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz")))
         ),
