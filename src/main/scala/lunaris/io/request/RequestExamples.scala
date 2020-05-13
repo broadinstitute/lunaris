@@ -2,10 +2,11 @@ package lunaris.io.request
 
 import lunaris.genomics.Region
 import lunaris.io.OutputId
-import lunaris.streams.tools.ToolCall
-import lunaris.streams.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.streams.tools.native.{IndexedDataReader, TSVWriter}
-import lunaris.streams.values.LunPrimitiveValue.FileValue
+import lunaris.recipes.Recipe
+import lunaris.recipes.tools.ToolCall
+import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
+import lunaris.recipes.tools.native.{IndexedDataReader, TSVWriter}
+import lunaris.recipes.values.LunPrimitiveValue.FileValue
 import lunaris.utils.IOUtils
 
 object RequestExamples {
@@ -13,7 +14,7 @@ object RequestExamples {
   val example1: Request =
     Request("example1",
       Map("1" -> Seq(Region(100000, 200000)), "5" -> Seq(Region(200000, 300000)), "7" -> Seq(Region(0, 200000))),
-      Map(
+      Recipe(Map(
         "read" -> ToolCall(IndexedDataReader, Map(
           "file" ->
             ValueArg(IndexedDataReader.Params.file,
@@ -22,12 +23,12 @@ object RequestExamples {
         "write" -> ToolCall(TSVWriter, Map(
           "from" -> RefArg(TSVWriter.Params.from, "read")
         ))
-      )
+      ))
     )
 
   def main(args: Array[String]): Unit = {
     val fileName =
-      if(args.length > 0) {
+      if (args.length > 0) {
         args(0)
       } else {
         "example1.request.lunaris"

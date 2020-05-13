@@ -5,8 +5,8 @@ import lunaris.io.InputId
 import lunaris.io.query.RecordExtractor
 import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
 import lunaris.io.request.RequestJson
+import lunaris.recipes.RecipeChecker
 import lunaris.streams.RecordProcessor
-import lunaris.streams.tools.ToolsChecker
 import lunaris.utils.{DebugUtils, IOUtils}
 
 object LunarisApp {
@@ -24,7 +24,7 @@ object LunarisApp {
         case Left(snag) =>
           println(snag.message)
         case Right(request) =>
-          ToolsChecker.checkTools(request.tools) match {
+          RecipeChecker.checkRecipe(request.recipe) match {
             case Left(snag) => DebugUtils.printSnag("Problem with tools!", snag)
             case Right(()) => println("The tools are alright.")
           }

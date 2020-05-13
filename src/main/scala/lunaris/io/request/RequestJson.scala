@@ -6,10 +6,11 @@ import io.circe.generic.auto._
 import io.circe.parser.decode
 import org.broadinstitute.yootilz.core.snag.Snag
 import io.circe.syntax._
-import lunaris.streams.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.streams.tools.{Tool, ToolCall}
-import lunaris.streams.tools.native.ToolRegistry
-import lunaris.streams.values.{LunPrimitiveValue, LunType}
+import lunaris.recipes.Recipe
+import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
+import lunaris.recipes.tools.{Tool, ToolCall}
+import lunaris.recipes.tools.native.ToolRegistry
+import lunaris.recipes.values.{LunPrimitiveValue, LunType}
 
 object RequestJson {
 
@@ -82,6 +83,10 @@ object RequestJson {
         }
     }
   }
+
+  implicit val recipeEncoder: Encoder[Recipe] = Encoder.encodeMap[String, ToolCall].contramap[Recipe](_.calls)
+
+  implicit val recipeDecoder: Decoder[Recipe] = Decoder.decodeMap[String, ToolCall].map(Recipe)
 
   def parse(string: String): Either[Snag, Request] = {
     decode[Request](string).left.map(Snag(_))

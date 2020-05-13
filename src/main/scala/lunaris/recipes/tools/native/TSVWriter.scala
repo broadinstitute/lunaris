@@ -1,7 +1,7 @@
-package lunaris.streams.tools.native
+package lunaris.recipes.tools.native
 
-import lunaris.streams.tools.Tool
-import lunaris.streams.values.LunType
+import lunaris.recipes.tools.Tool
+import lunaris.recipes.values.LunType
 
 object TSVWriter extends Tool {
   override def stage: Tool.Stage = Tool.Stage.Output

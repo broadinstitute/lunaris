@@ -1,4 +1,4 @@
-package lunaris.streams.values
+package lunaris.recipes.values
 
 sealed trait LunPrimitiveValue {
   def value: Any

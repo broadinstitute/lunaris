@@ -1,7 +1,7 @@
-package lunaris.streams.tools
+package lunaris.recipes.tools
 
-import lunaris.streams.tools.Tool.Param
-import lunaris.streams.values.LunType
+import lunaris.recipes.tools.Tool.Param
+import lunaris.recipes.values.LunType
 
 trait Tool {
   def name: String = getClass.getSimpleName.filterNot(_ == '$')

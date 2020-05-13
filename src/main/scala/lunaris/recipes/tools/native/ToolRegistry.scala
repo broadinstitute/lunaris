@@ -1,6 +1,6 @@
-package lunaris.streams.tools.native
+package lunaris.recipes.tools.native
 
-import lunaris.streams.tools.Tool
+import lunaris.recipes.tools.Tool
 
 object ToolRegistry {
   val tools: Set[Tool] = Set(IndexedDataReader, TSVWriter)

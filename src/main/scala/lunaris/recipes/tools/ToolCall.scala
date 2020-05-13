@@ -1,7 +1,7 @@
-package lunaris.streams.tools
+package lunaris.recipes.tools
 
-import lunaris.streams.tools.Tool.Param
-import lunaris.streams.values.LunPrimitiveValue
+import lunaris.recipes.tools.Tool.Param
+import lunaris.recipes.values.LunPrimitiveValue
 
 case class ToolCall(tool: Tool, args: Map[String, ToolCall.Arg])
 
