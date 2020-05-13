@@ -4,9 +4,10 @@ import lunaris.data.DataSources
 import lunaris.io.InputId
 import lunaris.io.query.RecordExtractor
 import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
-import lunaris.io.request.{RequestExamples, RequestJson}
+import lunaris.io.request.RequestJson
 import lunaris.streams.RecordProcessor
-import lunaris.utils.IOUtils
+import lunaris.streams.tools.ToolsChecker
+import lunaris.utils.{DebugUtils, IOUtils}
 
 object LunarisApp {
   def main(args: Array[String]): Unit = {
@@ -23,7 +24,10 @@ object LunarisApp {
         case Left(snag) =>
           println(snag.message)
         case Right(request) =>
-          val usingLocalSimulatedDataOnOliversLaptop: Boolean = false
+          ToolsChecker.checkTools(request.tools) match {
+            case Left(snag) => DebugUtils.printSnag("Problem with tools!", snag)
+            case Right(()) => println("The tools are alright.")
+          }
           val data = DataSources.T2D.variants
           val regionsBySequence = request.regions
           println(regionsBySequence)
@@ -31,9 +35,7 @@ object LunarisApp {
           RecordExtractor.extract(data, regionsBySequence,
             RecordProcessor.failOnFaultyRecord).useUp {
             case Left(snag) =>
-              println("Problem!")
-              println(snag.message)
-              println(snag.report)
+              DebugUtils.printSnag("Problem!", snag)
             case Right(HeaderAndRecordEtor(header, recordEtor)) =>
               println(header.asString)
               println(recordEtor.foreach(record => println(record.asString)))

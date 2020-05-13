@@ -1,6 +1,7 @@
 package lunaris.streams.values
 
 trait LunType {
+  def canBeAssignedFrom(oType: LunType): Boolean = oType == this
   def asString: String
 }
 
@@ -32,6 +33,7 @@ object LunType {
   }
 
   object UnitType extends PrimitiveType {
+    override def canBeAssignedFrom(oType: LunType): Boolean = true
     override val asString: String = "Unit"
   }
 
