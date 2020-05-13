@@ -1,11 +1,13 @@
 package lunaris.recipes.tools
 
 import lunaris.recipes.tools.Tool.Param
-import lunaris.recipes.tools.native.ToolInstance
 import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
 
 trait Tool {
+
+  type Worker
+
   def name: String = getClass.getSimpleName.filterNot(_ == '$')
 
   def stage: Tool.Stage

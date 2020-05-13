@@ -1,4 +1,4 @@
-package lunaris.recipes.tools.native
+package lunaris.recipes.tools
 
 import lunaris.recipes.eval.{LunRunContext, WorkerMaker}
 

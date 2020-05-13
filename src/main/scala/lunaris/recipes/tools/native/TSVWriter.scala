@@ -1,20 +1,55 @@
 package lunaris.recipes.tools.native
 
-import lunaris.recipes.tools.{Tool, ToolCall}
+import lunaris.io.{Disposable, OutputId}
+import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
+import lunaris.recipes.eval.LunRunContext
+import lunaris.recipes.{eval, tools}
+import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object TSVWriter extends Tool {
+  override type Worker = Disposable[Either[Snag, HeaderAndRecordEtor]]  // TODO
+
   override def stage: Tool.Stage = Tool.Stage.Output
 
   override def resultType: LunType.UnitType.type = LunType.UnitType
 
   object Params {
-    val from: Tool.RefParam = Tool.RefParam("from", LunType.RecordStreamType, isRequired = true)
-    val file: Tool.ValueParam = Tool.ValueParam("file", LunType.StringType, isRequired = false)
+    object Keys {
+      val from = "from"
+      val file = "file"
+    }
+    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.RecordStreamType, isRequired = true)
+    val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.StringType, isRequired = false)
   }
 
   override def params: Seq[Tool.Param] = Seq(Params.from, Params.file)
 
-  override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = ???
+  override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, tools.ToolInstance] = {
+    for {
+      from <- ToolArgUtils.asRef(Params.Keys.from, args)
+      fileOpt <- ToolArgUtils.asOutputIdOpt(Params.Keys.file, args)
+    } yield ToolInstance(from, fileOpt)
+  }
+
+  case class ToolInstance(from: String, fileOpt: Option[OutputId]) extends tools.ToolInstance {
+    override def newWorkerMaker(context: LunRunContext): WorkerMaker = new WorkerMaker
+  }
+
+  class WorkerMaker extends eval.WorkerMaker {
+    override type Tool = TSVWriter.type
+
+    private var nOrdersField: Int = 0
+
+    override def nOrders: Int = nOrdersField
+
+    override def orderAnotherWorker: Either[Snag, Receipt] = {
+      val receipt = Receipt(nOrdersField)
+      nOrdersField += 1
+      Right(receipt)
+    }
+
+    override def finalizeAndShip(): WorkerBox = ???  //  TODO
+  }
 }

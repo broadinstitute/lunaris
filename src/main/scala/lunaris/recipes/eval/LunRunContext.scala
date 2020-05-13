@@ -1,5 +1,7 @@
 package lunaris.recipes.eval
 
-case class LunRunContext() {
+import lunaris.genomics.Region
+
+case class LunRunContext(regions: Map[String, Seq[Region]]) {
 
 }

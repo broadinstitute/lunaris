@@ -10,7 +10,7 @@ sealed trait LunPrimitiveValue {
 
   def asString: Either[Snag, String] = Left(Snag(s"Need value of type String, but type is $lunType."))
   def asInputId: Either[Snag, InputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
-  def asOutputFile: Either[Snag, OutputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
+  def asOutputId: Either[Snag, OutputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
   def asLong: Either[Snag, Long] = Left(Snag(s"Need value of type Int, but type is $lunType."))
   def asDouble: Either[Snag, Double] = Left(Snag(s"Need value of type Float, but type is $lunType."))
   def asBoolean: Either[Snag, Boolean] = Left(Snag(s"Need value of type Bool, but type is $lunType."))
@@ -32,7 +32,7 @@ object LunPrimitiveValue {
     override val lunType: LunType.FileType.type = LunType.FileType
 
     override def asInputId: Right[Snag, InputId] = Right(InputId(value))
-    override def asOutputFile: Right[Snag, OutputId] = Right(OutputId(value))
+    override def asOutputId: Right[Snag, OutputId] = Right(OutputId(value))
   }
 
   case class IntValue(value: Long) extends LunTypedPrimitiveValue[Long] {
