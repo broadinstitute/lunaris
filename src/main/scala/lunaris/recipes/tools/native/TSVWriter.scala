@@ -1,7 +1,8 @@
 package lunaris.recipes.tools.native
 
-import lunaris.recipes.tools.Tool
+import lunaris.recipes.tools.{Tool, ToolCall}
 import lunaris.recipes.values.LunType
+import org.broadinstitute.yootilz.core.snag.Snag
 
 object TSVWriter extends Tool {
   override def stage: Tool.Stage = Tool.Stage.Output
@@ -14,4 +15,6 @@ object TSVWriter extends Tool {
   }
 
   override def params: Seq[Tool.Param] = Seq(Params.from, Params.file)
+
+  override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = ???
 }

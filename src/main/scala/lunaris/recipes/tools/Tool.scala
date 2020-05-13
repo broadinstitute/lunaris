@@ -1,7 +1,9 @@
 package lunaris.recipes.tools
 
 import lunaris.recipes.tools.Tool.Param
+import lunaris.recipes.tools.native.ToolInstance
 import lunaris.recipes.values.LunType
+import org.broadinstitute.yootilz.core.snag.Snag
 
 trait Tool {
   def name: String = getClass.getSimpleName.filterNot(_ == '$')
@@ -13,6 +15,8 @@ trait Tool {
   def params: Seq[Param]
 
   def paramsByName: Map[String, Param] = params.map(param => (param.name, param)).toMap
+
+  def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance]
 }
 
 object Tool {
