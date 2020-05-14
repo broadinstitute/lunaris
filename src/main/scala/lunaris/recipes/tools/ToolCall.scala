@@ -2,8 +2,11 @@ package lunaris.recipes.tools
 
 import lunaris.recipes.tools.Tool.Param
 import lunaris.recipes.values.LunPrimitiveValue
+import org.broadinstitute.yootilz.core.snag.Snag
 
-case class ToolCall(tool: Tool, args: Map[String, ToolCall.Arg])
+case class ToolCall(tool: Tool, args: Map[String, ToolCall.Arg]) {
+  def newInstance: Either[Snag, ToolInstance] = tool.newToolInstance(args)
+}
 
 object ToolCall {
 

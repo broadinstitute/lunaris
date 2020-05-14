@@ -19,6 +19,8 @@ trait Tool {
   def paramsByName: Map[String, Param] = params.map(param => (param.name, param)).toMap
 
   def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance]
+
+  def hasEffect: Boolean
 }
 
 object Tool {

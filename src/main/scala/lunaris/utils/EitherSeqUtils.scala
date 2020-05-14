@@ -52,4 +52,17 @@ object EitherSeqUtils {
     }
     Right(builder.result)
   }
+
+  def traverseMap[K, V, W](map: Map[K, V])(f: V => Either[Snag, W]): Either[Snag, Map[K, W]] = {
+   val builder = Map.newBuilder[K, W]
+    val iter = map.iterator
+    while(iter.hasNext) {
+      val (key, value) = iter.next()
+      f(value) match {
+        case Left(snag) => return Left(snag)
+        case Right(mappedValue) => builder += (key -> mappedValue)
+      }
+    }
+    Right(builder.result())
+  }
 }

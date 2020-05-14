@@ -4,8 +4,9 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.query.RecordExtractor
 import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
 import lunaris.io.{Disposable, InputId}
-import lunaris.recipes.eval.{LunRunContext, WorkerMaker}
+import lunaris.recipes.eval.{LunCompileContext, LunRunnable, WorkerMaker}
 import lunaris.recipes.eval
+import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.tools
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.LunType
@@ -32,6 +33,8 @@ object IndexedDataReader extends tools.Tool {
 
   override def params: Seq[Tool.Param] = Seq(Params.file, Params.index)
 
+  override def hasEffect: Boolean = false
+
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
       file <- ToolArgUtils.asInputId(Params.Keys.file, args)
@@ -40,19 +43,22 @@ object IndexedDataReader extends tools.Tool {
   }
 
   case class ToolInstance(file: InputId, index: InputId) extends tools.ToolInstance {
-    override def newWorkerMaker(context: LunRunContext): WorkerMaker =
-      new WorkerMaker(file, index, context)
+    override def refs: Set[String] = Set.empty
+
+    override def newWorkerMaker(context: LunCompileContext,
+                                makers: Map[String, eval.WorkerMaker]): Either[Snag, eval.WorkerMaker] =
+      Right(new WorkerMaker(file, index, context))
   }
 
-  class WorkerMaker(file: InputId, index: InputId, context: LunRunContext) extends eval.WorkerMaker {
+  class WorkerMaker(file: InputId, index: InputId, context: LunCompileContext) extends eval.WorkerMaker {
     override type Tool = IndexedDataReader.type
 
-    private var nOrdersField : Int = 0
+    private var nOrdersField: Int = 0
 
-    override def orderAnotherWorker: Either[Snag, Receipt] = {
+    override def orderAnotherWorker: Either[Snag, WorkerMaker.Receipt] = {
       if (nOrdersField == 0) {
         nOrdersField = 1
-        Right(Receipt(0))
+        Right(WorkerMaker.Receipt(0))
       } else {
         Left(Snag(s"Multiplication of streams is not supported at this time."))
       }
@@ -62,7 +68,21 @@ object IndexedDataReader extends tools.Tool {
     val recordEitheratorDisposable: Worker =
       RecordExtractor.extract(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords)
 
-    override def finalizeAndShip(): WorkerBox = (receipt: Receipt) => recordEitheratorDisposable
+    override def finalizeAndShip(): WorkerBox = new WorkerBox {
+      override def pickupWorker(receipt: WorkerMaker.Receipt):
+      Disposable[Either[Snag, HeaderAndRecordEtor]] = recordEitheratorDisposable
+
+      override def pickupWorkerAsRunnable(receipt: WorkerMaker.Receipt): LunRunnable =
+        (observer: LunRunnable.Observer) => {
+        recordEitheratorDisposable.useUp {
+          case Left(snag) => observer.logSnag(snag)
+          case Right(headerAndRecordEtor) =>
+            headerAndRecordEtor.recordEtor.foreach { record =>
+              observer.logPos(record.seq, record.region.start)
+            }
+        }
+      }
+    }
 
     override def nOrders: Int = nOrdersField
   }

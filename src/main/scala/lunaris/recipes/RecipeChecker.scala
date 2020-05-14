@@ -11,6 +11,7 @@ object RecipeChecker {
       _ <- checkNoCycles(recipe)
       _ <- checkRequiredArgs(recipe)
       _ <- checkArgTypes(recipe)
+      _ <- checkFinalsHaveEffects(recipe)
     } yield ()
   }
 
@@ -81,6 +82,20 @@ object RecipeChecker {
     }
     snagOpt match {
       case Some(snag) => Left(snag)
+      case None => Right(())
+    }
+  }
+
+  def checkFinalsHaveEffects(recipe: Recipe): Either[Snag, Unit] = {
+    val refs = recipe.calls.values.toSet.flatMap { call: ToolCall =>
+      call.args.values.collect {
+        case ToolCall.RefArg(_, ref) => ref
+      }
+    }
+    val unreferencedKeys = recipe.calls.keySet -- refs
+    val unreferencedKeysWithoutEffect = unreferencedKeys.filter(key => !recipe.calls(key).tool.hasEffect)
+    unreferencedKeysWithoutEffect.headOption match {
+      case Some(key) => Left(Snag(s"Call $key is neither referenced nor has an effect."))
       case None => Right(())
     }
   }

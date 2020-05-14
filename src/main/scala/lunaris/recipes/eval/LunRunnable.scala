@@ -8,6 +8,15 @@ trait LunRunnable {
 }
 
 object LunRunnable {
+
+  def combine(runnables: Iterable[LunRunnable]): LunRunnable = {
+    runnables.size match {
+      case 0 => NoOpRunnable
+      case 1 => runnables.head
+      case _ => CompositeRunnable(runnables)
+    }
+  }
+
   trait Observer {
     def logSnag(snag: Snag): Unit
     def logPos(seq: String, pos: Int): Unit
@@ -34,6 +43,14 @@ object LunRunnable {
     override def logPos(seq: String, pos: Int): Unit = logger(s"Now at $seq:$pos.")
 
     override def logMessage(message: String): Unit = logger(message)
+  }
+
+  object NoOpRunnable extends LunRunnable {
+    override def execute(observer: Observer): Unit = ()
+  }
+
+  case class CompositeRunnable(runnables: Iterable[LunRunnable]) extends LunRunnable {
+    override def execute(observer: Observer): Unit = runnables.foreach(_.execute(observer))
   }
 }
 
