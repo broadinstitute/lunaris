@@ -11,9 +11,7 @@ case class BGZFooter(crc32: UnsignedInt, isize: UnsignedInt) {
 object BGZFooter {
   val nFooterBytes = 8
 
-  def read(reader: ByteBufferReader, header: BGZHeader): Either[Snag, BGZFooter] = read(reader, header.blockSize)
-
-  def read(reader: ByteBufferReader, blockSize: Int): Either[Snag, BGZFooter] = {
+  def read(reader: ByteBufferReader): Either[Snag, BGZFooter] = {
     for {
       crc32 <- reader.readUnsignedIntField("crc32")
       isize <- reader.readUnsignedIntField("isize")

@@ -14,8 +14,9 @@ object RecordExtractor {
 
   def extract(dataSourceWithIndex: BlockGzippedWithIndex,
               regionsBySequence: Map[String, Seq[Region]],
-              recordProcessor: RecordProcessor): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
-    dataSourceWithIndex.index.newReadChannelDisposable(ResourceConfig.empty).flatMap { indexReadChannel =>
+              recordProcessor: RecordProcessor,
+              resourceConfig: ResourceConfig): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
+    dataSourceWithIndex.index.newReadChannelDisposable(resourceConfig).flatMap { indexReadChannel =>
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))
       val headerAndChunksPlusEitherator =
@@ -23,7 +24,7 @@ object RecordExtractor {
       headerAndChunksPlusEitherator.snagOrHeader match {
         case Left(snag) => Disposable(Left(snag))(Disposable.Disposer.Noop)
         case Right(indexHeader) =>
-          dataSourceWithIndex.data.newReadChannelDisposable(ResourceConfig.empty).map { dataReadChannel =>
+          dataSourceWithIndex.data.newReadChannelDisposable(resourceConfig).map { dataReadChannel =>
             val dataBufferSize = 65536
             val dataRefiller = ByteBufferRefiller.bgunzip(dataReadChannel, dataBufferSize)
             val dataReader = ByteBufferReader(dataRefiller)

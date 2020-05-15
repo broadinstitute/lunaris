@@ -81,7 +81,7 @@ object TBIFileReader {
     } yield trimmedChunksByRegion
   }
 
-  private def readSequenceIndex(reader: ByteBufferReader, name: String,
+  private def readSequenceIndex(reader: ByteBufferReader,
                                 regions: Seq[Region]): Either[Snag, Map[Region, Seq[TBIChunk]]] = {
     for {
       chunksByRegion <- readBinningIndex(reader, regions)
@@ -109,7 +109,7 @@ object TBIFileReader {
           if (state.namesIter.hasNext) {
             val name = state.namesIter.next()
             val regions = regionsBySequence.getOrElse(name, Seq.empty)
-            TBIFileReader.readSequenceIndex(reader, name, regions) match {
+            TBIFileReader.readSequenceIndex(reader, regions) match {
               case Left(snag) =>
                 snagOrState = Left(snag)
                 Left(snag)

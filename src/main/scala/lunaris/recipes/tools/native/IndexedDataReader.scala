@@ -3,7 +3,7 @@ package lunaris.recipes.tools.native
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.query.RecordExtractor
 import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
-import lunaris.io.{Disposable, InputId}
+import lunaris.io.{Disposable, InputId, ResourceConfig}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
@@ -14,8 +14,6 @@ import lunaris.streams.RecordProcessor
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object IndexedDataReader extends tools.Tool {
-  override def stage: Tool.Stage = Tool.Stage.Input
-
   override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
@@ -49,8 +47,6 @@ object IndexedDataReader extends tools.Tool {
   }
 
   class WorkerMaker(file: InputId, index: InputId, context: LunCompileContext) extends eval.WorkerMaker {
-    override type Tool = IndexedDataReader.type
-
     private var nOrdersField: Int = 0
 
     override def orderAnotherWorker: Either[Snag, WorkerMaker.Receipt] = {
@@ -63,16 +59,16 @@ object IndexedDataReader extends tools.Tool {
     }
 
     val dataWithIndex: BlockGzippedWithIndex = BlockGzippedWithIndex(file, index)
-    val recordEitheratorDisposable: Disposable[Either[Snag, HeaderAndRecordEtor]] =
-      RecordExtractor.extract(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords)
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
-      override def pickupWorker(receipt: WorkerMaker.Receipt): RecordStreamWorker = new RecordStreamWorker {
-        override def getSnagOrStreamDisposable: Disposable[Either[Snag, HeaderAndRecordEtor]] =
-          recordEitheratorDisposable
-      }
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
+        Some[RecordStreamWorker]((resourceConfig: ResourceConfig) =>
+          RecordExtractor.extract(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords,
+            resourceConfig))
+
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }
+
     override def nOrders: Int = nOrdersField
   }
 

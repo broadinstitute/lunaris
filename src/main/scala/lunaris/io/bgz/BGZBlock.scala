@@ -107,7 +107,7 @@ object BGZBlock {
         reader.refiller.byteBox.readAndReset {
           reader.refiller.byteBox.buffer
             .position(reader.refiller.byteBox.buffer.position() + header.blockSize - BGZFooter.nFooterBytes)
-          BGZFooter.read(reader, header)
+          BGZFooter.read(reader)
         }
       }
       unzippedData <- {

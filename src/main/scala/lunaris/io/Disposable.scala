@@ -34,6 +34,9 @@ case class Disposable[+A](a: A)(private val disposer: Disposer) {
 
 object Disposable {
 
+  def forCloseable[C <: Closeable](closeable: C): Disposable[C] =
+    Disposable[C](closeable)(Disposer.ForCloseable(closeable))
+
   trait Disposer {
     def dispose(): Unit
 

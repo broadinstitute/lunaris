@@ -1,13 +1,12 @@
 package lunaris.recipes.tools
 
+import lunaris.io.ResourceConfig
 import lunaris.recipes.tools.Tool.Param
 import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
 
 trait Tool {
   def name: String = getClass.getSimpleName.filterNot(_ == '$')
-
-  def stage: Tool.Stage
 
   def resultType: LunType
 
@@ -28,13 +27,6 @@ object Tool {
     def lunType: LunType
 
     def isRequired: Boolean
-  }
-
-  trait Stage
-  object Stage {
-    case object Input extends Stage
-    case object Transformation extends Stage
-    case object Output extends Stage
   }
 
   case class ValueParam(name: String, lunType: LunType.PrimitiveType, isRequired: Boolean) extends Param

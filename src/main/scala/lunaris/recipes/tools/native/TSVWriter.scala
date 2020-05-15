@@ -1,7 +1,12 @@
 package lunaris.recipes.tools.native
 
-import lunaris.io.OutputId
-import lunaris.recipes.eval.{LunCompileContext, LunWorker}
+import java.io.PrintWriter
+import java.nio.channels.Channels
+import java.nio.charset.StandardCharsets
+
+import lunaris.io.{Disposable, OutputId, ResourceConfig}
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.LunType
@@ -9,8 +14,6 @@ import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object TSVWriter extends Tool {
-  override def stage: Tool.Stage = Tool.Stage.Output
-
   override def resultType: LunType.UnitType.type = LunType.UnitType
 
   object Params {
@@ -35,28 +38,52 @@ object TSVWriter extends Tool {
     } yield ToolInstance(from, fileOpt)
   }
 
-  case class ToolInstance(from: String, fileOpt: Option[OutputId]) extends tools.ToolInstance {
+  case class ToolInstance(from: String,
+                          fileOpt: Option[OutputId]) extends tools.ToolInstance {
     override def refs: Map[String, String] = Map(Params.Keys.from -> from)
 
     override def newWorkerMaker(context: LunCompileContext,
-                                workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
-      Right(new WorkerMaker)
-  }
-
-  class WorkerMaker extends eval.WorkerMaker {
-    override type Tool = TSVWriter.type
-
-    private var nOrdersField: Int = 0
-
-    override def nOrders: Int = nOrdersField
-
-    override def orderAnotherWorker: Either[Snag, eval.WorkerMaker.Receipt] = {
-      val receipt = eval.WorkerMaker.Receipt(nOrdersField)
-      nOrdersField += 1
-      Right(receipt)
+                                workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
+      workers.get(Params.Keys.from) match {
+        case Some(fromWorker: RecordStreamWorker) => Right(new WorkerMaker(fromWorker, fileOpt))
+        case Some(_) => Left(Snag(s"Argument for '${Params.Keys.from}' is not the correct type."))
+        case None => Left(Snag(s"No argument provided for ${Params.Keys.from}."))
+      }
     }
-
-    override def finalizeAndShip(): WorkerBox = ??? //  TODO
   }
 
+  class WorkerMaker(fromWorker: RecordStreamWorker,
+                    fileOpt: Option[OutputId]) extends eval.WorkerMaker {
+    override def nOrders: Int = 0
+
+    override def orderAnotherWorker: Either[Snag, eval.WorkerMaker.Receipt] =
+      Left(Snag(s"Tool $name is final and cannot be used as input for other tools."))
+
+    override def finalizeAndShip(): WorkerBox = new WorkerBox {
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
+
+      override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable]((context: LunRunContext) => {
+        fromWorker.getSnagOrStreamDisposable(context.resourceConfig).useUp {
+          case Left(snag) => context.observer.logSnag(snag)
+          case Right(headerAndRecordEtor) =>
+            fileOpt match {
+              case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
+                Disposable.forCloseable(new  PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))).useUp {
+                  writer =>
+                    writer.println(headerAndRecordEtor.header.asString)
+                    headerAndRecordEtor.recordEtor.foreach { record =>
+                      writer.println(record.asString)
+                    }
+                }
+              }
+              case None =>
+                println(headerAndRecordEtor.header.asString)
+                headerAndRecordEtor.recordEtor.foreach { record =>
+                  println(record.asString)
+                }
+            }
+        }
+      })
+    }
+  }
 }

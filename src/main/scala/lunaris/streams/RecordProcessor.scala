@@ -12,7 +12,7 @@ object RecordProcessor {
     case Right(record) => Right(Some(record))
   }
   val ignoreFaultyRecords: RecordProcessor = {
-    case Left(snag) => Right(None)
+    case Left(_) => Right(None)
     case Right(record) => Right(Some(record))
   }
 

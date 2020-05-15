@@ -52,17 +52,18 @@ object LunCompiler {
     var boxes: Map[String, WorkerBox] = Map.empty
     var orders: Map[String, Map[String, Order]] = Map.empty
     var sortedKeysRemaining: Seq[String] = sortedKeys
-    while(snagOpt.isEmpty && sortedKeysRemaining.nonEmpty) {
+    while (snagOpt.isEmpty && sortedKeysRemaining.nonEmpty) {
       val sellerKey = sortedKeysRemaining.head
       sortedKeysRemaining = sortedKeysRemaining.tail
       val workers =
-        orders(sellerKey).view.mapValues(order => boxes(order.sellerKey).pickupWorker(order.receipt)).toMap
+        orders.getOrElse(sellerKey, Map.empty).view.mapValues(order => boxes(order.sellerKey)
+          .pickupWorkerOpt(order.receipt).get).toMap
       instances(sellerKey).newWorkerMaker(context, workers) match {
         case Left(snag) => snagOpt = Some(snag)
         case Right(maker) =>
-          for(buyerKey <- sortedKeysRemaining) {
-            for((arg,ref) <- instances(buyerKey).refs) {
-              if(ref == sellerKey) {
+          for (buyerKey <- sortedKeysRemaining) {
+            for ((arg, ref) <- instances(buyerKey).refs) {
+              if (ref == sellerKey) {
                 maker.orderAnotherWorker match {
                   case Left(snag) => snagOpt = Some(snag)
                   case Right(receipt) =>
