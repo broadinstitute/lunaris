@@ -2,7 +2,7 @@ package lunaris.recipes.eval
 
 import lunaris.io.request.Request
 import lunaris.recipes.eval.WorkerMaker.{Receipt, WorkerBox}
-import lunaris.recipes.tools.{ToolCall, ToolInstance}
+import lunaris.recipes.tools.ToolInstance
 import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -12,10 +12,8 @@ object LunCompiler {
       instances <- EitherSeqUtils.traverseMap(request.recipe.calls)(_.newInstance)
       context = LunCompileContext.fromRequest(request)
       keysSorted <- sortKeysByDep(instances)
-      makers <- makeMakers(instances, keysSorted, context)
-      receipts <- orderEffectiveFinals(request.recipe.calls, makers)
-      boxes = getWorkerBoxes(keysSorted, makers)
-    } yield createRunnable(receipts, boxes)
+      runnable <- makeRunnable(instances, context, keysSorted)
+    } yield runnable
   }
 
   private def sortKeysByDep(instances: Map[String, ToolInstance]): Either[Snag, Seq[String]] = {
@@ -23,19 +21,19 @@ object LunCompiler {
     val builder = Seq.newBuilder[String]
     var unplacedKeys: Set[String] = instances.keySet
     var placedKeys: Set[String] = Set.empty
-    while(snagOpt.isEmpty && unplacedKeys.nonEmpty) {
-      var couldPlaceAKey: Boolean =  false
+    while (snagOpt.isEmpty && unplacedKeys.nonEmpty) {
+      var couldPlaceAKey: Boolean = false
       val unplacedKeysIter = unplacedKeys.iterator
-      while(unplacedKeysIter.hasNext) {
+      while (unplacedKeysIter.hasNext) {
         val unplacedKey = unplacedKeysIter.next()
-        if(instances(unplacedKey).refs.subsetOf(placedKeys)) {
+        if (instances(unplacedKey).refs.values.toSet.subsetOf(placedKeys)) {
           unplacedKeys -= unplacedKey
           placedKeys += unplacedKey
           builder += unplacedKey
           couldPlaceAKey = true
         }
       }
-      if(!couldPlaceAKey) {
+      if (!couldPlaceAKey) {
         snagOpt = Some(Snag(s"There is s circular dependency involving calls ${unplacedKeys.mkString(", ")}."))
       }
     }
@@ -45,57 +43,44 @@ object LunCompiler {
     }
   }
 
-  private def makeMakers(instances: Map[String, ToolInstance],
-                         sortedKeys: Seq[String],
-                         context: LunCompileContext): Either[Snag, Map[String, WorkerMaker]] = {
+  private case class Order(receipt: Receipt, sellerKey: String)
+
+  private def makeRunnable(instances: Map[String, ToolInstance],
+                           context: LunCompileContext,
+                           sortedKeys: Seq[String]): Either[Snag, LunRunnable] = {
     var snagOpt: Option[Snag] = None
-    var makers: Map[String, WorkerMaker] = Map.empty
-    val keyIter = sortedKeys.iterator
-    while(snagOpt.isEmpty && keyIter.hasNext) {
-      val key = keyIter.next()
-      val instance = instances(key)
-      instance.newWorkerMaker(context, makers) match {
+    var boxes: Map[String, WorkerBox] = Map.empty
+    var orders: Map[String, Map[String, Order]] = Map.empty
+    var sortedKeysRemaining: Seq[String] = sortedKeys
+    while(snagOpt.isEmpty && sortedKeysRemaining.nonEmpty) {
+      val sellerKey = sortedKeysRemaining.head
+      sortedKeysRemaining = sortedKeysRemaining.tail
+      val workers =
+        orders(sellerKey).view.mapValues(order => boxes(order.sellerKey).pickupWorker(order.receipt)).toMap
+      instances(sellerKey).newWorkerMaker(context, workers) match {
         case Left(snag) => snagOpt = Some(snag)
-        case Right(maker) => makers += (key -> maker)
+        case Right(maker) =>
+          for(buyerKey <- sortedKeysRemaining) {
+            for((arg,ref) <- instances(buyerKey).refs) {
+              if(ref == sellerKey) {
+                maker.orderAnotherWorker match {
+                  case Left(snag) => snagOpt = Some(snag)
+                  case Right(receipt) =>
+                    val order = Order(receipt, sellerKey)
+                    val ordersForBuyer = orders.getOrElse(buyerKey, Map.empty)
+                    val ordersForBuyerNew = ordersForBuyer + (arg -> order)
+                    orders += (buyerKey -> ordersForBuyerNew)
+                }
+              }
+            }
+          }
+          val box = maker.finalizeAndShip()
+          boxes += (sellerKey -> box)
       }
     }
     snagOpt match {
       case Some(snag) => Left(snag)
-      case None => Right(makers)
+      case None => Right(LunRunnable.combine(boxes.values.flatMap(_.pickupRunnableOpt())))
     }
-  }
-
-  private def orderEffectiveFinals(calls: Map[String, ToolCall],
-                                   makers: Map[String, WorkerMaker]): Either[Snag, Map[String, WorkerMaker.Receipt]] = {
-    var snagOpt: Option[Snag] = None
-    val builder = Map.newBuilder[String, WorkerMaker.Receipt]
-    for((key, maker) <- makers) {
-      if(maker.nOrders == 0 && calls(key).tool.hasEffect) {
-        maker.orderAnotherWorker match {
-          case Left(snag) => snagOpt = Some(snag)
-          case Right(receipt) => builder += (key -> receipt)
-        }
-      }
-    }
-    snagOpt match {
-      case Some(snag) => Left(snag)
-      case None => Right(builder.result())
-    }
-  }
-
-  private def getWorkerBoxes(sortedKeys: Seq[String], makers: Map[String, WorkerMaker]): Map[String, WorkerBox] = {
-    val builder = Map.newBuilder[String, WorkerBox]
-    for(key <- sortedKeys) {
-      builder += (key -> makers(key).finalizeAndShip())
-    }
-    builder.result()
-  }
-
-  private def createRunnable(receipts: Map[String, WorkerMaker.Receipt],
-                             boxes: Map[String, WorkerBox]): LunRunnable = {
-    val runnables = receipts.collect {
-      case (key, receipt) => boxes(key).pickupWorkerAsRunnable(receipt)
-    }
-    LunRunnable.combine(runnables)
   }
 }

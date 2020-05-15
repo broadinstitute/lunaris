@@ -5,9 +5,6 @@ import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
 
 trait Tool {
-
-  type Worker
-
   def name: String = getClass.getSimpleName.filterNot(_ == '$')
 
   def stage: Tool.Stage
@@ -20,7 +17,7 @@ trait Tool {
 
   def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance]
 
-  def hasEffect: Boolean
+  def isFinal: Boolean
 }
 
 object Tool {

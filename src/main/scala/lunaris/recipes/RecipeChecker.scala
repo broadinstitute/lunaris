@@ -93,7 +93,7 @@ object RecipeChecker {
       }
     }
     val unreferencedKeys = recipe.calls.keySet -- refs
-    val unreferencedKeysWithoutEffect = unreferencedKeys.filter(key => !recipe.calls(key).tool.hasEffect)
+    val unreferencedKeysWithoutEffect = unreferencedKeys.filter(key => !recipe.calls(key).tool.isFinal)
     unreferencedKeysWithoutEffect.headOption match {
       case Some(key) => Left(Snag(s"Call $key is neither referenced nor has an effect."))
       case None => Right(())

@@ -19,8 +19,8 @@ object WorkerMaker {
   case class Receipt(index: Int)
 
   trait WorkerBox {
-    def pickupWorker(receipt: Receipt): AnyRef
-    def pickupWorkerAsRunnable(receipt: Receipt): LunRunnable
+    def pickupWorker(receipt: Receipt): LunWorker
+    def pickupRunnableOpt(): Option[LunRunnable]
   }
 }
 

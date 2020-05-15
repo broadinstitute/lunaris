@@ -1,7 +1,7 @@
 package lunaris.recipes.tools.native
 
-import lunaris.io.{Disposable, OutputId}
-import lunaris.recipes.eval.LunCompileContext
+import lunaris.io.OutputId
+import lunaris.recipes.eval.{LunCompileContext, LunWorker}
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.LunType
@@ -9,8 +9,6 @@ import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object TSVWriter extends Tool {
-  override type Worker = Disposable[Either[Snag, Unit]]
-
   override def stage: Tool.Stage = Tool.Stage.Output
 
   override def resultType: LunType.UnitType.type = LunType.UnitType
@@ -28,7 +26,7 @@ object TSVWriter extends Tool {
 
   override def params: Seq[Tool.Param] = Seq(Params.from, Params.file)
 
-  override def hasEffect: Boolean = true
+  override def isFinal: Boolean = true
 
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, tools.ToolInstance] = {
     for {
@@ -38,10 +36,10 @@ object TSVWriter extends Tool {
   }
 
   case class ToolInstance(from: String, fileOpt: Option[OutputId]) extends tools.ToolInstance {
-    override def refs: Set[String] = Set(from)
+    override def refs: Map[String, String] = Map(Params.Keys.from -> from)
 
     override def newWorkerMaker(context: LunCompileContext,
-                                makers: Map[String, eval.WorkerMaker]): Either[Snag, eval.WorkerMaker] =
+                                workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
       Right(new WorkerMaker)
   }
 

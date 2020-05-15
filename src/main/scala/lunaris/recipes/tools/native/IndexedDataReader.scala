@@ -4,18 +4,16 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.query.RecordExtractor
 import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
 import lunaris.io.{Disposable, InputId}
-import lunaris.recipes.eval.{LunCompileContext, LunRunnable, WorkerMaker}
-import lunaris.recipes.eval
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.tools
+import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.{eval, tools}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.LunType
 import lunaris.streams.RecordProcessor
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object IndexedDataReader extends tools.Tool {
-  override type Worker = Disposable[Either[Snag, HeaderAndRecordEtor]]
-
   override def stage: Tool.Stage = Tool.Stage.Input
 
   override def resultType: LunType = LunType.RecordStreamType
@@ -33,7 +31,7 @@ object IndexedDataReader extends tools.Tool {
 
   override def params: Seq[Tool.Param] = Seq(Params.file, Params.index)
 
-  override def hasEffect: Boolean = false
+  override def isFinal: Boolean = false
 
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
@@ -43,10 +41,10 @@ object IndexedDataReader extends tools.Tool {
   }
 
   case class ToolInstance(file: InputId, index: InputId) extends tools.ToolInstance {
-    override def refs: Set[String] = Set.empty
+    override def refs: Map[String, String] = Map.empty
 
     override def newWorkerMaker(context: LunCompileContext,
-                                makers: Map[String, eval.WorkerMaker]): Either[Snag, eval.WorkerMaker] =
+                                workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
       Right(new WorkerMaker(file, index, context))
   }
 
@@ -65,25 +63,16 @@ object IndexedDataReader extends tools.Tool {
     }
 
     val dataWithIndex: BlockGzippedWithIndex = BlockGzippedWithIndex(file, index)
-    val recordEitheratorDisposable: Worker =
+    val recordEitheratorDisposable: Disposable[Either[Snag, HeaderAndRecordEtor]] =
       RecordExtractor.extract(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords)
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
-      override def pickupWorker(receipt: WorkerMaker.Receipt):
-      Disposable[Either[Snag, HeaderAndRecordEtor]] = recordEitheratorDisposable
-
-      override def pickupWorkerAsRunnable(receipt: WorkerMaker.Receipt): LunRunnable =
-        (observer: LunRunnable.Observer) => {
-        recordEitheratorDisposable.useUp {
-          case Left(snag) => observer.logSnag(snag)
-          case Right(headerAndRecordEtor) =>
-            headerAndRecordEtor.recordEtor.foreach { record =>
-              observer.logPos(record.seq, record.region.start)
-            }
-        }
+      override def pickupWorker(receipt: WorkerMaker.Receipt): RecordStreamWorker = new RecordStreamWorker {
+        override def getSnagOrStreamDisposable: Disposable[Either[Snag, HeaderAndRecordEtor]] =
+          recordEitheratorDisposable
       }
+      override def pickupRunnableOpt(): Option[LunRunnable] = None
     }
-
     override def nOrders: Int = nOrdersField
   }
 
