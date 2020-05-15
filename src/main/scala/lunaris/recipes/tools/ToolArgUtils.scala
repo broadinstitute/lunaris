@@ -1,20 +1,20 @@
 package lunaris.recipes.tools
 
 import lunaris.io.{InputId, OutputId}
-import lunaris.recipes.values.{LunPrimitiveValue, LunType}
+import lunaris.recipes.values.LunValue.PrimitiveValue
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object ToolArgUtils {
 
   def as[T](argName: String,
-            args: Map[String, ToolCall.Arg])(extract: LunPrimitiveValue => Either[Snag, T]): Either[Snag, T] = {
+            args: Map[String, ToolCall.Arg])(extract: PrimitiveValue => Either[Snag, T]): Either[Snag, T] = {
     for {
       arg <- args.get(argName).map(Right(_)).getOrElse(Left(Snag(s"Missing argument '$argName'.'")))
       string <- as[T](arg)(extract)
     } yield string
   }
 
-  def asOpt[T](argName: String, args: Map[String, ToolCall.Arg])(extract: LunPrimitiveValue => Either[Snag, T]):
+  def asOpt[T](argName: String, args: Map[String, ToolCall.Arg])(extract: PrimitiveValue => Either[Snag, T]):
   Either[Snag, Option[T]] = {
     args.get(argName) match {
       case Some(arg) => as[T](arg)(extract).map(Some(_))
@@ -24,7 +24,7 @@ object ToolArgUtils {
 
   def asOr[T](argName: String,
               args: Map[String, ToolCall.Arg], default: T)(
-               extract: LunPrimitiveValue => Either[Snag, T]): Either[Snag, T] = {
+               extract: PrimitiveValue => Either[Snag, T]): Either[Snag, T] = {
     args.get(argName) match {
       case Some(arg) => as[T](arg)(extract)
       case None => Right(default)
@@ -32,7 +32,7 @@ object ToolArgUtils {
   }
 
   def as[T](arg: ToolCall.Arg)(
-    extract: LunPrimitiveValue => Either[Snag, T]): Either[Snag, T] = {
+    extract: PrimitiveValue => Either[Snag, T]): Either[Snag, T] = {
     arg match {
       case ToolCall.RefArg(param, _) =>
         Left(Snag(s"Argument '${param.name}' is a reference, but should be a value."))

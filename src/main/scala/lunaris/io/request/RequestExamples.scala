@@ -6,14 +6,14 @@ import lunaris.recipes.Recipe
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
 import lunaris.recipes.tools.native.{IndexedDataReader, TSVWriter}
-import lunaris.recipes.values.LunPrimitiveValue.FileValue
+import lunaris.recipes.values.LunValue.PrimitiveValue.FileValue
 import lunaris.utils.IOUtils
 
 object RequestExamples {
 
   val example1: Request =
     Request("example1",
-      Map("1" -> Seq(Region(100000, 200000)), "5" -> Seq(Region(200000, 300000)), "7" -> Seq(Region(0, 200000))),
+      Map("1" -> Seq(Region(100000, 200000))),
       Recipe(Map(
         "read" -> ToolCall(IndexedDataReader, Map(
           IndexedDataReader.Params.Keys.file ->

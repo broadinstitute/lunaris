@@ -1,16 +1,16 @@
 package lunaris.io.request
 
 import io.circe.Decoder.Result
-import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import io.circe.generic.auto._
 import io.circe.parser.decode
-import org.broadinstitute.yootilz.core.snag.Snag
 import io.circe.syntax._
+import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import lunaris.recipes.Recipe
-import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.{Tool, ToolCall}
 import lunaris.recipes.tools.native.ToolRegistry
-import lunaris.recipes.values.{LunPrimitiveValue, LunType}
+import lunaris.recipes.tools.{Tool, ToolCall}
+import lunaris.recipes.values.LunType
+import lunaris.recipes.values.LunValue.PrimitiveValue
+import org.broadinstitute.yootilz.core.snag.Snag
 
 object RequestJson {
 
@@ -23,12 +23,12 @@ object RequestJson {
     var fields: Map[String, Json] = Map.empty
     for ((key, arg) <- toolCall.args) {
       val jsonOpt = arg match {
-        case ToolCall.ValueArg(_, LunPrimitiveValue.StringValue(value)) => Some(Json.fromString(value))
-        case ToolCall.ValueArg(_, LunPrimitiveValue.FileValue(value)) => Some(Json.fromString(value))
-        case ToolCall.ValueArg(_, LunPrimitiveValue.IntValue(value)) => Some(Json.fromLong(value))
-        case ToolCall.ValueArg(_, LunPrimitiveValue.FloatValue(value)) => Json.fromDouble(value)
-        case ToolCall.ValueArg(_, LunPrimitiveValue.BoolValue(value)) => Some(Json.fromBoolean(value))
-        case ToolCall.ValueArg(_, LunPrimitiveValue.UnitValue) => None
+        case ToolCall.ValueArg(_, PrimitiveValue.StringValue(value)) => Some(Json.fromString(value))
+        case ToolCall.ValueArg(_, PrimitiveValue.FileValue(value)) => Some(Json.fromString(value))
+        case ToolCall.ValueArg(_, PrimitiveValue.IntValue(value)) => Some(Json.fromLong(value))
+        case ToolCall.ValueArg(_, PrimitiveValue.FloatValue(value)) => Json.fromDouble(value)
+        case ToolCall.ValueArg(_, PrimitiveValue.BoolValue(value)) => Some(Json.fromBoolean(value))
+        case ToolCall.ValueArg(_, PrimitiveValue.UnitValue) => None
         case ToolCall.RefArg(_, ref) => Some(Json.fromString(ref))
       }
       jsonOpt.foreach(json => fields += (key -> json))
@@ -59,12 +59,12 @@ object RequestJson {
                         cursor))
                     case Some(valueParam: Tool.ValueParam) =>
                       val lunValueResult = valueParam.lunType match {
-                        case LunType.StringType => argCursor.as[String].map(LunPrimitiveValue.StringValue)
-                        case LunType.FileType => argCursor.as[String].map(LunPrimitiveValue.FileValue)
-                        case LunType.IntType => argCursor.as[Long].map(LunPrimitiveValue.IntValue)
-                        case LunType.FloatType => argCursor.as[Double].map(LunPrimitiveValue.FloatValue)
-                        case LunType.BoolType => argCursor.as[Boolean].map(LunPrimitiveValue.BoolValue)
-                        case LunType.UnitType => Right(LunPrimitiveValue.UnitValue)
+                        case LunType.StringType => argCursor.as[String].map(PrimitiveValue.StringValue)
+                        case LunType.FileType => argCursor.as[String].map(PrimitiveValue.FileValue)
+                        case LunType.IntType => argCursor.as[Long].map(PrimitiveValue.IntValue)
+                        case LunType.FloatType => argCursor.as[Double].map(PrimitiveValue.FloatValue)
+                        case LunType.BoolType => argCursor.as[Boolean].map(PrimitiveValue.BoolValue)
+                        case LunType.UnitType => Right(PrimitiveValue.UnitValue)
                       }
                       lunValueResult.map(ToolCall.ValueArg(valueParam, _))
                     case Some(refParam: Tool.RefParam) =>
