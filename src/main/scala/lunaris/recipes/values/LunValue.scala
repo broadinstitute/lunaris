@@ -77,9 +77,7 @@ object LunValue {
     override def lunType: LunType.ArrayType = LunType.ArrayType(elementType)
   }
 
-  case class ObjectValue(values: Map[String, LunValue], elementTypes: Map[String, LunType]) extends LunValue {
-    override def lunType: LunType.ObjectType = LunType.ObjectType(elementTypes)
-  }
+  case class ObjectValue(lunType: LunType.ObjectType, values: Map[String, LunValue]) extends LunValue
 
   case class TypeValue(value: LunType) extends LunValue {
     override def lunType: LunType = LunType.TypeType

@@ -55,11 +55,11 @@ object LunType {
     override def asString: String = s"Array[${elementType.asString}]"
   }
 
-  case class ObjectType(elementTypes: Map[String, LunType]) extends LunType {
+  case class ObjectType(idField: String, fields: Seq[String], elementTypes: Map[String, LunType]) extends LunType {
     override def canBeAssignedFrom(oType: LunType): Boolean = {
       oType match {
-        case ObjectType(oElementTypes) =>
-          elementTypes.collect {
+        case ObjectType(oIdField, _, oElementTypes) =>
+          (idField == oIdField) && elementTypes.collect {
             case (key, thisType) =>
               oElementTypes.get(key) match {
                 case Some(oType) => thisType.canBeAssignedFrom(oType)

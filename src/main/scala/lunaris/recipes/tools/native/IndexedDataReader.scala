@@ -21,13 +21,15 @@ object IndexedDataReader extends tools.Tool {
     object Keys {
       val file = "file"
       val index = "index"
+      val idField = "idField"
     }
 
     val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.FileType, isRequired = true)
     val index: Tool.ValueParam = Tool.ValueParam(Keys.index, LunType.FileType, isRequired = false)
+    val idField: Tool.ValueParam = Tool.ValueParam(Keys.idField, LunType.StringType, isRequired = true)
   }
 
-  override def params: Seq[Tool.Param] = Seq(Params.file, Params.index)
+  override def params: Seq[Tool.Param] = Seq(Params.file, Params.index, Params.idField)
 
   override def isFinal: Boolean = false
 
@@ -35,18 +37,22 @@ object IndexedDataReader extends tools.Tool {
     for {
       file <- ToolArgUtils.asInputId(Params.Keys.file, args)
       index <- ToolArgUtils.asInputIdOr(Params.Keys.index, args, file + ".tbi")
-    } yield ToolInstance(file, index)
+      idField <- ToolArgUtils.asString(Params.Keys.idField, args)
+    } yield ToolInstance(file, index, idField)
   }
 
-  case class ToolInstance(file: InputId, index: InputId) extends tools.ToolInstance {
+  case class ToolInstance(file: InputId, index: InputId, idField: String) extends tools.ToolInstance {
     override def refs: Map[String, String] = Map.empty
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
-      Right(new WorkerMaker(file, index, context))
+      Right(new WorkerMaker(file, index, idField, context))
   }
 
-  class WorkerMaker(file: InputId, index: InputId, context: LunCompileContext) extends eval.WorkerMaker {
+  class WorkerMaker(file: InputId,
+                    index: InputId,
+                    idField: String,
+                    context: LunCompileContext) extends eval.WorkerMaker {
     private var nOrdersField: Int = 0
 
     override def orderAnotherWorker: Either[Snag, WorkerMaker.Receipt] = {
