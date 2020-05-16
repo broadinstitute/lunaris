@@ -1,6 +1,7 @@
 package lunaris.recipes.values
 
 trait LunType {
+  def isPrimitive: Boolean = false
   def canBeAssignedFrom(oType: LunType): Boolean = oType == this
 
   def asString: String
@@ -8,7 +9,9 @@ trait LunType {
 
 object LunType {
 
-  sealed trait PrimitiveType extends LunType
+  sealed trait PrimitiveType extends LunType {
+    override def isPrimitive: Boolean = true
+  }
 
   sealed trait StringLikeType extends PrimitiveType
 
@@ -55,11 +58,14 @@ object LunType {
     override def asString: String = s"Array[${elementType.asString}]"
   }
 
-  case class ObjectType(idField: String, fields: Seq[String], elementTypes: Map[String, LunType]) extends LunType {
+  case class ObjectSpecialFields(id: String, chrom: String, begin: String, end: String)
+
+  case class ObjectType(specialFields: ObjectSpecialFields,
+                        fields: Seq[String], elementTypes: Map[String, LunType]) extends LunType {
     override def canBeAssignedFrom(oType: LunType): Boolean = {
       oType match {
-        case ObjectType(oIdField, _, oElementTypes) =>
-          (idField == oIdField) && elementTypes.collect {
+        case ObjectType(oSpecialFields, _, oElementTypes) =>
+          (specialFields == oSpecialFields) && elementTypes.collect {
             case (key, thisType) =>
               oElementTypes.get(key) match {
                 case Some(oType) => thisType.canBeAssignedFrom(oType)
@@ -73,6 +79,13 @@ object LunType {
     override def asString: String = {
       val typesString = elementTypes.collect { case (key, value) => s"$key -> ${value.asString}" }.mkString(", ")
       s"Object[$typesString]"
+    }
+  }
+
+  object ObjectType {
+    def apply(id: String, chrom: String, begin: String, end: String): ObjectType = {
+      ObjectType(ObjectSpecialFields(id, chrom, begin, end), Seq(id, chrom, begin, end),
+        Map(id -> StringType, chrom -> StringType, begin -> IntType, end -> IntType))
     }
   }
 

@@ -2,11 +2,22 @@ package lunaris.streams
 
 import lunaris.genomics.Region
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
+import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.utils.{DebugUtils, Eitherator, NumberParser}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
 case class Record(header: Header, seq: String, region: Region, values: Seq[String]) {
   def asString: String = values.mkString("\t")
+  def toObject(idField: String): Either[Snag, LunValue.ObjectValue] = {
+    header.toLunObjectType(idField).map { objectType =>
+      val objectValues =
+        header.colNames.zip(values.map(LunValue.PrimitiveValue.StringValue)).toMap[String, LunValue] +
+          (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(seq)) +
+          (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.start)) +
+          (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.end))
+      LunValue.ObjectValue(objectType, objectValues)
+    }
+  }
 }
 
 object Record {

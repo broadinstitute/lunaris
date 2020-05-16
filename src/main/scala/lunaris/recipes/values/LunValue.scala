@@ -1,10 +1,23 @@
 package lunaris.recipes.values
 
 import lunaris.io.{InputId, OutputId}
+import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
 sealed trait LunValue {
   def lunType: LunType
+
+  protected def snagCannotCastTo(newType: LunType): Snag = Snag(s"Cannot cast this value to ${newType.asString}.")
+
+  def castTo(newType: LunType): Either[Snag, LunValue] = {
+    if (newType == lunType) {
+      Right(this)
+    } else if(newType == LunType.UnitType) {
+      Right(LunValue.PrimitiveValue.UnitValue)
+    } else {
+      Left(snagCannotCastTo(newType))
+    }
+  }
 }
 
 object LunValue {
@@ -37,6 +50,15 @@ object LunValue {
       override val lunType: LunType.StringType.type = LunType.StringType
 
       override def asString: Right[Snag, String] = Right(value)
+
+      override def castTo(newType: LunType): Either[Snag, LunValue] = {
+        newType match {
+          case LunType.StringType => Right(this)
+          case LunType.FileType => Right(LunValue.PrimitiveValue.FileValue(value))
+          case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+          case _ => Left(snagCannotCastTo(newType))
+        }
+      }
     }
 
     case class FileValue(value: String) extends LunTypedPrimitiveValue[String] {
@@ -45,12 +67,32 @@ object LunValue {
       override def asInputId: Right[Snag, InputId] = Right(InputId(value))
 
       override def asOutputId: Right[Snag, OutputId] = Right(OutputId(value))
+
+      override def castTo(newType: LunType): Either[Snag, LunValue] = {
+        newType match {
+          case LunType.FileType => Right(this)
+          case LunType.StringType => Right(LunValue.PrimitiveValue.StringValue(value))
+          case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+          case _ => Left(snagCannotCastTo(newType))
+        }
+      }
     }
 
     case class IntValue(value: Long) extends LunTypedPrimitiveValue[Long] {
       override val lunType: LunType.IntType.type = LunType.IntType
 
       override def asLong: Right[Snag, Long] = Right(value)
+
+      override def asDouble: Either[Snag, Double] = Right(value.toDouble)
+
+      override def castTo(newType: LunType): Either[Snag, LunValue] = {
+        newType match {
+          case LunType.IntType => Right(this)
+          case LunType.FloatType => Right(LunValue.PrimitiveValue.FloatValue(value.toDouble))
+          case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+          case _ => Left(snagCannotCastTo(newType))
+        }
+      }
     }
 
     case class FloatValue(value: Double) extends LunTypedPrimitiveValue[Double] {
@@ -75,11 +117,49 @@ object LunValue {
 
   case class ArrayValue(values: Seq[LunValue], elementType: LunType) extends LunValue {
     override def lunType: LunType.ArrayType = LunType.ArrayType(elementType)
+
+    override def castTo(newType: LunType): Either[Snag, LunValue] = {
+      newType match {
+        case LunType.ArrayType(newElementType) =>
+          EitherSeqUtils.traverse(values)(_.castTo(newElementType)) match {
+            case Left(snag) => Left(snag.prefix("Cannot case Array"))
+            case Right(valuesCast) => Right(ArrayValue(valuesCast, newElementType))
+          }
+        case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+        case _ => Left(snagCannotCastTo(newType))
+      }
+    }
   }
 
-  case class ObjectValue(lunType: LunType.ObjectType, values: Map[String, LunValue]) extends LunValue
+  case class ObjectValue(lunType: LunType.ObjectType, values: Map[String, LunValue]) extends LunValue {
+    override def castTo(newType: LunType): Either[Snag, LunValue] = {
+      newType match {
+        case newObjectType: LunType.ObjectType =>
+          if(newObjectType.canBeAssignedFrom(lunType)) {
+            val snagOrNewValues = EitherSeqUtils.traverse(values.toSeq) { entry =>
+              val key = entry._1
+              val value = entry._2
+              newObjectType.elementTypes.get(key) match {
+                case Some(newElementType) => value.castTo(newElementType).map((key, _))
+                case None => Right((key, value))
+              }
+            }
+            snagOrNewValues.map(newValues => ObjectValue(newObjectType, newValues.toMap))
+          } else {
+            Left(snagCannotCastTo(newType))
+          }
+        case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+        case _ => Left(snagCannotCastTo(newType))
+      }
+    }
+    def keepOnlyPrimitiveFields: ObjectValue = {
+      val fieldsNew = lunType.fields.filter(field => lunType.elementTypes.get(field).exists(_.isPrimitive))
+      copy(lunType = lunType.copy(fields = fieldsNew))
+    }
+  }
 
   case class TypeValue(value: LunType) extends LunValue {
     override def lunType: LunType = LunType.TypeType
   }
+
 }
