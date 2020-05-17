@@ -10,7 +10,7 @@
   },
   "recipe" : {
     "read" : {
-      "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz",
+      "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
       "idField" : "varId",
       "tool" : "IndexedObjectReader"
     },

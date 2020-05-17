@@ -11,14 +11,24 @@ import lunaris.utils.IOUtils
 
 object RequestExamples {
 
+  object PortalData {
+    val folder: String = "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/"
+
+    val associations: FileValue = FileValue(folder + "associations.tsv.gz")
+    val associationsDkd: FileValue = FileValue(folder + "associations.dkd.tsv.gz")
+    val posteriors: FileValue = FileValue(folder + "posteriors.tsv.gz")
+    val regions: FileValue = FileValue(folder + "regions.tsv.gz")
+    val variants: FileValue = FileValue(folder + "variants.tsv.gz")
+
+  }
+
   val example1: Request =
     Request("example1",
       Map("1" -> Seq(Region(100000, 200000))),
       Recipe(Map(
         "read" -> ToolCall(IndexedObjectReader, Map(
           IndexedObjectReader.Params.Keys.file ->
-            ValueArg(IndexedObjectReader.Params.file,
-              FileValue("gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz")),
+            ValueArg(IndexedObjectReader.Params.file, PortalData.variants),
           IndexedObjectReader.Params.Keys.idField -> ValueArg(IndexedObjectReader.Params.idField, StringValue("varId"))
         )
         ),
