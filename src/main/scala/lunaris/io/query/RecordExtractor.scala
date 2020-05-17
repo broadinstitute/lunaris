@@ -4,6 +4,7 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
+import lunaris.recipes.values.LunValue
 import lunaris.streams.{Header, Record, RecordProcessor}
 import lunaris.utils.{DebugUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -12,10 +13,10 @@ object RecordExtractor {
 
   case class HeaderAndRecordEtor(header: Header, recordEtor: Eitherator[Record])
 
-  def extract(dataSourceWithIndex: BlockGzippedWithIndex,
-              regionsBySequence: Map[String, Seq[Region]],
-              recordProcessor: RecordProcessor,
-              resourceConfig: ResourceConfig): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
+  def extractRecords(dataSourceWithIndex: BlockGzippedWithIndex,
+                     regionsBySequence: Map[String, Seq[Region]],
+                     recordProcessor: RecordProcessor[Record],
+                     resourceConfig: ResourceConfig): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
     dataSourceWithIndex.index.newReadChannelDisposable(resourceConfig).flatMap { indexReadChannel =>
       val bufferSize = 10000
       val indexReader = new ByteBufferReader(ByteBufferRefiller.bgunzip(indexReadChannel, bufferSize))

@@ -9,7 +9,8 @@ import scala.collection.mutable
 
 object BedReader {
 
-  def read(id: InputId, recordProcessor: RecordProcessor, resourceConfig: ResourceConfig = ResourceConfig.empty):
+  def read(id: InputId, recordProcessor: RecordProcessor[Record],
+           resourceConfig: ResourceConfig = ResourceConfig.empty):
   Either[Snag, Map[String, Seq[Region]]] = {
     id.newReadChannelDisposable(resourceConfig).useUp { readChannel =>
       val bufferSize = 10000

@@ -2,24 +2,24 @@ package lunaris.streams
 
 import org.broadinstitute.yootilz.core.snag.Snag
 
-trait RecordProcessor extends (Either[Snag, Record] => Either[Snag, Option[Record]]){
+trait RecordProcessor[T] extends (Either[Snag, T] => Either[Snag, Option[T]]){
 
 }
 
 object RecordProcessor {
-  val failOnFaultyRecord: RecordProcessor = {
+  def failOnFaultyRecord[T]: RecordProcessor[T] = {
     case Left(snag) => Left(snag)
     case Right(record) => Right(Some(record))
   }
-  val ignoreFaultyRecords: RecordProcessor = {
+  def ignoreFaultyRecords[T]: RecordProcessor[T] = {
     case Left(_) => Right(None)
     case Right(record) => Right(Some(record))
   }
 
-  def newFaultyRecordsLogger(): RecordProcessor = new RecordProcessor {
+  def newFaultyRecordsLogger[T](): RecordProcessor[T] = new RecordProcessor[T] {
     var snags: Seq[Snag] = Vector.empty
 
-    override def apply(snagOrRecord: Either[Snag, Record]): Either[Snag, Option[Record]] = {
+    override def apply(snagOrRecord: Either[Snag, T]): Either[Snag, Option[T]] = {
       snagOrRecord match {
         case Left(snag) =>
           snags :+= snag

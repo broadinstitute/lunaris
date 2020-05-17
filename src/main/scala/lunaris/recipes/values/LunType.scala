@@ -47,6 +47,10 @@ object LunType {
     override def asString: String = "Stream[Record]"
   }
 
+  object ObjectStreamType extends LunType {
+    override def asString: String = "Stream[Object]"
+  }
+
   case class ArrayType(elementType: LunType) extends LunType {
     override def canBeAssignedFrom(oType: LunType): Boolean = {
       oType match {

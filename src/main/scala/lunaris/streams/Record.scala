@@ -1,21 +1,30 @@
 package lunaris.streams
 
 import lunaris.genomics.Region
-import lunaris.io.{ByteBufferReader, ByteBufferRefiller}
-import lunaris.recipes.values.{LunType, LunValue}
-import lunaris.utils.{DebugUtils, Eitherator, NumberParser}
+import lunaris.io.ByteBufferReader
+import lunaris.recipes.values.LunValue
+import lunaris.utils.{Eitherator, NumberParser}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
 case class Record(header: Header, seq: String, region: Region, values: Seq[String]) {
   def asString: String = values.mkString("\t")
+
   def toObject(idField: String): Either[Snag, LunValue.ObjectValue] = {
-    header.toLunObjectType(idField).map { objectType =>
-      val objectValues =
-        header.colNames.zip(values.map(LunValue.PrimitiveValue.StringValue)).toMap[String, LunValue] +
-          (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(seq)) +
-          (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.start)) +
-          (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.end))
-      LunValue.ObjectValue(objectType, objectValues)
+    header.toLunObjectType(idField).flatMap { objectType =>
+      val idCol = header.colNames.indexOf(idField)
+      if (idCol < 0) {
+        Left(Snag(s"Header line does not contain id field '$idField'."))
+      } else if (idCol >= values.size) {
+        Left(Snag(s"Missing id: should be in column $idCol, but record has only ${values.size} fields."))
+      } else {
+        val specialValues = LunValue.SpecialValues(values(idCol), seq, region.start, region.end)
+        val objectValues =
+          header.colNames.zip(values.map(LunValue.PrimitiveValue.StringValue)).toMap[String, LunValue] +
+            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(seq)) +
+            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.start)) +
+            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.end))
+        Right(LunValue.ObjectValue(specialValues, objectType, objectValues))
+      }
     }
   }
 }
@@ -52,8 +61,8 @@ object Record {
       seq <- pickField(values, "sequence", header.seqCol - 1)
       begin <- parseField(values, "begin", header.beginCol - 1)(NumberParser.parseInt)
       end <-
-        if(header.beginCol == header.endCol) {
-          Right(begin + 1)  // at least, tabix assumes that for indexing
+        if (header.beginCol == header.endCol) {
+          Right(begin + 1) // at least, tabix assumes that for indexing
         } else {
           parseField(values, "end", header.endCol - 1)(NumberParser.parseInt)
         }
@@ -62,7 +71,7 @@ object Record {
 
   def newEitherator(reader: ByteBufferReader,
                     header: Header,
-                    recordProcessor: RecordProcessor): Eitherator[Record] = {
+                    recordProcessor: RecordProcessor[Record]): Eitherator[Record] = {
     val lineEitherator =
       Eitherator.fromGeneratorUntilTag(SnagTag.endOfData)(reader.readLine())
     lineEitherator.process { line =>

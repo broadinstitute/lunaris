@@ -2,19 +2,18 @@ package lunaris.recipes.tools.native
 
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.query.RecordExtractor
-import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
-import lunaris.io.{Disposable, InputId, ResourceConfig}
-import lunaris.recipes.eval.LunWorker.RecordStreamWorker
+import lunaris.io.{InputId, ResourceConfig}
+import lunaris.recipes.eval.LunWorker.{ObjectStreamWorker, RecordStreamWorker}
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
-import lunaris.recipes.{eval, tools}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.LunType
+import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object IndexedDataReader extends tools.Tool {
-  override def resultType: LunType = LunType.RecordStreamType
+object IndexedObjectReader extends tools.Tool {
+  override def resultType: LunType = LunType.ObjectStreamType
 
   object Params {
 
@@ -46,12 +45,13 @@ object IndexedDataReader extends tools.Tool {
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
-      Right(new WorkerMaker(file, index, idField, context))
+      Right(new WorkerMaker(file, index, idField, RecordProcessor.ignoreFaultyRecords, context))
   }
 
   class WorkerMaker(file: InputId,
                     index: InputId,
                     idField: String,
+                    recordProcessor: RecordProcessor[LunValue.ObjectValue],
                     context: LunCompileContext) extends eval.WorkerMaker {
     private var nOrdersField: Int = 0
 
@@ -67,10 +67,12 @@ object IndexedDataReader extends tools.Tool {
     val dataWithIndex: BlockGzippedWithIndex = BlockGzippedWithIndex(file, index)
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
-      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
-        Some[RecordStreamWorker]((resourceConfig: ResourceConfig) =>
-          RecordExtractor.extract(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords,
-            resourceConfig))
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[ObjectStreamWorker] =
+        Some[ObjectStreamWorker]((resourceConfig: ResourceConfig) => {
+          RecordExtractor.extractRecords(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords,
+            resourceConfig).map(_.map(_.recordEtor.process(record => recordProcessor(record.toObject(idField)))))
+        })
+
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }

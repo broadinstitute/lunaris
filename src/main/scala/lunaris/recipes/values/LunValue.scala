@@ -12,7 +12,7 @@ sealed trait LunValue {
   def castTo(newType: LunType): Either[Snag, LunValue] = {
     if (newType == lunType) {
       Right(this)
-    } else if(newType == LunType.UnitType) {
+    } else if (newType == LunType.UnitType) {
       Right(LunValue.PrimitiveValue.UnitValue)
     } else {
       Left(snagCannotCastTo(newType))
@@ -131,11 +131,14 @@ object LunValue {
     }
   }
 
-  case class ObjectValue(lunType: LunType.ObjectType, values: Map[String, LunValue]) extends LunValue {
+  case class SpecialValues(id: String, chrom: String, begin: Int, end: Int)
+
+  case class ObjectValue(specialValues: SpecialValues, lunType: LunType.ObjectType,
+                         values: Map[String, LunValue]) extends LunValue {
     override def castTo(newType: LunType): Either[Snag, LunValue] = {
       newType match {
         case newObjectType: LunType.ObjectType =>
-          if(newObjectType.canBeAssignedFrom(lunType)) {
+          if (newObjectType.canBeAssignedFrom(lunType)) {
             val snagOrNewValues = EitherSeqUtils.traverse(values.toSeq) { entry =>
               val key = entry._1
               val value = entry._2
@@ -144,7 +147,7 @@ object LunValue {
                 case None => Right((key, value))
               }
             }
-            snagOrNewValues.map(newValues => ObjectValue(newObjectType, newValues.toMap))
+            snagOrNewValues.map(newValues => ObjectValue(specialValues, newObjectType, newValues.toMap))
           } else {
             Left(snagCannotCastTo(newType))
           }
@@ -152,6 +155,15 @@ object LunValue {
         case _ => Left(snagCannotCastTo(newType))
       }
     }
+
+    def id: String = specialValues.id
+
+    def chrom: String = specialValues.chrom
+
+    def begin: Int = specialValues.begin
+
+    def end: Int = specialValues.end
+
     def keepOnlyPrimitiveFields: ObjectValue = {
       val fieldsNew = lunType.fields.filter(field => lunType.elementTypes.get(field).exists(_.isPrimitive))
       copy(lunType = lunType.copy(fields = fieldsNew))

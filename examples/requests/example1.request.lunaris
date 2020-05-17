@@ -12,11 +12,11 @@
     "read" : {
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz",
       "idField" : "varId",
-      "tool" : "IndexedDataReader"
+      "tool" : "IndexedObjectReader"
     },
     "write" : {
       "from" : "read",
-      "tool" : "TSVWriter"
+      "tool" : "JSONWriter"
     }
   }
 }
