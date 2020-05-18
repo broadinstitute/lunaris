@@ -55,6 +55,8 @@ object IndexedObjectReader extends tools.Tool {
                     context: LunCompileContext) extends eval.WorkerMaker {
     private var nOrdersField: Int = 0
 
+    override def nOrders: Int = nOrdersField
+
     override def orderAnotherWorker: Either[Snag, WorkerMaker.Receipt] = {
       if (nOrdersField == 0) {
         nOrdersField = 1
@@ -76,8 +78,6 @@ object IndexedObjectReader extends tools.Tool {
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }
-
-    override def nOrders: Int = nOrdersField
   }
 
 }
