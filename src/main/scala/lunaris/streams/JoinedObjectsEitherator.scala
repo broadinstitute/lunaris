@@ -1,6 +1,7 @@
 package lunaris.streams
 
 import lunaris.recipes.values.LunValue.ObjectValue
+import lunaris.streams.JoinedObjectsEitherator.ObjectOrdering
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -26,7 +27,11 @@ class JoinedObjectsEitherator(objectEtor1: Eitherator[ObjectValue],
         (next1, next2) match {
           case (Left(snag), _) => Left(snag)
           case (_, Left(snag)) => Left(snag)
-          case (Right(Some(object1)), Right(Some(object2))) => ???
+          case (Right(Some(object1)), Right(Some(object2))) =>
+            val objectComparison = ObjectOrdering.compare(object1, object2)
+            if(objectComparison == 0) {
+
+            }
         }
   }
 }
@@ -34,9 +39,11 @@ class JoinedObjectsEitherator(objectEtor1: Eitherator[ObjectValue],
 object JoinedObjectsEitherator {
   object ObjectOrdering extends Ordering[ObjectValue] {
     override def compare(object1: ObjectValue, object2: ObjectValue): Int = {
-      object1.chrom
-
-      ???
+      var comparison: Int = object1.chrom.compare(object2.chrom)
+      if(comparison == 0) { comparison =  object1.begin - object2.begin }
+      if(comparison == 0) { comparison =  object1.end - object2.end }
+      if(comparison == 0) { comparison =  object1.id.compareTo(object2.id) }
+      comparison
     }
   }
 }
