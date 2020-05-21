@@ -1,12 +1,12 @@
 package lunaris.streams
 
-import lunaris.genomics.Region
+import lunaris.genomics.{Locus, Region}
 import lunaris.io.ByteBufferReader
 import lunaris.recipes.values.LunValue
 import lunaris.utils.{Eitherator, NumberParser}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
-case class Record(header: Header, seq: String, region: Region, values: Seq[String]) {
+case class Record(header: Header, locus: Locus, values: Seq[String]) {
   def asString: String = values.mkString("\t")
 
   def toObject(idField: String): Either[Snag, LunValue.ObjectValue] = {
@@ -17,13 +17,13 @@ case class Record(header: Header, seq: String, region: Region, values: Seq[Strin
       } else if (idCol >= values.size) {
         Left(Snag(s"Missing id: should be in column $idCol, but record has only ${values.size} fields."))
       } else {
-        val specialValues = LunValue.SpecialValues(values(idCol), seq, region.start, region.end)
+        val id = values(idCol)
         val objectValues =
           header.colNames.zip(values.map(LunValue.PrimitiveValue.StringValue)).toMap[String, LunValue] +
-            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(seq)) +
-            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.start)) +
-            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(region.end))
-        Right(LunValue.ObjectValue(specialValues, objectType, objectValues))
+            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(locus.chrom)) +
+            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(locus.region.begin)) +
+            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(locus.region.end))
+        Right(LunValue.ObjectValue(id, locus, objectType, objectValues))
       }
     }
   }
@@ -66,7 +66,7 @@ object Record {
         } else {
           parseField(values, "end", header.endCol - 1)(NumberParser.parseInt)
         }
-    } yield Record(header, seq, Region(begin, end), values)
+    } yield Record(header, Locus(seq, Region(begin, end)), values)
   }
 
   def newEitherator(reader: ByteBufferReader,

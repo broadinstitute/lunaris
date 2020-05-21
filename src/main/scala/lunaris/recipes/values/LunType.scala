@@ -84,6 +84,13 @@ object LunType {
       val typesString = elementTypes.collect { case (key, value) => s"$key -> ${value.asString}" }.mkString(", ")
       s"Object[$typesString]"
     }
+
+    def joinWith(oType: ObjectType): ObjectType = {
+      val fieldsSet = fields.toSet
+      val fieldsNew = fields ++ oType.fields.filter(!fieldsSet(_))
+      val elementTypesNew = oType.elementTypes ++ elementTypes
+      ObjectType(specialFields, fieldsNew, elementTypesNew)
+    }
   }
 
   object ObjectType {

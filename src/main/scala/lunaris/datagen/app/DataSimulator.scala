@@ -39,8 +39,9 @@ object DataSimulator {
       new PrintWriter(System.out)
     }
     val cols: Seq[Col] = Seq(
-      Col("chrom", _.locus.chromosome.asString),
-      Col("pos", _.locus.pos.toString),
+      Col("chrom", _.locus.chrom),
+      Col("pos", _.locus.region.begin.toString),
+      Col("pos", _.locus.region.end.toString),
       Col("absPos", _.absPos.toString),
       Col("MAF", _ => (random.nextDouble() * random.nextDouble()).toString),
       Col("p-value", _ => (random.nextDouble() * random.nextDouble() * random.nextDouble()).toString),

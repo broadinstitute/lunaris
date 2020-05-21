@@ -42,7 +42,7 @@ object RecordExtractor {
                   Record.newEitherator(dataReader, header, recordProcessor).filter { record =>
                     val sequence = chunkWithSequenceAndRegions.name
                     val regions = chunkWithSequenceAndRegions.regions
-                    record.seq == sequence && regions.exists(_.overlaps(record.region))
+                    record.locus.chrom == sequence && regions.exists(_.overlaps(record.locus.region))
                   }
                 }
                 Right(HeaderAndRecordEtor(header, recordsEtor))

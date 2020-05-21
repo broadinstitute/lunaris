@@ -11,10 +11,10 @@ object TBIIntervals {
   def intervalEnd(iInterval: Int): Int = (iInterval + 1) * intervalSize
 
   def intervalOverlapsRegion(iInterval: Int, region: Region): Boolean = {
-    intervalStart(iInterval) < region.end && intervalEnd(iInterval) > region.start
+    intervalStart(iInterval) < region.end && intervalEnd(iInterval) > region.begin
   }
 
-  def firstOverlappingIntervalFor(region: Region): Int = region.start >> 14
+  def firstOverlappingIntervalFor(region: Region): Int = region.begin >> 14
 
   def trimChunks(chunks: Seq[TBIChunk], offset: TBIVirtualFileOffset): Seq[TBIChunk] = {
     chunks.flatMap { chunk =>

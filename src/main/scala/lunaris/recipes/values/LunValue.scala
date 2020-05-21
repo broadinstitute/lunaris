@@ -1,5 +1,6 @@
 package lunaris.recipes.values
 
+import lunaris.genomics.Locus
 import lunaris.io.{InputId, OutputId}
 import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -131,9 +132,7 @@ object LunValue {
     }
   }
 
-  case class SpecialValues(id: String, chrom: String, begin: Int, end: Int)
-
-  case class ObjectValue(specialValues: SpecialValues, lunType: LunType.ObjectType,
+  case class ObjectValue(id: String, locus: Locus, lunType: LunType.ObjectType,
                          values: Map[String, LunValue]) extends LunValue {
     override def castTo(newType: LunType): Either[Snag, LunValue] = {
       newType match {
@@ -147,7 +146,7 @@ object LunValue {
                 case None => Right((key, value))
               }
             }
-            snagOrNewValues.map(newValues => ObjectValue(specialValues, newObjectType, newValues.toMap))
+            snagOrNewValues.map(newValues => ObjectValue(id, locus, newObjectType, newValues.toMap))
           } else {
             Left(snagCannotCastTo(newType))
           }
@@ -156,17 +155,19 @@ object LunValue {
       }
     }
 
-    def id: String = specialValues.id
-
-    def chrom: String = specialValues.chrom
-
-    def begin: Int = specialValues.begin
-
-    def end: Int = specialValues.end
-
     def keepOnlyPrimitiveFields: ObjectValue = {
       val fieldsNew = lunType.fields.filter(field => lunType.elementTypes.get(field).exists(_.isPrimitive))
       copy(lunType = lunType.copy(fields = fieldsNew))
+    }
+
+    def joinWith(oObject: ObjectValue): Either[Snag, ObjectValue] = {
+      if(id != oObject.id) {
+        Left(Snag(s"Can only join objects with same id, but ${oObject.id} is different from $id."))
+      } else if(locus != oObject.locus) {
+        Left(Snag(s"Can only join objects with same locus, but ${oObject.locus} is different from $locus."))
+      } else {
+        Right(ObjectValue(id, locus, lunType.joinWith(oObject.lunType), oObject.values ++ values))
+      }
     }
   }
 

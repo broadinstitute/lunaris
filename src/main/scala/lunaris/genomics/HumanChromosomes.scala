@@ -46,11 +46,11 @@ object HumanChromosomes {
 
   def locusToAbsPos(locus: Locus): Long = {
     val chromIter = all.iterator
-    var absPos: Long = locus.pos
+    var absPos: Long = locus.region.begin
     var foundChrom = false
     while(chromIter.hasNext && !foundChrom) {
       val chrom = chromIter.next()
-      if(chrom == locus.chromosome) {
+      if(chrom.asString == locus.chrom) {
         foundChrom = true
       } else {
         absPos += sizes(chrom)
@@ -72,7 +72,7 @@ object HumanChromosomes {
         chromOpt = Some(chrom)
       }
     }
-    chromOpt.map(Locus(_, pos))
+    chromOpt.map(chromosome => Locus(chromosome.asString, Region(pos.toInt, pos.toInt)))
   }
 
 }

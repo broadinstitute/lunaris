@@ -24,7 +24,7 @@ object RequestExamples {
 
   val example1: Request =
     Request("example1",
-      Map("1" -> Seq(Region(100000, 200000))),
+      Map("2" -> Seq(Region(100000, 110000)), "10" -> Seq(Region(100000, 110000))),
       Recipe(Map(
         "read" -> ToolCall(IndexedObjectReader, Map(
           IndexedObjectReader.Params.Keys.file ->

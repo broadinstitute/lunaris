@@ -60,7 +60,7 @@ object TBIBins {
   */
 
   def findBinForRegion(region: Region): Int = {
-    val beg = region.start
+    val beg = region.begin
     val end = region.end - 1
     if (beg >> 14 == end >> 14) {
       ((1 << 15) - 1) / 7 + (beg >> 14)
@@ -94,7 +94,7 @@ object TBIBins {
    */
 
   def binsOverlappingRegion(region: Region): Set[Int] = {
-    val rbeg = region.start
+    val rbeg = region.begin
     val rend = region.end - 1
     (
       Seq(0) ++

@@ -25,9 +25,9 @@ object BedReader {
         case Right(header) =>
           var regionsBySeq: Map[String, mutable.Builder[Region, Seq[Region]]] = Map.empty
           Record.newEitherator(reader, header, recordProcessor).foreach { record =>
-            val regionsForSeq = regionsBySeq.getOrElse(record.seq, Seq.newBuilder[Region])
-            regionsForSeq += record.region
-            regionsBySeq = regionsBySeq + (record.seq -> regionsForSeq)
+            val regionsForSeq = regionsBySeq.getOrElse(record.locus.chrom, Seq.newBuilder[Region])
+            regionsForSeq += record.locus.region
+            regionsBySeq = regionsBySeq + (record.locus.chrom -> regionsForSeq)
           } match {
             case Left(snag) => Left(snag)
             case Right(_) => Right(regionsBySeq.view.mapValues(_.result()).toMap)
