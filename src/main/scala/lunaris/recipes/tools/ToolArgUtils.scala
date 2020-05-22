@@ -36,6 +36,8 @@ object ToolArgUtils {
     arg match {
       case ToolCall.RefArg(param, _) =>
         Left(Snag(s"Argument '${param.name}' is a reference, but should be a value."))
+      case ToolCall.RefArrayArg(param, _) =>
+        Left(Snag(s"Argument '${param.name}' is a reference array, but should be a value."))
       case ToolCall.ValueArg(_, value) => extract(value)
     }
   }
@@ -73,13 +75,32 @@ object ToolArgUtils {
   def asRef(argName: String, args: Map[String, ToolCall.Arg]): Either[Snag, String] = {
     for {
       arg <- args.get(argName).map(Right(_)).getOrElse(Left(Snag(s"Missing argument '$argName'.'")))
-      string <- asRef(arg)
-    } yield string
+      ref <- asRef(arg)
+    } yield ref
+  }
+
+  def asRefs(argName: String, args: Map[String, ToolCall.Arg]): Either[Snag, Seq[String]] = {
+    for {
+      arg <- args.get(argName).map(Right(_)).getOrElse(Left(Snag(s"Missing argument '$argName'.'")))
+      refs <- asRefs(arg)
+    } yield refs
   }
 
   def asRef(arg: ToolCall.Arg): Either[Snag, String] = {
     arg match {
       case ToolCall.RefArg(_, ref) => Right(ref)
+      case ToolCall.RefArrayArg(param, _) =>
+        Left(Snag(s"Argument '${param.name}' should be a reference, but is a reference array."))
+      case ToolCall.ValueArg(param, value) =>
+        Left(Snag(s"Argument '${param.name}' should be a reference, but is a value ($value)."))
+    }
+  }
+
+  def asRefs(arg: ToolCall.Arg): Either[Snag, Seq[String]] = {
+    arg match {
+      case ToolCall.RefArrayArg(param, refs) => Right(refs)
+      case ToolCall.RefArg(param, _) =>
+        Left(Snag(s"Argument '${param.name}' should be a reference array, but is a reference."))
       case ToolCall.ValueArg(param, value) =>
         Left(Snag(s"Argument '${param.name}' should be a reference, but is a value ($value)."))
     }

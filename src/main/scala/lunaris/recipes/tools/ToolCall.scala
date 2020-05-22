@@ -18,4 +18,6 @@ object ToolCall {
 
   case class RefArg(param: Param, ref: String) extends Arg
 
+  case class RefArrayArg(param: Param, refs: Seq[String]) extends Arg
+
 }

@@ -1,6 +1,7 @@
 package lunaris.recipes
 
 import lunaris.recipes.tools.ToolCall
+import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecipeChecker {
@@ -72,6 +73,9 @@ object RecipeChecker {
         val (argType, paramType) = arg match {
           case ToolCall.ValueArg(param, value) => (value.lunType, param.lunType)
           case ToolCall.RefArg(param, ref) => (recipe.calls(ref).tool.resultType, param.lunType)
+          case ToolCall.RefArrayArg(param, refs) =>
+            val argType = LunType.ArrayType.fromElementTypes(refs.map(ref => recipe.calls(ref).tool.resultType))
+            (argType, param.lunType)
         }
         if (!paramType.canBeAssignedFrom(argType)) {
           snagOpt =

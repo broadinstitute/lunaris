@@ -5,6 +5,14 @@ trait LunType {
   def canBeAssignedFrom(oType: LunType): Boolean = oType == this
 
   def asString: String
+
+  def lub(oType: LunType): LunType = {
+    if(oType == this) {
+      this
+    } else {
+      LunType.AnyType
+    }
+  }
 }
 
 object LunType {
@@ -60,6 +68,21 @@ object LunType {
     }
 
     override def asString: String = s"Array[${elementType.asString}]"
+  }
+
+  object ArrayType {
+    def fromElementTypes(elementTypes: Seq[LunType]): ArrayType = {
+      val elementType = if(elementTypes.isEmpty) {
+        AnyType
+      } else {
+        var lub = elementTypes.head
+        for(type2 <- elementTypes.tail) {
+          lub = lub.lub(type2)
+        }
+        lub
+      }
+      ArrayType(elementType)
+    }
   }
 
   case class ObjectSpecialFields(id: String, chrom: String, begin: String, end: String)

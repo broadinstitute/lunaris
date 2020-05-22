@@ -23,13 +23,14 @@ object RequestJson {
     var fields: Map[String, Json] = Map.empty
     for ((key, arg) <- toolCall.args) {
       val jsonOpt = arg match {
-        case ToolCall.ValueArg(_, PrimitiveValue.StringValue(value)) => Some(Json.fromString(value))
-        case ToolCall.ValueArg(_, PrimitiveValue.FileValue(value)) => Some(Json.fromString(value))
-        case ToolCall.ValueArg(_, PrimitiveValue.IntValue(value)) => Some(Json.fromLong(value))
-        case ToolCall.ValueArg(_, PrimitiveValue.FloatValue(value)) => Json.fromDouble(value)
-        case ToolCall.ValueArg(_, PrimitiveValue.BoolValue(value)) => Some(Json.fromBoolean(value))
+        case ToolCall.ValueArg(_, PrimitiveValue.StringValue(value)) => Some(value.asJson)
+        case ToolCall.ValueArg(_, PrimitiveValue.FileValue(value)) => Some(value.asJson)
+        case ToolCall.ValueArg(_, PrimitiveValue.IntValue(value)) => Some(value.asJson)
+        case ToolCall.ValueArg(_, PrimitiveValue.FloatValue(value)) => Some(Json.fromDoubleOrString(value))
+        case ToolCall.ValueArg(_, PrimitiveValue.BoolValue(value)) => Some(value.asJson)
         case ToolCall.ValueArg(_, PrimitiveValue.UnitValue) => None
         case ToolCall.RefArg(_, ref) => Some(Json.fromString(ref))
+        case ToolCall.RefArrayArg(_, refs) => Some(refs.asJson)
       }
       jsonOpt.foreach(json => fields += (key -> json))
     }
@@ -69,6 +70,8 @@ object RequestJson {
                       lunValueResult.map(ToolCall.ValueArg(valueParam, _))
                     case Some(refParam: Tool.RefParam) =>
                       argCursor.as[String].map(ToolCall.RefArg(refParam, _))
+                    case Some(refArrayParam: Tool.RefArrayParam) =>
+                      argCursor.as[Seq[String]].map(ToolCall.RefArrayArg(refArrayParam, _))
                   }
                   argResult match {
                     case Left(decodingFailure) => failureOpt = Some(decodingFailure)

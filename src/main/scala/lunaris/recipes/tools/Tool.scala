@@ -33,4 +33,5 @@ object Tool {
 
   case class RefParam(name: String, lunType: LunType, isRequired: Boolean) extends Param
 
+  case class RefArrayParam(name: String, lunType: LunType, isRequired: Boolean) extends Param
 }
