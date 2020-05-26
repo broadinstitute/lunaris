@@ -37,6 +37,12 @@ object Disposable {
   def forCloseable[C <: Closeable](closeable: C): Disposable[C] =
     Disposable[C](closeable)(Disposer.ForCloseable(closeable))
 
+  def sequence[A](disposables: Seq[Disposable[A]]): Disposable[Seq[A]] = {
+    val as = disposables.map(_.a)
+    val disposerCombined = Disposer.Composite(disposables.map(_.disposer))
+    Disposable(as)(disposerCombined)
+  }
+
   trait Disposer {
     def dispose(): Unit
 

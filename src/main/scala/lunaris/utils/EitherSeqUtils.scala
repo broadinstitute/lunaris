@@ -3,6 +3,13 @@ package lunaris.utils
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object EitherSeqUtils {
+  def sequence[A](snagOrAs: Seq[Either[Snag, A]]): Either[Snag, Seq[A]] = {
+    snagOrAs.find(_.isLeft) match  {
+      case Some(left) => Left(left.left.toOption.get)
+      case None => Right(snagOrAs.map(_.toOption.get))
+    }
+  }
+
   def foreach[A, B](xs: Seq[A])(f: A => Either[Snag, B]): Either[Snag, Unit] = {
     val i = xs.iterator
     while (i.hasNext) f(i.next) match {

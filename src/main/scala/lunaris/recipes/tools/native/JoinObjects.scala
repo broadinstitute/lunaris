@@ -75,7 +75,7 @@ object JoinObjects extends tools.Tool {
         Some(new ObjectStreamWorker {
           override def getSnagOrStreamDisposable(resourceConfig: ResourceConfig):
           Disposable[Either[Snag, Eitherator[LunValue.ObjectValue]]] = {
-            fromWorkers.map(_.getSnagOrStreamDisposable(resourceConfig))
+            val x = fromWorkers.map(_.getSnagOrStreamDisposable(resourceConfig))
             ??? // TODO
           }
         })
