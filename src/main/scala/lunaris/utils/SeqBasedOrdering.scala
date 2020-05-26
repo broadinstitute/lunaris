@@ -28,7 +28,7 @@ object SeqBasedOrdering {
     snagOpt
   }
 
-  def combine[A](aSeqs: Iterable[Seq[A]]): Either[Snag, SeqBasedOrdering[A]] = {
+  def combinedSeq[A](aSeqs: Iterable[Seq[A]]): Either[Snag, Seq[A]] = {
     if(aSeqs.isEmpty) {
       Left(Snag("No Seqs provided."))
     } else {
@@ -42,7 +42,7 @@ object SeqBasedOrdering {
       }
       snagOpt match {
         case Some(snag) => Left(snag)
-        case None => Right(SeqBasedOrdering(aSeq))
+        case None => Right(aSeq)
       }
     }
   }

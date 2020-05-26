@@ -3,11 +3,11 @@ package lunaris.recipes.tools.native
 import lunaris.io.{Disposable, ResourceConfig}
 import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
-import lunaris.recipes.tools.native.JSONWriter.{Params, WorkerMaker}
-import lunaris.recipes.{eval, tools}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue}
-import lunaris.utils.{EitherSeqUtils, Eitherator}
+import lunaris.recipes.values.{LunType, ObjectStream}
+import lunaris.recipes.{eval, tools}
+import lunaris.streams.JoinedObjectsEitherator
+import lunaris.utils.{EitherSeqUtils, SeqBasedOrdering}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object JoinObjects extends tools.Tool {
@@ -17,13 +17,9 @@ object JoinObjects extends tools.Tool {
 
     object Keys {
       val from: String = "from"
-      val from1: String = "from1"
-      val from2: String = "from2"
     }
 
     val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.ArrayType(LunType.ObjectStreamType), isRequired = true)
-    val from1: Tool.RefParam = Tool.RefParam(Keys.from1, LunType.ObjectStreamType, isRequired = true)
-    val from2: Tool.RefParam = Tool.RefParam(Keys.from2, LunType.ObjectStreamType, isRequired = true)
   }
 
   override def params: Seq[Tool.Param] = Seq(Params.from)
@@ -31,12 +27,10 @@ object JoinObjects extends tools.Tool {
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
       from <- ToolArgUtils.asRefs(Params.Keys.from, args)
-      from1 <- ToolArgUtils.asRef(Params.Keys.from1, args)
-      from2 <- ToolArgUtils.asRef(Params.Keys.from2, args)
-    } yield ToolInstance(from, from1, from2)
+    } yield ToolInstance(from)
   }
 
-  case class ToolInstance(from: Seq[String], from1: String, from2: String) extends tools.ToolInstance {
+  case class ToolInstance(from: Seq[String]) extends tools.ToolInstance {
     override def refs: Map[String, String] = {
       from.zipWithIndex.collect {
         case (ref, index) => ("from" + index, ref)
@@ -49,7 +43,7 @@ object JoinObjects extends tools.Tool {
         workers.get(ref) match {
           case Some(fromWorker: ObjectStreamWorker) => Right(fromWorker)
           case Some(_) => Left(Snag(s"Reference $ref for '${Params.Keys.from}' is not the correct type."))
-          case None => Left(Snag(s"No value available for reference $ref for ${Params.Keys.from2}."))
+          case None => Left(Snag(s"No value available for reference $ref for ${Params.Keys.from}."))
         }
       }.map(new WorkerMaker(_))
     }
@@ -74,9 +68,14 @@ object JoinObjects extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = {
         Some(new ObjectStreamWorker {
           override def getSnagOrStreamDisposable(resourceConfig: ResourceConfig):
-          Disposable[Either[Snag, Eitherator[LunValue.ObjectValue]]] = {
-            val x = fromWorkers.map(_.getSnagOrStreamDisposable(resourceConfig))
-            ??? // TODO
+          Disposable[Either[Snag, ObjectStream]] = {
+            val snagOrStreamsDisposables = fromWorkers.map(_.getSnagOrStreamDisposable(resourceConfig))
+            Disposable.sequence(snagOrStreamsDisposables).map(EitherSeqUtils.sequence).map(_.flatMap { streams =>
+              ObjectStream.Meta.sequence(streams.map(_.meta)).map { meta =>
+                val etor = new JoinedObjectsEitherator(streams.map(_.objects), SeqBasedOrdering(meta.chroms))
+                ObjectStream(meta, etor)
+              }
+            })
           }
         })
       }

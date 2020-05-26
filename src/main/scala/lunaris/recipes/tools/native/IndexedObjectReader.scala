@@ -7,7 +7,7 @@ import lunaris.recipes.eval.LunWorker.{ObjectStreamWorker, RecordStreamWorker}
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.recipes.values.{LunType, LunValue, ObjectStream}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -72,7 +72,10 @@ object IndexedObjectReader extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[ObjectStreamWorker] =
         Some[ObjectStreamWorker]((resourceConfig: ResourceConfig) => {
           RecordExtractor.extractRecords(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords,
-            resourceConfig).map(_.map(_.recordEtor.process(record => recordProcessor(record.toObject(idField)))))
+            resourceConfig).map(_.map{ headerAndRecordEtor =>
+            val objectEtor = headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))
+            ObjectStream(headerAndRecordEtor.meta, objectEtor)
+          })
         })
 
 

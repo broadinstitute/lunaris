@@ -100,11 +100,11 @@ object JSONWriter extends Tool {
               case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
                 Disposable.forCloseable(new  PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))).useUp {
                   writer =>
-                    writeObjects(objectEter, context.observer)(writer.println)
+                    writeObjects(objectEter.objects, context.observer)(writer.println)
                 }
               }
               case None =>
-                writeObjects(objectEter, context.observer)(println)
+                writeObjects(objectEter.objects, context.observer)(println)
             }
         }
       })
