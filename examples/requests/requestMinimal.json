@@ -1,16 +1,10 @@
 {
-  "id" : "example1",
+  "id" : "requestMinimal",
   "regions" : {
-    "2" : [
+    "1" : [
       {
         "begin" : 100000,
-        "end" : 110000
-      }
-    ],
-    "10" : [
-      {
-        "begin" : 100000,
-        "end" : 110000
+        "end" : 200000
       }
     ]
   },
@@ -22,6 +16,7 @@
     },
     "write" : {
       "from" : "read",
+      "file" : "examples/responses/responseMinimal.json",
       "tool" : "JSONWriter"
     }
   }

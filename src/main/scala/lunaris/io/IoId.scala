@@ -18,6 +18,7 @@ trait IoId {
   override def toString: String = asString
 
   def +(suffix: String): IoId
+  def /(suffix: String): IoId
 }
 
 trait InputId extends IoId {
@@ -28,6 +29,7 @@ trait InputId extends IoId {
   Disposable[ReadableByteChannel]
 
   def +(suffix: String): InputId
+  def /(suffix: String): InputId
 }
 
 object InputId {
@@ -41,6 +43,7 @@ trait OutputId extends IoId {
   Disposable[WritableByteChannel]
 
   def +(suffix: String): OutputId
+  def /(suffix: String): OutputId
 }
 
 object OutputId {
@@ -75,6 +78,7 @@ case class FileInputId(file: File) extends InputId with FileIoId {
   }
 
   override def +(suffix: String): FileInputId = FileInputId(File(file.toString + suffix))
+  override def /(suffix: String): FileInputId = FileInputId(File(file.toString + "/" + suffix))
 }
 
 case class FileOutputId(file: File) extends OutputId with FileIoId {
@@ -86,6 +90,7 @@ case class FileOutputId(file: File) extends OutputId with FileIoId {
   }
 
   override def +(suffix: String): FileOutputId = FileOutputId(File(file.toString + suffix))
+  override def /(suffix: String): FileOutputId = FileOutputId(File(file.toString + "/" + suffix))
 }
 
 trait GcpBlobId extends IoId {
@@ -145,6 +150,7 @@ case class GcpBlobInputId(blobId: BlobId) extends GcpBlobId with InputId {
   }
 
   override def +(suffix: String): GcpBlobInputId = GcpBlobInputId(GcpBlobId.addSuffix(blobId, suffix))
+  override def /(suffix: String): GcpBlobInputId = GcpBlobInputId(GcpBlobId.addSuffix(blobId, "/" + suffix))
 }
 
 case class GcpBlobOutputId(blobId: BlobId) extends GcpBlobId with OutputId {
@@ -158,5 +164,6 @@ case class GcpBlobOutputId(blobId: BlobId) extends GcpBlobId with OutputId {
   }
 
   override def +(suffix: String): GcpBlobOutputId = GcpBlobOutputId(GcpBlobId.addSuffix(blobId, suffix))
+  override def /(suffix: String): GcpBlobOutputId = GcpBlobOutputId(GcpBlobId.addSuffix(blobId, "/" + suffix))
 }
 

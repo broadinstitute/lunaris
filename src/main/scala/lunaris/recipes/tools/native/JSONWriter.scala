@@ -25,7 +25,7 @@ object JSONWriter extends Tool {
     }
 
     val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.ObjectStreamType, isRequired = true)
-    val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.StringType, isRequired = false)
+    val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.FileType, isRequired = false)
   }
 
   override def params: Seq[Tool.Param] = Seq(Params.from, Params.file)
