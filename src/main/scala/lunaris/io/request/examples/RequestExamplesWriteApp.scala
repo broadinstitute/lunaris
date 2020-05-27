@@ -7,7 +7,7 @@ import lunaris.utils.IOUtils
 object RequestExamplesWriteApp {
 
   val defaultExamplesFolder: OutputId = OutputId("examples/requests")
-  val examples: Seq[RequestExample] = Seq(RequestExampleMinimal)
+  val examples: Seq[RequestExample] = Seq(RequestExampleMinimal, RequestExampleMoreRegions)
 
   def main(args: Array[String]): Unit = {
     val outputFolder =
