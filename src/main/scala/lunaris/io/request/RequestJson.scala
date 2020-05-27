@@ -8,9 +8,10 @@ import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import lunaris.recipes.Recipe
 import lunaris.recipes.tools.native.ToolRegistry
 import lunaris.recipes.tools.{Tool, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.recipes.values.{LunType, LunValue, LunValueJson}
 import lunaris.recipes.values.LunValue.PrimitiveValue
 import org.broadinstitute.yootilz.core.snag.Snag
+import lunaris.recipes.values.LunValueJson.valueEncoder
 
 object RequestJson {
 
@@ -22,18 +23,12 @@ object RequestJson {
   implicit val toolCallEncoder: Encoder[ToolCall] = (toolCall: ToolCall) => {
     var fields: Map[String, Json] = Map.empty
     for ((key, arg) <- toolCall.args) {
-      val jsonOpt = arg match {
-        case ToolCall.ValueArg(_, PrimitiveValue.StringValue(value)) => Some(value.asJson)
-        case ToolCall.ValueArg(_, PrimitiveValue.FileValue(value)) => Some(value.asJson)
-        case ToolCall.ValueArg(_, PrimitiveValue.IntValue(value)) => Some(value.asJson)
-        case ToolCall.ValueArg(_, PrimitiveValue.FloatValue(value)) => Some(Json.fromDoubleOrString(value))
-        case ToolCall.ValueArg(_, PrimitiveValue.BoolValue(value)) => Some(value.asJson)
-        case ToolCall.ValueArg(_, PrimitiveValue.UnitValue) => None
-          //  TODO: non-primitive value argument types
-        case ToolCall.RefArg(_, ref) => Some(Json.fromString(ref))
-        case ToolCall.RefArrayArg(_, refs) => Some(refs.asJson)
+      val json = arg match {
+        case ToolCall.ValueArg(_, value) => value.asJson
+        case ToolCall.RefArg(_, ref) => ref.asJson
+        case ToolCall.RefArrayArg(_, refs) => refs.asJson
       }
-      jsonOpt.foreach(json => fields += (key -> json))
+      fields += (key -> json)
     }
     fields += (toolNameKey -> Json.fromString(toolCall.tool.name))
     Json.fromFields(fields)
@@ -60,21 +55,7 @@ object RequestJson {
                       Left(newDecodingFailure(s"Tool '$toolName' does not expect an argument named '$key'.",
                         cursor))
                     case Some(valueParam: Tool.ValueParam) =>
-                      val lunValueResult: Either[DecodingFailure, LunValue] = valueParam.lunType match {
-                        case LunType.StringType => argCursor.as[String].map(PrimitiveValue.StringValue)
-                        case LunType.FileType => argCursor.as[String].map(PrimitiveValue.FileValue)
-                        case LunType.IntType => argCursor.as[Long].map(PrimitiveValue.IntValue)
-                        case LunType.FloatType => argCursor.as[Double].map(PrimitiveValue.FloatValue)
-                        case LunType.BoolType => argCursor.as[Boolean].map(PrimitiveValue.BoolValue)
-                        case LunType.UnitType => Right(PrimitiveValue.UnitValue)
-                        case LunType.TypeType => argCursor.as[String].flatMap { string =>
-                          LunType.parse(string) match {
-                            case Left(snag) => Left(DecodingFailure(snag.message, argCursor.history))
-                            case Right(lunType) => Right(LunValue.TypeValue(lunType))
-                          }
-                        }
-                      }
-                      lunValueResult.map(ToolCall.ValueArg(valueParam, _))
+                      LunValueJson.decode(argCursor, valueParam.lunType).map(ToolCall.ValueArg(valueParam, _))
                     case Some(refParam: Tool.RefParam) =>
                       argCursor.as[String].map(ToolCall.RefArg(refParam, _))
                     case Some(refArrayParam: Tool.RefArrayParam) =>
