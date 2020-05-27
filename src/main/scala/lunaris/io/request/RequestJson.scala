@@ -8,7 +8,7 @@ import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import lunaris.recipes.Recipe
 import lunaris.recipes.tools.native.ToolRegistry
 import lunaris.recipes.tools.{Tool, ToolCall}
-import lunaris.recipes.values.LunType
+import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -29,6 +29,7 @@ object RequestJson {
         case ToolCall.ValueArg(_, PrimitiveValue.FloatValue(value)) => Some(Json.fromDoubleOrString(value))
         case ToolCall.ValueArg(_, PrimitiveValue.BoolValue(value)) => Some(value.asJson)
         case ToolCall.ValueArg(_, PrimitiveValue.UnitValue) => None
+          //  TODO: non-primitive value argument types
         case ToolCall.RefArg(_, ref) => Some(Json.fromString(ref))
         case ToolCall.RefArrayArg(_, refs) => Some(refs.asJson)
       }
@@ -59,13 +60,19 @@ object RequestJson {
                       Left(newDecodingFailure(s"Tool '$toolName' does not expect an argument named '$key'.",
                         cursor))
                     case Some(valueParam: Tool.ValueParam) =>
-                      val lunValueResult = valueParam.lunType match {
+                      val lunValueResult: Either[DecodingFailure, LunValue] = valueParam.lunType match {
                         case LunType.StringType => argCursor.as[String].map(PrimitiveValue.StringValue)
                         case LunType.FileType => argCursor.as[String].map(PrimitiveValue.FileValue)
                         case LunType.IntType => argCursor.as[Long].map(PrimitiveValue.IntValue)
                         case LunType.FloatType => argCursor.as[Double].map(PrimitiveValue.FloatValue)
                         case LunType.BoolType => argCursor.as[Boolean].map(PrimitiveValue.BoolValue)
                         case LunType.UnitType => Right(PrimitiveValue.UnitValue)
+                        case LunType.TypeType => argCursor.as[String].flatMap { string =>
+                          LunType.parse(string) match {
+                            case Left(snag) => Left(DecodingFailure(snag.message, argCursor.history))
+                            case Right(lunType) => Right(LunValue.TypeValue(lunType))
+                          }
+                        }
                       }
                       lunValueResult.map(ToolCall.ValueArg(valueParam, _))
                     case Some(refParam: Tool.RefParam) =>

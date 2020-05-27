@@ -19,6 +19,18 @@ sealed trait LunValue {
       Left(snagCannotCastTo(newType))
     }
   }
+
+  def asString: Either[Snag, String] = Left(Snag(s"Need value of type String, but type is $lunType."))
+
+  def asInputId: Either[Snag, InputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
+
+  def asOutputId: Either[Snag, OutputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
+
+  def asLong: Either[Snag, Long] = Left(Snag(s"Need value of type Int, but type is $lunType."))
+
+  def asDouble: Either[Snag, Double] = Left(Snag(s"Need value of type Float, but type is $lunType."))
+
+  def asBoolean: Either[Snag, Boolean] = Left(Snag(s"Need value of type Bool, but type is $lunType."))
 }
 
 object LunValue {
@@ -27,18 +39,6 @@ object LunValue {
     def value: Any
 
     override def lunType: LunType.PrimitiveType
-
-    def asString: Either[Snag, String] = Left(Snag(s"Need value of type String, but type is $lunType."))
-
-    def asInputId: Either[Snag, InputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
-
-    def asOutputId: Either[Snag, OutputId] = Left(Snag(s"Need value of type File, but type is $lunType."))
-
-    def asLong: Either[Snag, Long] = Left(Snag(s"Need value of type Int, but type is $lunType."))
-
-    def asDouble: Either[Snag, Double] = Left(Snag(s"Need value of type Float, but type is $lunType."))
-
-    def asBoolean: Either[Snag, Boolean] = Left(Snag(s"Need value of type Bool, but type is $lunType."))
   }
 
   object PrimitiveValue {
@@ -130,6 +130,10 @@ object LunValue {
         case _ => Left(snagCannotCastTo(newType))
       }
     }
+  }
+
+  case class MapValue(values: Map[String, LunValue], valueType: LunType) extends LunValue {
+    override def lunType: LunType = LunType.MapType(valueType)
   }
 
   case class ObjectValue(id: String, locus: Locus, lunType: LunType.ObjectType,

@@ -1,6 +1,5 @@
 package lunaris.recipes.tools
 
-import lunaris.io.ResourceConfig
 import lunaris.recipes.tools.Tool.Param
 import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -29,7 +28,7 @@ object Tool {
     def isRequired: Boolean
   }
 
-  case class ValueParam(name: String, lunType: LunType.PrimitiveType, isRequired: Boolean) extends Param
+  case class ValueParam(name: String, lunType: LunType, isRequired: Boolean) extends Param
 
   case class RefParam(name: String, lunType: LunType, isRequired: Boolean) extends Param
 

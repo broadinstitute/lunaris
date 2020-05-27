@@ -1,7 +1,7 @@
 package lunaris.recipes.tools
 
 import lunaris.recipes.tools.Tool.Param
-import lunaris.recipes.values.LunValue.PrimitiveValue
+import lunaris.recipes.values.LunValue
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class ToolCall(tool: Tool, args: Map[String, ToolCall.Arg]) {
@@ -14,7 +14,7 @@ object ToolCall {
     def param: Tool.Param
   }
 
-  case class ValueArg(param: Param, value: PrimitiveValue) extends Arg
+  case class ValueArg(param: Param, value: LunValue) extends Arg
 
   case class RefArg(param: Param, ref: String) extends Arg
 

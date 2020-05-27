@@ -1,5 +1,7 @@
 package lunaris.recipes.values
 
+import org.broadinstitute.yootilz.core.snag.Snag
+
 trait LunType {
   def isPrimitive: Boolean = false
   def canBeAssignedFrom(oType: LunType): Boolean = oType == this
@@ -16,6 +18,30 @@ trait LunType {
 }
 
 object LunType {
+
+  def parse(string: String): Either[Snag, LunType] = {
+    string match {
+      case "String" => Right(StringType)
+      case "File" => Right(FileType)
+      case "Int" => Right(IntType)
+      case "Float" => Right(FileType)
+      case "Bool" => Right(BoolType)
+      case "Unit" => Right(UnitType)
+      case "Type" => Right(TypeType)
+      case "Stream[Object]" => Right(ObjectStreamType)
+      case "Stream[Record]" => Right(RecordStreamType)
+      case _ =>
+        if(string.startsWith("Array[") && string.endsWith("]")) {
+          val elementTypeString = string.substring(6, string.length - 1)
+          parse(elementTypeString).map(ArrayType(_))
+        } else if(string.startsWith("Map[") && string.endsWith("]")) {
+          val elementTypeString = string.substring(4, string.length - 1)
+          parse(elementTypeString).map(MapType)
+        } else {
+          Left(Snag(s"Don't know how to parse $string into a type."))
+        }
+    }
+  }
 
   sealed trait PrimitiveType extends LunType {
     override def isPrimitive: Boolean = true
@@ -83,6 +109,10 @@ object LunType {
       }
       ArrayType(elementType)
     }
+  }
+
+  case class MapType(valueType: LunType) extends LunType {
+    override def asString: String = s"Map[${valueType.asString}]"
   }
 
   case class ObjectSpecialFields(id: String, chrom: String, begin: String, end: String)
