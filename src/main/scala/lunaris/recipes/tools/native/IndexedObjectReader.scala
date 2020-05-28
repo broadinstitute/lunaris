@@ -39,21 +39,23 @@ object IndexedObjectReader extends tools.Tool {
       file <- ToolArgUtils.asInputId(Params.Keys.file, args)
       index <- ToolArgUtils.asInputIdOr(Params.Keys.index, args, file + ".tbi")
       idField <- ToolArgUtils.asString(Params.Keys.idField, args)
-    } yield ToolInstance(file, index, idField, Map.empty)
+      typesOpt <- ToolArgUtils.asTypesOpt(Params.Keys.types, args)
+    } yield ToolInstance(file, index, idField, typesOpt)
   }
 
-  case class ToolInstance(file: InputId, index: InputId, idField: String, types: Map[String, LunType])
+  case class ToolInstance(file: InputId, index: InputId, idField: String, typesOpt: Option[Map[String, LunType]])
     extends tools.ToolInstance {
     override def refs: Map[String, String] = Map.empty
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
-      Right(new WorkerMaker(file, index, idField, RecordProcessor.ignoreFaultyRecords, context))
+      Right(new WorkerMaker(file, index, idField, typesOpt, RecordProcessor.ignoreFaultyRecords, context))
   }
 
   class WorkerMaker(file: InputId,
                     index: InputId,
                     idField: String,
+                    typesOpt: Option[Map[String, LunType]],
                     recordProcessor: RecordProcessor[LunValue.ObjectValue],
                     context: LunCompileContext) extends eval.WorkerMaker {
     private var nOrdersField: Int = 0
@@ -76,7 +78,19 @@ object IndexedObjectReader extends tools.Tool {
         Some[ObjectStreamWorker]((resourceConfig: ResourceConfig) => {
           RecordExtractor.extractRecords(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords,
             resourceConfig).map(_.map{ headerAndRecordEtor =>
-            val objectEtor = headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))
+            val objectEtor =
+              headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))
+                .map { objectValue =>
+                  typesOpt match {
+                    case Some(types) =>
+                      objectValue.castFieldsTo(types) match {
+                        case Left(_) => objectValue
+                        case Right(objectValueNew) =>
+                          objectValueNew
+                      }
+                    case None => objectValue
+                  }
+                }
             ObjectStream(headerAndRecordEtor.meta, objectEtor)
           })
         })

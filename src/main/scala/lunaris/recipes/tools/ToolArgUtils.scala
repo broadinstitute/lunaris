@@ -1,8 +1,8 @@
 package lunaris.recipes.tools
 
 import lunaris.io.{InputId, OutputId}
-import lunaris.recipes.values.LunValue
-import lunaris.recipes.values.LunValue.PrimitiveValue
+import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object ToolArgUtils {
@@ -99,11 +99,21 @@ object ToolArgUtils {
 
   def asRefs(arg: ToolCall.Arg): Either[Snag, Seq[String]] = {
     arg match {
-      case ToolCall.RefArrayArg(param, refs) => Right(refs)
+      case ToolCall.RefArrayArg(_, refs) => Right(refs)
       case ToolCall.RefArg(param, _) =>
         Left(Snag(s"Argument '${param.name}' should be a reference array, but is a reference."))
       case ToolCall.ValueArg(param, value) =>
         Left(Snag(s"Argument '${param.name}' should be a reference, but is a value ($value)."))
+    }
+  }
+
+  def asTypesOpt(argName: String, args: Map[String, ToolCall.Arg]): Either[Snag, Option[Map[String, LunType]]] = {
+    asOpt[Map[String, LunType]](argName, args) {
+      case LunValue.MapValue(values, LunType.TypeType) =>
+        EitherSeqUtils.traverseMap(values) {
+          case LunValue.TypeValue(lunType) => Right(lunType)
+          case lunValue => Left(Snag(s"Expected Type, but got $lunValue."))
+        }
     }
   }
 

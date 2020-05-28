@@ -24,7 +24,7 @@ object LunType {
       case "String" => Right(StringType)
       case "File" => Right(FileType)
       case "Int" => Right(IntType)
-      case "Float" => Right(FileType)
+      case "Float" => Right(FloatType)
       case "Bool" => Right(BoolType)
       case "Unit" => Right(UnitType)
       case "Type" => Right(TypeType)
@@ -61,10 +61,14 @@ object LunType {
 
   object IntType extends NumberType {
     override val asString: String = "Int"
+
+    override def canBeAssignedFrom(oType: LunType): Boolean = oType == IntType || oType == StringType
   }
 
   object FloatType extends NumberType {
     override val asString: String = "Float"
+
+    override def canBeAssignedFrom(oType: LunType): Boolean = oType == FloatType || oType == StringType
   }
 
   object BoolType extends PrimitiveType {
@@ -143,6 +147,17 @@ object LunType {
       val fieldsNew = fields ++ oType.fields.filter(!fieldsSet(_))
       val elementTypesNew = oType.elementTypes ++ elementTypes
       ObjectType(specialFields, fieldsNew, elementTypesNew)
+    }
+
+    def changeFieldTypesTo(types: Map[String, LunType]): ObjectType = {
+      val eternalTypes =
+        Map(
+          specialFields.id -> LunType.StringType,
+          specialFields.chrom -> LunType.StringType,
+          specialFields.begin -> LunType.IntType,
+          specialFields.end -> LunType.IntType
+        )
+      copy(elementTypes = elementTypes ++ types ++ eternalTypes)
     }
   }
 

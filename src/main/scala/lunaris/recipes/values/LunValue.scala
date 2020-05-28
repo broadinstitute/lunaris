@@ -1,9 +1,8 @@
 package lunaris.recipes.values
 
-import com.google.api.LabelDescriptor.ValueType
 import lunaris.genomics.Locus
 import lunaris.io.{InputId, OutputId}
-import lunaris.utils.EitherSeqUtils
+import lunaris.utils.{EitherSeqUtils, NumberParser}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 sealed trait LunValue {
@@ -57,6 +56,8 @@ object LunValue {
         newType match {
           case LunType.StringType => Right(this)
           case LunType.FileType => Right(LunValue.PrimitiveValue.FileValue(value))
+          case LunType.IntType => NumberParser.parseLong(value).map(LunValue.PrimitiveValue.IntValue)
+          case LunType.FloatType => NumberParser.parseDouble(value).map(LunValue.PrimitiveValue.FloatValue)
           case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
           case _ => Left(snagCannotCastTo(newType))
         }
@@ -155,6 +156,7 @@ object LunValue {
                 case None => Right((key, value))
               }
             }
+            println(snagOrNewValues)
             snagOrNewValues.map(newValues => ObjectValue(id, locus, newObjectType, newValues.toMap))
           } else {
             Left(snagCannotCastTo(newType))
@@ -178,6 +180,9 @@ object LunValue {
         Right(ObjectValue(id, locus, lunType.joinWith(oObject.lunType), oObject.values ++ values))
       }
     }
+
+    def castFieldsTo(types: Map[String, LunType]): Either[Snag, ObjectValue] =
+      castTo(lunType.changeFieldTypesTo(types)).map(_.asInstanceOf[ObjectValue])
   }
 
   case class TypeValue(value: LunType) extends LunValue {
