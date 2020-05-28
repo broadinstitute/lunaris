@@ -8,15 +8,12 @@ import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import lunaris.recipes.Recipe
 import lunaris.recipes.tools.native.ToolRegistry
 import lunaris.recipes.tools.{Tool, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue, LunValueJson}
-import lunaris.recipes.values.LunValue.PrimitiveValue
-import org.broadinstitute.yootilz.core.snag.Snag
+import lunaris.recipes.values.LunValueJson
 import lunaris.recipes.values.LunValueJson.valueEncoder
+import lunaris.utils.CirceUtils
+import org.broadinstitute.yootilz.core.snag.Snag
 
 object RequestJson {
-
-  private def newDecodingFailure(message: String, cursor: HCursor): DecodingFailure =
-    DecodingFailure(message, cursor.history)
 
   val toolNameKey: String = "tool"
 
@@ -39,31 +36,37 @@ object RequestJson {
       case Left(failure) => Left(failure)
       case Right(toolName) =>
         ToolRegistry.toolsByName.get(toolName) match {
-          case None => Left(newDecodingFailure(s"Do not know tool named '$toolName'.", cursor))
+          case None => Left(CirceUtils.newDecodingFailure(s"Do not know tool named '$toolName'.", cursor))
           case Some(tool) =>
             cursor.keys match {
-              case None => Left(newDecodingFailure("No arguments", cursor))
+              case None => Left(CirceUtils.newDecodingFailure("No arguments", cursor))
               case Some(keys) =>
                 var failureOpt: Option[DecodingFailure] = None
                 var args: Map[String, ToolCall.Arg] = Map.empty
                 val keysIter = keys.iterator.filter(_ != toolNameKey)
                 while (failureOpt.isEmpty && keysIter.hasNext) {
                   val key = keysIter.next()
-                  val argCursor = cursor.downField(key)
-                  val argResult: Result[ToolCall.Arg] = tool.paramsByName.get(key) match {
-                    case None =>
-                      Left(newDecodingFailure(s"Tool '$toolName' does not expect an argument named '$key'.",
-                        cursor))
-                    case Some(valueParam: Tool.ValueParam) =>
-                      LunValueJson.decode(argCursor, valueParam.lunType).map(ToolCall.ValueArg(valueParam, _))
-                    case Some(refParam: Tool.RefParam) =>
-                      argCursor.as[String].map(ToolCall.RefArg(refParam, _))
-                    case Some(refArrayParam: Tool.RefArrayParam) =>
-                      argCursor.as[Seq[String]].map(ToolCall.RefArrayArg(refArrayParam, _))
-                  }
-                  argResult match {
-                    case Left(decodingFailure) => failureOpt = Some(decodingFailure)
-                    case Right(arg) => args += (key -> arg)
+                  cursor.downField(key) match {
+                    case argCursor: HCursor =>
+                      val argResult: Result[ToolCall.Arg] = tool.paramsByName.get(key) match {
+                        case None =>
+                          Left(
+                            CirceUtils.newDecodingFailure(
+                              s"Tool '$toolName' does not expect an argument named '$key'.", cursor)
+                          )
+                        case Some(valueParam: Tool.ValueParam) =>
+                          LunValueJson.decode(argCursor, valueParam.lunType).map(ToolCall.ValueArg(valueParam, _))
+                        case Some(refParam: Tool.RefParam) =>
+                          argCursor.as[String].map(ToolCall.RefArg(refParam, _))
+                        case Some(refArrayParam: Tool.RefArrayParam) =>
+                          argCursor.as[Seq[String]].map(ToolCall.RefArrayArg(refArrayParam, _))
+                      }
+                      argResult match {
+                        case Left(decodingFailure) => failureOpt = Some(decodingFailure)
+                        case Right(arg) => args += (key -> arg)
+                      }
+                    case cursor =>
+                      Left(CirceUtils.newDecodingFailure(s"Failure trying to parse argument $key.", cursor))
                   }
                 }
                 failureOpt match {
