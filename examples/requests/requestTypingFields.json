@@ -1,0 +1,26 @@
+{
+  "id" : "requestTypingFields",
+  "regions" : {
+    "1" : [
+      {
+        "begin" : 100000,
+        "end" : 200000
+      }
+    ]
+  },
+  "recipe" : {
+    "read" : {
+      "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
+      "idField" : "varId",
+      "types" : {
+        "maf" : "Float"
+      },
+      "tool" : "IndexedObjectReader"
+    },
+    "write" : {
+      "from" : "read",
+      "file" : "examples/responses/responseTypingFields.json",
+      "tool" : "JSONWriter"
+    }
+  }
+}

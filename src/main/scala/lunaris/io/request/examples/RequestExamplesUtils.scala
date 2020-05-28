@@ -1,10 +1,10 @@
 package lunaris.io.request.examples
 
 import lunaris.genomics.Region
-import lunaris.io.request.examples.RequestExampleMinimal.{Keys, outputFile}
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
 import lunaris.recipes.tools.native.{IndexedObjectReader, JSONWriter}
+import lunaris.recipes.values.LunValue.MapValue
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
 object RequestExamplesUtils {
@@ -29,10 +29,23 @@ object RequestExamplesUtils {
   }
 
   object ToolCalls {
-    def indexedObjectReader(file: FileValue, idField: StringValue): ToolCall = ToolCall(IndexedObjectReader, Map(
-      IndexedObjectReader.Params.Keys.file -> ValueArg(IndexedObjectReader.Params.file, file),
-      IndexedObjectReader.Params.Keys.idField -> ValueArg(IndexedObjectReader.Params.idField, idField)
-    ))
+    object Utils {
+      def buildArgs(args: (String, ToolCall.Arg)*)(argOpts: Option[(String, ToolCall.Arg)]*):
+      Map[String, ToolCall.Arg] = {
+        args.toMap ++ argOpts.flatten.toMap
+      }
+    }
+    def indexedObjectReader(file: FileValue,
+                            idField: StringValue,
+                            typesOpt: Option[MapValue] = None): ToolCall = {
+      val args = Utils.buildArgs(
+        IndexedObjectReader.Params.Keys.file -> ValueArg(IndexedObjectReader.Params.file, file),
+        IndexedObjectReader.Params.Keys.idField -> ValueArg(IndexedObjectReader.Params.idField, idField)
+      )(
+        typesOpt.map(IndexedObjectReader.Params.Keys.types -> ValueArg(IndexedObjectReader.Params.types, _))
+      )
+      ToolCall(IndexedObjectReader, args)
+    }
 
     def jsonWriter(from: String, file: FileValue): ToolCall = ToolCall(JSONWriter, Map(
       JSONWriter.Params.Keys.from -> RefArg(JSONWriter.Params.from, from),

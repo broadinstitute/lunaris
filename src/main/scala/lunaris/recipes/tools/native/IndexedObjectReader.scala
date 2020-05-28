@@ -21,14 +21,16 @@ object IndexedObjectReader extends tools.Tool {
       val file = "file"
       val index = "index"
       val idField = "idField"
+      val types = "types"
     }
 
     val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.FileType, isRequired = true)
     val index: Tool.ValueParam = Tool.ValueParam(Keys.index, LunType.FileType, isRequired = false)
     val idField: Tool.ValueParam = Tool.ValueParam(Keys.idField, LunType.StringType, isRequired = true)
+    val types: Tool.ValueParam = Tool.ValueParam(Keys.types, LunType.MapType(LunType.TypeType), isRequired = false)
   }
 
-  override def params: Seq[Tool.Param] = Seq(Params.file, Params.index, Params.idField)
+  override def params: Seq[Tool.Param] = Seq(Params.file, Params.index, Params.idField, Params.types)
 
   override def isFinal: Boolean = false
 
@@ -37,10 +39,11 @@ object IndexedObjectReader extends tools.Tool {
       file <- ToolArgUtils.asInputId(Params.Keys.file, args)
       index <- ToolArgUtils.asInputIdOr(Params.Keys.index, args, file + ".tbi")
       idField <- ToolArgUtils.asString(Params.Keys.idField, args)
-    } yield ToolInstance(file, index, idField)
+    } yield ToolInstance(file, index, idField, Map.empty)
   }
 
-  case class ToolInstance(file: InputId, index: InputId, idField: String) extends tools.ToolInstance {
+  case class ToolInstance(file: InputId, index: InputId, idField: String, types: Map[String, LunType])
+    extends tools.ToolInstance {
     override def refs: Map[String, String] = Map.empty
 
     override def newWorkerMaker(context: LunCompileContext,

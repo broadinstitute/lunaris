@@ -1,5 +1,6 @@
 package lunaris.recipes.values
 
+import com.google.api.LabelDescriptor.ValueType
 import lunaris.genomics.Locus
 import lunaris.io.{InputId, OutputId}
 import lunaris.utils.EitherSeqUtils
@@ -134,6 +135,10 @@ object LunValue {
 
   case class MapValue(values: Map[String, LunValue], valueType: LunType) extends LunValue {
     override def lunType: LunType = LunType.MapType(valueType)
+  }
+
+  object MapValue {
+    def emptyMap(valueType: LunType): MapValue = MapValue(Map.empty, valueType)
   }
 
   case class ObjectValue(id: String, locus: Locus, lunType: LunType.ObjectType,
