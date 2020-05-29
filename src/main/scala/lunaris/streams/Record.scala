@@ -21,8 +21,8 @@ case class Record(header: Header, locus: Locus, values: Seq[String]) {
         val objectValues =
           header.colNames.zip(values.map(LunValue.PrimitiveValue.StringValue)).toMap[String, LunValue] +
             (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(locus.chrom)) +
-            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(locus.region.begin)) +
-            (objectType.specialFields.chrom -> LunValue.PrimitiveValue.IntValue(locus.region.end))
+            (objectType.specialFields.begin -> LunValue.PrimitiveValue.IntValue(locus.region.begin)) +
+            (objectType.specialFields.end -> LunValue.PrimitiveValue.IntValue(locus.region.end))
         Right(LunValue.ObjectValue(id, locus, objectType, objectValues))
       }
     }

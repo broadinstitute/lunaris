@@ -8,7 +8,8 @@ import org.broadinstitute.yootilz.core.snag.Snag
 sealed trait LunValue {
   def lunType: LunType
 
-  protected def snagCannotCastTo(newType: LunType): Snag = Snag(s"Cannot cast this value to ${newType.asString}.")
+  protected def snagCannotCastTo(newType: LunType): Snag =
+    Snag(s"Cannot cast this value of type ${lunType.asString} to ${newType.asString}.")
 
   def castTo(newType: LunType): Either[Snag, LunValue] = {
     if (newType == lunType) {
@@ -39,6 +40,11 @@ object LunValue {
     def value: Any
 
     override def lunType: LunType.PrimitiveType
+
+    override protected def snagCannotCastTo(newType: LunType): Snag =
+      Snag(s"Cannot cast $value of type ${lunType.asString} to ${newType.asString}.")
+
+    override def asString: Either[Snag, String] = Right(value.toString)
   }
 
   object PrimitiveValue {
@@ -58,6 +64,11 @@ object LunValue {
           case LunType.FileType => Right(LunValue.PrimitiveValue.FileValue(value))
           case LunType.IntType => NumberParser.parseLong(value).map(LunValue.PrimitiveValue.IntValue)
           case LunType.FloatType => NumberParser.parseDouble(value).map(LunValue.PrimitiveValue.FloatValue)
+          case LunType.BoolType => value match {
+            case "true" => Right(BoolValue(true))
+            case "false" => Right(BoolValue(false))
+            case _ => Left(snagCannotCastTo(newType))
+          }
           case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
           case _ => Left(snagCannotCastTo(newType))
         }
@@ -93,6 +104,7 @@ object LunValue {
           case LunType.IntType => Right(this)
           case LunType.FloatType => Right(LunValue.PrimitiveValue.FloatValue(value.toDouble))
           case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+          case LunType.StringType => Right(LunValue.PrimitiveValue.StringValue(value.toString))
           case _ => Left(snagCannotCastTo(newType))
         }
       }
@@ -102,12 +114,31 @@ object LunValue {
       override val lunType: LunType.FloatType.type = LunType.FloatType
 
       override def asDouble: Right[Snag, Double] = Right(value)
+
+      override def castTo(newType: LunType): Either[Snag, LunValue] = {
+        newType match {
+          case LunType.FloatType => Right(this)
+          case LunType.IntType => Right(LunValue.PrimitiveValue.IntValue(value.toLong))
+          case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+          case LunType.StringType => Right(LunValue.PrimitiveValue.StringValue(value.toString))
+          case _ => Left(snagCannotCastTo(newType))
+        }
+      }
     }
 
     case class BoolValue(value: Boolean) extends LunTypedPrimitiveValue[Boolean] {
       override val lunType: LunType.BoolType.type = LunType.BoolType
 
       override def asBoolean: Right[Snag, Boolean] = Right(value)
+
+      override def castTo(newType: LunType): Either[Snag, LunValue] = {
+        newType match {
+          case LunType.BoolType => Right(this)
+          case LunType.UnitType => Right(LunValue.PrimitiveValue.UnitValue)
+          case LunType.StringType => Right(LunValue.PrimitiveValue.StringValue(value.toString))
+          case _ => Left(snagCannotCastTo(newType))
+        }
+      }
     }
 
     object UnitValue extends LunTypedPrimitiveValue[Unit] {
@@ -156,7 +187,6 @@ object LunValue {
                 case None => Right((key, value))
               }
             }
-            println(snagOrNewValues)
             snagOrNewValues.map(newValues => ObjectValue(id, locus, newObjectType, newValues.toMap))
           } else {
             Left(snagCannotCastTo(newType))
