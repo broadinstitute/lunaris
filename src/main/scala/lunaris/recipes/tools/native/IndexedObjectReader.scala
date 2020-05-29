@@ -3,7 +3,7 @@ package lunaris.recipes.tools.native
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.query.RecordExtractor
 import lunaris.io.{InputId, ResourceConfig}
-import lunaris.recipes.eval.LunWorker.{ObjectStreamWorker, RecordStreamWorker}
+import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
@@ -76,7 +76,7 @@ object IndexedObjectReader extends tools.Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[ObjectStreamWorker] =
         Some[ObjectStreamWorker]((resourceConfig: ResourceConfig) => {
-          RecordExtractor.extractRecords(dataWithIndex, context.regions, RecordProcessor.ignoreFaultyRecords,
+          RecordExtractor.extractRecords(dataWithIndex, context.regions, idField, RecordProcessor.ignoreFaultyRecords,
             resourceConfig).map(_.map{ headerAndRecordEtor =>
             val objectEtor =
               headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))

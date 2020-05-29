@@ -15,6 +15,7 @@ object RecordExtractor {
 
   def extractRecords(dataSourceWithIndex: BlockGzippedWithIndex,
                      regionsBySequence: Map[String, Seq[Region]],
+                     idField: String,
                      recordProcessor: RecordProcessor[Record],
                      resourceConfig: ResourceConfig): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
     dataSourceWithIndex.index.newReadChannelDisposable(resourceConfig).flatMap { indexReadChannel =>
@@ -45,7 +46,9 @@ object RecordExtractor {
                     record.locus.chrom == sequence && regions.exists(_.overlaps(record.locus.region))
                   }
                 }
-                Right(HeaderAndRecordEtor(header, ObjectStream.Meta(indexHeader.names), recordsEtor))
+                header.toLunObjectType(idField).map { objectType =>
+                  HeaderAndRecordEtor(header, ObjectStream.Meta(objectType, indexHeader.names), recordsEtor)
+                }
             }
           }
       }

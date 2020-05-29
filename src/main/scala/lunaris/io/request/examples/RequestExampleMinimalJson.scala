@@ -5,8 +5,8 @@ import lunaris.io.request.examples.RequestExamplesUtils.{PortalData, Regions, To
 import lunaris.recipes.Recipe
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
-object RequestExampleMinimal extends RequestExample {
-  override val idBase: String = "Minimal"
+object RequestExampleMinimalJson extends RequestExample {
+  override val idBase: String = "MinimalJson"
 
   val dataFile: FileValue = PortalData.variants
   val idField: StringValue = PortalData.idField

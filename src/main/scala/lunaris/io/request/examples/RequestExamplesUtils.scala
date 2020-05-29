@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.native.{IndexedObjectReader, JSONWriter}
+import lunaris.recipes.tools.native.{IndexedObjectReader, JSONWriter, TSVWriter}
 import lunaris.recipes.values.LunValue.MapValue
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -46,6 +46,11 @@ object RequestExamplesUtils {
       )
       ToolCall(IndexedObjectReader, args)
     }
+
+    def tsvWriter(from: String, file: FileValue): ToolCall = ToolCall(TSVWriter, Map(
+      TSVWriter.Params.Keys.from -> RefArg(TSVWriter.Params.from, from),
+      TSVWriter.Params.Keys.file -> ValueArg(TSVWriter.Params.file, file)
+    ))
 
     def jsonWriter(from: String, file: FileValue): ToolCall = ToolCall(JSONWriter, Map(
       JSONWriter.Params.Keys.from -> RefArg(JSONWriter.Params.from, from),

@@ -29,7 +29,6 @@ object LunType {
       case "Unit" => Right(UnitType)
       case "Type" => Right(TypeType)
       case "Stream[Object]" => Right(ObjectStreamType)
-      case "Stream[Record]" => Right(RecordStreamType)
       case _ =>
         if(string.startsWith("Array[") && string.endsWith("]")) {
           val elementTypeString = string.substring(6, string.length - 1)
@@ -79,10 +78,6 @@ object LunType {
     override def canBeAssignedFrom(oType: LunType): Boolean = true
 
     override val asString: String = "Unit"
-  }
-
-  object RecordStreamType extends LunType {
-    override def asString: String = "Stream[Record]"
   }
 
   object ObjectStreamType extends LunType {
