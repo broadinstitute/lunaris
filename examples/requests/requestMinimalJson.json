@@ -1,5 +1,5 @@
 {
-  "id" : "requestMinimal",
+  "id" : "requestMinimalJson",
   "regions" : {
     "1" : [
       {
@@ -16,7 +16,7 @@
     },
     "write" : {
       "from" : "read",
-      "file" : "examples/responses/responseMinimal.json",
+      "file" : "examples/responses/responseMinimalJson.json",
       "tool" : "JSONWriter"
     }
   }
