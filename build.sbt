@@ -1,11 +1,11 @@
 import sbt.project
 
-val lunarisV = "0.0.1"
+val lunarisV = "1.0.0"
 val scalaV = "2.13.2"
 val yootilzV = "0.1.3"
-val scalaTestV = "3.1.1"
-val betterFilesV = "3.8.0"
-val googleCloudNioV = "0.107.0-alpha"
+val scalaTestV = "3.1.2"
+val betterFilesV = "3.9.1"
+val googleCloudNioV = "0.121.0"
 val circeV = "0.13.0"
 
 lazy val mainDeps = Seq(
