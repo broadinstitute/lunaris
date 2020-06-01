@@ -1,6 +1,6 @@
 import sbt.project
 
-val lunarisV = "1.0.0"
+val lunarisV = "1.0.2"
 val scalaV = "2.13.2"
 val yootilzV = "0.1.3"
 val scalaTestV = "3.1.2"
@@ -25,11 +25,12 @@ lazy val testDeps = Set(
 lazy val root = (project in file("."))
   .settings(
     name := "lunaris",
+    name in Linux := "lunaris",
     version := lunarisV,
     scalaVersion := scalaV,
     libraryDependencies ++= (mainDeps ++ testDeps),
     scalacOptions ++= Seq("-feature", "-deprecation", "-unchecked"),
-    mainClass in (Compile, run) := Some("lunaris.app.LunarisApp"),
+    mainClass in (Compile, run) := Some("lunaris.app.Lunaris"),
     maintainer := "Oliver A Ruebenacker <oliverr@broadinstitute.org>",
     packageSummary := "Streaming location-sorted, tabix-indexed, block-gzipped TSV files from Terra (Google Cloud Storage) for analysis",
     packageDescription := "Streaming location-sorted, tabix-indexed, block-gzipped TSV files from Terra (Google Cloud Storage) for analysis",

@@ -1,16 +1,12 @@
 package lunaris.app
 
-import lunaris.data.DataSources
-import lunaris.io.{InputId, ResourceConfig}
-import lunaris.io.query.RecordExtractor
-import lunaris.io.query.RecordExtractor.HeaderAndRecordEtor
 import lunaris.io.request.RequestJson
+import lunaris.io.{InputId, ResourceConfig}
 import lunaris.recipes.RecipeChecker
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
-import lunaris.streams.RecordProcessor
 import lunaris.utils.{DebugUtils, IOUtils}
 
-object LunarisApp {
+object Lunaris {
   def main(args: Array[String]): Unit = {
     if (args.length > 0) {
       val input = InputId(args(0))
