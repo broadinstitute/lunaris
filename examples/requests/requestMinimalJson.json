@@ -16,7 +16,7 @@
     },
     "write" : {
       "from" : "read",
-      "file" : "examples/responses/responseMinimalJson.json",
+      "file" : "responseMinimalJson.json",
       "tool" : "JSONWriter"
     }
   }

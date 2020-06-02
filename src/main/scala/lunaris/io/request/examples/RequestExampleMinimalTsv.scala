@@ -8,7 +8,7 @@ import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 object RequestExampleMinimalTsv extends RequestExample {
   override val idBase: String = "MinimalTsv"
 
-  override def outputFile: FileValue = FileValue(s"examples/responses/response$idBase.tsv")
+  override def outputFile: FileValue = FileValue(s"response$idBase.tsv")
 
   val dataFile: FileValue = PortalData.variants
   val idField: StringValue = PortalData.idField

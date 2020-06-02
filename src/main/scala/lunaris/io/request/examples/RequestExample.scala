@@ -8,7 +8,7 @@ trait RequestExample {
 
   def id: String = "request" + idBase
 
-  def outputFile: FileValue = FileValue(s"examples/responses/response$idBase.json")
+  def outputFile: FileValue = FileValue(s"response$idBase.json")
 
   def request: Request
 }

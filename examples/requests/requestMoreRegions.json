@@ -30,7 +30,7 @@
     },
     "write" : {
       "from" : "read",
-      "file" : "examples/responses/responseMoreRegions.json",
+      "file" : "responseMoreRegions.json",
       "tool" : "JSONWriter"
     }
   }

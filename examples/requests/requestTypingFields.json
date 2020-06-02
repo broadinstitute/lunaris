@@ -19,7 +19,7 @@
     },
     "write" : {
       "from" : "read",
-      "file" : "examples/responses/responseTypingFields.json",
+      "file" : "responseTypingFields.json",
       "tool" : "JSONWriter"
     }
   }

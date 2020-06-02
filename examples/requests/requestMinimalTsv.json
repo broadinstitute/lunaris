@@ -16,7 +16,7 @@
     },
     "write" : {
       "from" : "read",
-      "file" : "examples/responses/responseMinimalTsv.tsv",
+      "file" : "responseMinimalTsv.tsv",
       "tool" : "TSVWriter"
     }
   }
