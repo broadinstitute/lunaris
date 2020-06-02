@@ -1,0 +1,9 @@
+{
+  "lunaris.lunaris_input": "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/examples/requests/requestMinimalTsv.json",
+  "lunaris.data_files": [
+    "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
+    "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz.tbi"
+  ],
+  "lunaris.output_file_names": [ "variants_selected.tsv" ]
+}
+
