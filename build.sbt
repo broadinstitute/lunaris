@@ -7,6 +7,7 @@ val scalaTestV = "3.1.2"
 val betterFilesV = "3.9.1"
 val googleCloudNioV = "0.121.0"
 val circeV = "0.13.0"
+val scallopV = "3.4.0"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
@@ -15,7 +16,8 @@ lazy val mainDeps = Seq(
   "com.google.cloud" % "google-cloud-nio" % googleCloudNioV,
   "io.circe" %% "circe-core" % circeV,
   "io.circe" %% "circe-generic" % circeV,
-  "io.circe" %% "circe-parser" % circeV
+  "io.circe" %% "circe-parser" % circeV,
+  "org.rogach" %% "scallop" % scallopV
 )
 
 lazy val testDeps = Set(
