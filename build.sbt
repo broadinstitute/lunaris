@@ -8,6 +8,8 @@ val betterFilesV = "3.9.1"
 val googleCloudNioV = "0.121.0"
 val circeV = "0.13.0"
 val scallopV = "3.4.0"
+val akkaHttpV = "10.1.12"
+val akkaStreamV = "2.6.5"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
@@ -17,7 +19,9 @@ lazy val mainDeps = Seq(
   "io.circe" %% "circe-core" % circeV,
   "io.circe" %% "circe-generic" % circeV,
   "io.circe" %% "circe-parser" % circeV,
-  "org.rogach" %% "scallop" % scallopV
+  "org.rogach" %% "scallop" % scallopV,
+  "com.typesafe.akka" %% "akka-http"   % akkaHttpV,
+  "com.typesafe.akka" %% "akka-stream" % akkaStreamV
 )
 
 lazy val testDeps = Set(

@@ -1,6 +1,6 @@
 package lunaris.utils
 
-import lunaris.utils.Eitherator.{CollectEitherator, FilterEitherator, FlatMappedEitherator, MappedEitherator, ProcessorEitherator}
+import lunaris.utils.Eitherator.{CollectEitherator, EitheratorIterator, FilterEitherator, FlatMappedEitherator, MappedEitherator, ProcessorEitherator}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
 trait Eitherator[+A] {
@@ -42,6 +42,8 @@ trait Eitherator[+A] {
 
   def process[B](processor: A => Either[Snag, Option[B]]): ProcessorEitherator[A, B] =
     new ProcessorEitherator[A, B](this)(processor)
+
+  def iterator: Iterator[A] = new EitheratorIterator[A](this)
 }
 
 object Eitherator {
@@ -148,6 +150,29 @@ object Eitherator {
         Right(None)
       }
     }
+  }
+
+  class EitheratorIterator[A](etor: Eitherator[A]) extends Iterator[A] {
+    private var nextItem: Option[Either[Snag, Option[A]]] = None
+
+    private def loadIfNeeded(): Option[A] = {
+      val snagOrAOpt = nextItem match {
+        case Some(snagOrAOpt) => snagOrAOpt
+        case None =>
+          val nextItemNew = etor.next()
+          nextItem = Some(nextItemNew)
+          nextItemNew
+      }
+      snagOrAOpt match {
+        case Left(snag) => throw new RuntimeException(snag.message)
+        case Right(aOpt) => aOpt
+      }
+
+    }
+
+    override def hasNext: Boolean = loadIfNeeded().nonEmpty
+
+    override def next(): A = loadIfNeeded().get
   }
 
   class MappedEitherator[+A, B](underlying: Eitherator[A])(fun: A => B) extends Eitherator[B] {

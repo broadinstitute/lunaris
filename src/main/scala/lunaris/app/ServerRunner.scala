@@ -2,6 +2,6 @@ package lunaris.app
 
 object ServerRunner {
   def run(): Unit = {
-    println("Starting server - once we implemented that!")
+    println("Not yet implemented - but one day, this will start a web service!")
   }
 }
