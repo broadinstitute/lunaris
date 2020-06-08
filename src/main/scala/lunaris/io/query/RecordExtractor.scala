@@ -4,14 +4,14 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
-import lunaris.recipes.values.{LunValue, ObjectStream}
+import lunaris.recipes.values.{RecordStream, RecordStreamOld}
 import lunaris.streams.{Header, Record, RecordProcessor}
-import lunaris.utils.{DebugUtils, Eitherator}
+import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordExtractor {
 
-  case class HeaderAndRecordEtor(header: Header, meta: ObjectStream.Meta, recordEtor: Eitherator[Record])
+  case class HeaderAndRecordEtor(header: Header, meta: RecordStream.Meta, recordEtor: Eitherator[Record])
 
   def extractRecords(dataSourceWithIndex: BlockGzippedWithIndex,
                      regionsBySequence: Map[String, Seq[Region]],
@@ -47,7 +47,7 @@ object RecordExtractor {
                   }
                 }
                 header.toLunObjectType(idField).map { objectType =>
-                  HeaderAndRecordEtor(header, ObjectStream.Meta(objectType, indexHeader.names), recordsEtor)
+                  HeaderAndRecordEtor(header, RecordStream.Meta(objectType, indexHeader.names), recordsEtor)
                 }
             }
           }

@@ -2,13 +2,12 @@ package lunaris.utils
 
 import akka.NotUsed
 import akka.stream.Materializer
-import akka.stream.scaladsl.{Keep, Sink, SinkQueue, SinkQueueWithCancel, Source}
+import akka.stream.scaladsl.{Keep, Sink, SinkQueue, Source}
 import lunaris.utils.Eitherator.EitheratorIterator
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.SECONDS
+import scala.concurrent.duration.{Duration, SECONDS}
 import scala.util.control.NonFatal
 
 object EitheratorStreamsInterop {

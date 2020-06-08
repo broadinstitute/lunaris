@@ -7,7 +7,7 @@ import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue, ObjectStream}
+import lunaris.recipes.values.{LunType, LunValue, RecordStreamOld}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -91,7 +91,7 @@ object IndexedObjectReader extends tools.Tool {
                     case None => objectValue
                   }
                 }
-            ObjectStream(headerAndRecordEtor.meta, objectEtor)
+            RecordStreamOld(headerAndRecordEtor.meta, objectEtor)
           })
         })
 

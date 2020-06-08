@@ -1,10 +1,12 @@
 package lunaris.recipes.tools.native
 
+import akka.NotUsed
+import akka.stream.scaladsl.Source
 import lunaris.io.{Disposable, ResourceConfig}
 import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
-import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, ObjectStream}
+import lunaris.recipes.values.{LunType, LunValue, RecordStream, RecordStreamOld}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.JoinedObjectsEitherator
 import lunaris.utils.{EitherSeqUtils, SeqBasedOrdering}
@@ -68,12 +70,12 @@ object JoinObjects extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = {
         Some(new ObjectStreamWorker {
           override def getSnagOrStreamDisposable(resourceConfig: ResourceConfig):
-          Disposable[Either[Snag, ObjectStream]] = {
+          Disposable[Either[Snag, RecordStreamOld]] = {
             val snagOrStreamsDisposables = fromWorkers.map(_.getSnagOrStreamDisposable(resourceConfig))
             Disposable.sequence(snagOrStreamsDisposables).map(EitherSeqUtils.sequence).map(_.flatMap { streams =>
-              ObjectStream.Meta.sequence(streams.map(_.meta)).map { meta =>
+              RecordStream.Meta.sequence(streams.map(_.meta)).map { meta =>
                 val etor = new JoinedObjectsEitherator(streams.map(_.objects), SeqBasedOrdering(meta.chroms))
-                ObjectStream(meta, etor)
+                RecordStreamOld(meta, etor)
               }
             })
           }
