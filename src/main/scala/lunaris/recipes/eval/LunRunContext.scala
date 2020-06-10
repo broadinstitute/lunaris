@@ -1,10 +1,11 @@
 package lunaris.recipes.eval
 
+import akka.stream.Materializer
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunContext.Observer
 import org.broadinstitute.yootilz.core.snag.Snag
 
-case class LunRunContext(resourceConfig: ResourceConfig, observer: Observer)
+case class LunRunContext(materializer: Materializer, resourceConfig: ResourceConfig, observer: Observer)
 
 object LunRunContext {
   trait Observer {

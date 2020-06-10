@@ -5,7 +5,7 @@ import lunaris.io.query.RecordExtractor
 import lunaris.io.{InputId, ResourceConfig}
 import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.eval.{LunCompileContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamOld}
 import lunaris.recipes.{eval, tools}
@@ -57,7 +57,7 @@ object IndexedObjectReader extends tools.Tool {
                     idField: String,
                     typesOpt: Option[Map[String, LunType]],
                     recordProcessor: RecordProcessor[LunValue.ObjectValue],
-                    context: LunCompileContext) extends eval.WorkerMaker {
+                    compileContext: LunCompileContext) extends eval.WorkerMaker {
     private var nOrdersField: Int = 0
 
     override def nOrders: Int = nOrdersField
@@ -75,9 +75,9 @@ object IndexedObjectReader extends tools.Tool {
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[ObjectStreamWorker] =
-        Some[ObjectStreamWorker]((resourceConfig: ResourceConfig) => {
-          RecordExtractor.extractRecords(dataWithIndex, context.regions, idField, RecordProcessor.ignoreFaultyRecords,
-            resourceConfig).map(_.map{ headerAndRecordEtor =>
+        Some[ObjectStreamWorker]((runContext: LunRunContext) => {
+          RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
+            RecordProcessor.ignoreFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
             val objectEtor =
               headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))
                 .map { objectValue =>

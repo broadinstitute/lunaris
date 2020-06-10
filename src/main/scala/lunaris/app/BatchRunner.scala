@@ -1,5 +1,7 @@
 package lunaris.app
 
+import akka.actor.ActorSystem
+import akka.stream.Materializer
 import lunaris.io.{InputId, ResourceConfig}
 import lunaris.io.request.RequestJson
 import lunaris.recipes.RecipeChecker
@@ -21,8 +23,11 @@ object BatchRunner {
       case Left(snag) =>
         DebugUtils.printSnag("Problem compiling:", snag)
       case Right(runnable) =>
-        val context = LunRunContext(ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
+        val actorSystem = ActorSystem("Lunaris")
+        val materializer = Materializer(actorSystem)
+        val context = LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
         runnable.execute(context)
+        actorSystem.terminate()
     }
   }
 }

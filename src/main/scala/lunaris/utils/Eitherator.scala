@@ -172,7 +172,11 @@ object Eitherator {
 
     override def hasNext: Boolean = loadIfNeeded().nonEmpty
 
-    override def next(): A = loadIfNeeded().get
+    override def next(): A = {
+      val a = loadIfNeeded().get
+      nextItem = None
+      a
+    }
   }
 
   class MappedEitherator[+A, B](underlying: Eitherator[A])(fun: A => B) extends Eitherator[B] {

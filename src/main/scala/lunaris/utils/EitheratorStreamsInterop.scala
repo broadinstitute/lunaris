@@ -3,6 +3,7 @@ package lunaris.utils
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Keep, Sink, SinkQueue, Source}
+import lunaris.recipes.values.RecordStream
 import lunaris.utils.Eitherator.EitheratorIterator
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -12,8 +13,8 @@ import scala.util.control.NonFatal
 
 object EitheratorStreamsInterop {
 
-  def eitheratorToStream[A](etor: Eitherator[A]): Source[A, NotUsed] = {
-    Source.fromIterator(() => new EitheratorIterator[A](etor))
+  def eitheratorToStream[A](etor: Eitherator[A], meta: RecordStream.Meta): Source[A, RecordStream.Meta] = {
+    Source.fromIterator(() => new EitheratorIterator[A](etor)).mapMaterializedValue(_ => meta)
   }
 
   def streamToEitherator[A, M](source: Source[A, M])(implicit materializer: Materializer): Eitherator[A] = {
@@ -40,4 +41,5 @@ object EitheratorStreamsInterop {
       }
     }
   }
+
 }

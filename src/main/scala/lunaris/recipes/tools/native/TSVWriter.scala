@@ -3,7 +3,9 @@ package lunaris.recipes.tools.native
 import java.io.PrintWriter
 import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
+import akka.stream.scaladsl.Sink
 import lunaris.io.{Disposable, OutputId}
 import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
@@ -14,6 +16,9 @@ import lunaris.recipes.values.LunValue.ObjectValue
 import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamOld}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
+
+import scala.concurrent.Await
+import scala.concurrent.duration.FiniteDuration
 
 object TSVWriter extends Tool {
   override def resultType: LunType.UnitType.type = LunType.UnitType
@@ -78,22 +83,23 @@ object TSVWriter extends Tool {
           .map(_.getOrElse("")).mkString("\t")
       }
 
-      private def writeStreamAsTsv(stream: RecordStreamOld)(writer: String => Unit): Unit = {
+      private def writeStreamAsTsv(stream: RecordStreamOld, context: LunRunContext)(writer: String => Unit): Unit = {
         writer(headerLine(stream.meta.objectType))
-        stream.objects.foreach(objectValue => writer(dataLine(objectValue)))
+        val doneFuture = stream.source.map(dataLine).runWith(Sink.foreach(writer))(context.materializer)
+        Await.result(doneFuture, FiniteDuration(100, TimeUnit.SECONDS))
       }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable]((context: LunRunContext) => {
-        fromWorker.getSnagOrStreamDisposable(context.resourceConfig).useUp {
+        fromWorker.getSnagOrStreamDisposable(context).useUp {
           case Left(snag) => context.observer.logSnag(snag)
           case Right(headerAndRecordEtor) =>
             fileOpt match {
               case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
                 Disposable.forCloseable(new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))).useUp {
-                  writer => writeStreamAsTsv(headerAndRecordEtor)(writer.println)
+                  writer => writeStreamAsTsv(headerAndRecordEtor, context)(writer.println)
                 }
               }
-              case None => writeStreamAsTsv(headerAndRecordEtor)(println)
+              case None => writeStreamAsTsv(headerAndRecordEtor, context)(println)
             }
         }
       })

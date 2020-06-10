@@ -1,6 +1,6 @@
 package lunaris.recipes.values
 
-import akka.NotUsed
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import lunaris.recipes.values.LunType.ObjectType
 import lunaris.recipes.values.RecordStream.Meta
@@ -9,15 +9,17 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 trait RecordStreamBase {
   def meta: Meta
-  def source: Source[LunValue.ObjectValue, NotUsed]
+  def source: Source[LunValue.ObjectValue, Meta]
+  def records(implicit materializer: Materializer): Eitherator[LunValue.ObjectValue]
 }
 
-class RecordStream(val meta: Meta, val source: Source[LunValue.ObjectValue, NotUsed]) extends RecordStreamBase {
-
+class RecordStream(val meta: Meta, val source: Source[LunValue.ObjectValue, Meta]) extends RecordStreamBase {
+  override def records(implicit materializer: Materializer): Eitherator[LunValue.ObjectValue] =
+    EitheratorStreamsInterop.streamToEitherator(source)
 }
 
 object RecordStream {
-  def apply(meta: Meta, source: Source[LunValue.ObjectValue, NotUsed]): RecordStream =
+  def apply(meta: Meta, source: Source[LunValue.ObjectValue, Meta]): RecordStream =
     new RecordStream(meta, source)
 
   case class Meta(objectType: ObjectType, chroms: Seq[String])
@@ -39,7 +41,9 @@ object RecordStream {
 
 case class RecordStreamOld(meta: RecordStream.Meta, objects: Eitherator[LunValue.ObjectValue])
   extends RecordStreamBase {
-  override def source: Source[LunValue.ObjectValue, NotUsed] =
-    EitheratorStreamsInterop.eitheratorToStream(objects)
+  override def source: Source[LunValue.ObjectValue, Meta] =
+    EitheratorStreamsInterop.eitheratorToStream(objects, meta)
+
+  override def records(implicit materializer: Materializer): Eitherator[LunValue.ObjectValue] = objects
 }
 

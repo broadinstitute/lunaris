@@ -69,12 +69,14 @@ object JoinObjects extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerMaker.WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = {
         Some(new ObjectStreamWorker {
-          override def getSnagOrStreamDisposable(resourceConfig: ResourceConfig):
+          override def getSnagOrStreamDisposable(context: LunRunContext):
           Disposable[Either[Snag, RecordStreamOld]] = {
-            val snagOrStreamsDisposables = fromWorkers.map(_.getSnagOrStreamDisposable(resourceConfig))
+            val snagOrStreamsDisposables = fromWorkers.map(_.getSnagOrStreamDisposable(context))
             Disposable.sequence(snagOrStreamsDisposables).map(EitherSeqUtils.sequence).map(_.flatMap { streams =>
               RecordStream.Meta.sequence(streams.map(_.meta)).map { meta =>
-                val etor = new JoinedObjectsEitherator(streams.map(_.objects), SeqBasedOrdering(meta.chroms))
+                val etor =
+                  new JoinedObjectsEitherator(streams.map(_.records(context.materializer)),
+                    SeqBasedOrdering(meta.chroms))
                 RecordStreamOld(meta, etor)
               }
             })
