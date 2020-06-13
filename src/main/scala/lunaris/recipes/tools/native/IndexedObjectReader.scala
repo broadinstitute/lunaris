@@ -1,15 +1,16 @@
 package lunaris.recipes.tools.native
 
 import lunaris.data.BlockGzippedWithIndex
+import lunaris.io.InputId
 import lunaris.io.query.RecordExtractor
-import lunaris.io.{InputId, ResourceConfig}
 import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue, RecordStreamOld}
+import lunaris.recipes.values.{LunType, LunValue, RecordStream}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
+import lunaris.utils.EitheratorStreamsInterop
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object IndexedObjectReader extends tools.Tool {
@@ -91,7 +92,8 @@ object IndexedObjectReader extends tools.Tool {
                     case None => objectValue
                   }
                 }
-            RecordStreamOld(headerAndRecordEtor.meta, objectEtor)
+            val meta = headerAndRecordEtor.meta
+            RecordStream(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtor, meta))
           })
         })
 

@@ -1,7 +1,7 @@
 package lunaris.recipes.eval
 
 import lunaris.io.Disposable
-import lunaris.recipes.values.RecordStreamOld
+import lunaris.recipes.values.RecordStream
 import org.broadinstitute.yootilz.core.snag.Snag
 
 sealed trait LunWorker {
@@ -10,6 +10,6 @@ sealed trait LunWorker {
 
 object LunWorker {
   trait ObjectStreamWorker extends LunWorker {
-    def getSnagOrStreamDisposable(context: LunRunContext): Disposable[Either[Snag, RecordStreamOld]]
+    def getSnagOrStreamDisposable(context: LunRunContext): Disposable[Either[Snag, RecordStream]]
   }
 }

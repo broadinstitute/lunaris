@@ -13,7 +13,7 @@ import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunW
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.LunType.ObjectType
 import lunaris.recipes.values.LunValue.ObjectValue
-import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamOld}
+import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStream}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -83,7 +83,7 @@ object TSVWriter extends Tool {
           .map(_.getOrElse("")).mkString("\t")
       }
 
-      private def writeStreamAsTsv(stream: RecordStreamOld, context: LunRunContext)(writer: String => Unit): Unit = {
+      private def writeStreamAsTsv(stream: RecordStream, context: LunRunContext)(writer: String => Unit): Unit = {
         writer(headerLine(stream.meta.objectType))
         val doneFuture = stream.source.map(dataLine).runWith(Sink.foreach(writer))(context.materializer)
         Await.result(doneFuture, FiniteDuration(100, TimeUnit.SECONDS))

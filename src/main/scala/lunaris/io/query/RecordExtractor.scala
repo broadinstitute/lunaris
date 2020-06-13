@@ -4,7 +4,7 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
-import lunaris.recipes.values.{RecordStream, RecordStreamOld}
+import lunaris.recipes.values.RecordStream
 import lunaris.streams.{Header, Record, RecordProcessor}
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
