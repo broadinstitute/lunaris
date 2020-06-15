@@ -10,7 +10,7 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, LunValue, RecordStream}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
-import lunaris.utils.EitheratorStreamsInterop
+import lunaris.utils.{Eitherator, EitheratorStreamsInterop}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object IndexedObjectReader extends tools.Tool {
@@ -79,7 +79,7 @@ object IndexedObjectReader extends tools.Tool {
         Some[ObjectStreamWorker]((runContext: LunRunContext) => {
           RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
             RecordProcessor.ignoreFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
-            val objectEtor =
+            def objectEtorGenerator(): Eitherator[LunValue.ObjectValue] =
               headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))
                 .map { objectValue =>
                   typesOpt match {
@@ -93,7 +93,7 @@ object IndexedObjectReader extends tools.Tool {
                   }
                 }
             val meta = headerAndRecordEtor.meta
-            RecordStream(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtor, meta))
+            RecordStream(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtorGenerator, meta))
           })
         })
 
