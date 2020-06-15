@@ -9,7 +9,7 @@ object RequestExampleMinimalJson extends RequestExample {
   override val idBase: String = "MinimalJson"
 
   val dataFile: FileValue = PortalData.Files.variants
-  val idField: StringValue = PortalData.Fields.id
+  val idField: StringValue = PortalData.Fields.varId
 
   object Keys {
     val read: String = "read"

@@ -11,7 +11,8 @@ object RequestExampleFilter extends RequestExample {
   override def outputFile: FileValue = FileValue(s"response$idBase.tsv")
 
   val dataFile: FileValue = PortalData.Files.associations
-  val field: StringValue = PortalData.Fields.phenotype
+  val varId: StringValue = PortalData.Fields.varId
+  val phenotype: StringValue = PortalData.Fields.phenotype
   val stringValue: StringValue = StringValue("T2D")
 
   object Keys {
@@ -24,8 +25,8 @@ object RequestExampleFilter extends RequestExample {
     Request(id,
       Regions.somewhatBiggerRegion,
       Recipe(Map(
-        Keys.read -> ToolCalls.indexedObjectReader(dataFile, field),
-        Keys.filter -> ToolCalls.filter(Keys.read, field, stringValue),
+        Keys.read -> ToolCalls.indexedObjectReader(dataFile, varId),
+        Keys.filter -> ToolCalls.filter(Keys.read, phenotype, stringValue),
         Keys.write -> ToolCalls.tsvWriter(Keys.filter, outputFile)
       ))
     )

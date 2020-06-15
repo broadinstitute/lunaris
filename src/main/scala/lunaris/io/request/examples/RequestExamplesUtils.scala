@@ -12,7 +12,7 @@ object RequestExamplesUtils {
   object PortalData {
     val folder: String = "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/"
     object Fields {
-      val id: StringValue = StringValue("varId")
+      val varId: StringValue = StringValue("varId")
       val phenotype: StringValue = StringValue("phenotype")
     }
     object Files {

@@ -11,7 +11,7 @@ object RequestExampleTypingFields extends RequestExample {
   override val idBase: String = "TypingFields"
 
   val dataFile: FileValue = PortalData.Files.variants
-  val idField: StringValue = PortalData.Fields.id
+  val idField: StringValue = PortalData.Fields.varId
   val types: MapValue = MapValue(Map("maf" -> LunValue.TypeValue(LunType.FloatType)), LunType.TypeType)
 
   object Keys {
