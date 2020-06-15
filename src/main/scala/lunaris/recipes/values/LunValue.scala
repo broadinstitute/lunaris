@@ -173,21 +173,21 @@ object LunValue {
     def emptyMap(valueType: LunType): MapValue = MapValue(Map.empty, valueType)
   }
 
-  case class ObjectValue(id: String, locus: Locus, lunType: LunType.ObjectType,
+  case class RecordValue(id: String, locus: Locus, lunType: LunType.RecordType,
                          values: Map[String, LunValue]) extends LunValue {
     override def castTo(newType: LunType): Either[Snag, LunValue] = {
       newType match {
-        case newObjectType: LunType.ObjectType =>
-          if (newObjectType.canBeAssignedFrom(lunType)) {
+        case newRecordType: LunType.RecordType =>
+          if (newRecordType.canBeAssignedFrom(lunType)) {
             val snagOrNewValues = EitherSeqUtils.traverse(values.toSeq) { entry =>
               val key = entry._1
               val value = entry._2
-              newObjectType.elementTypes.get(key) match {
+              newRecordType.elementTypes.get(key) match {
                 case Some(newElementType) => value.castTo(newElementType).map((key, _))
                 case None => Right((key, value))
               }
             }
-            snagOrNewValues.map(newValues => ObjectValue(id, locus, newObjectType, newValues.toMap))
+            snagOrNewValues.map(newValues => RecordValue(id, locus, newRecordType, newValues.toMap))
           } else {
             Left(snagCannotCastTo(newType))
           }
@@ -196,23 +196,23 @@ object LunValue {
       }
     }
 
-    def keepOnlyPrimitiveFields: ObjectValue = {
+    def keepOnlyPrimitiveFields: RecordValue = {
       val fieldsNew = lunType.fields.filter(field => lunType.elementTypes.get(field).exists(_.isPrimitive))
       copy(lunType = lunType.copy(fields = fieldsNew))
     }
 
-    def joinWith(oObject: ObjectValue): Either[Snag, ObjectValue] = {
-      if(id != oObject.id) {
-        Left(Snag(s"Can only join objects with same id, but ${oObject.id} is different from $id."))
-      } else if(locus != oObject.locus) {
-        Left(Snag(s"Can only join objects with same locus, but ${oObject.locus} is different from $locus."))
+    def joinWith(oRecord: RecordValue): Either[Snag, RecordValue] = {
+      if(id != oRecord.id) {
+        Left(Snag(s"Can only join objects with same id, but ${oRecord.id} is different from $id."))
+      } else if(locus != oRecord.locus) {
+        Left(Snag(s"Can only join objects with same locus, but ${oRecord.locus} is different from $locus."))
       } else {
-        Right(ObjectValue(id, locus, lunType.joinWith(oObject.lunType), oObject.values ++ values))
+        Right(RecordValue(id, locus, lunType.joinWith(oRecord.lunType), oRecord.values ++ values))
       }
     }
 
-    def castFieldsTo(types: Map[String, LunType]): Either[Snag, ObjectValue] =
-      castTo(lunType.changeFieldTypesTo(types)).map(_.asInstanceOf[ObjectValue])
+    def castFieldsTo(types: Map[String, LunType]): Either[Snag, RecordValue] =
+      castTo(lunType.changeFieldTypesTo(types)).map(_.asInstanceOf[RecordValue])
   }
 
   case class TypeValue(value: LunType) extends LunValue {

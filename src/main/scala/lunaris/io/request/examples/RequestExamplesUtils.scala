@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.native.{IndexedObjectReader, JSONWriter, TSVWriter}
+import lunaris.recipes.tools.native.{IndexedRecordReader, JSONWriter, TSVWriter}
 import lunaris.recipes.values.LunValue.MapValue
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -39,12 +39,12 @@ object RequestExamplesUtils {
                             idField: StringValue,
                             typesOpt: Option[MapValue] = None): ToolCall = {
       val args = Utils.buildArgs(
-        IndexedObjectReader.Params.Keys.file -> ValueArg(IndexedObjectReader.Params.file, file),
-        IndexedObjectReader.Params.Keys.idField -> ValueArg(IndexedObjectReader.Params.idField, idField)
+        IndexedRecordReader.Params.Keys.file -> ValueArg(IndexedRecordReader.Params.file, file),
+        IndexedRecordReader.Params.Keys.idField -> ValueArg(IndexedRecordReader.Params.idField, idField)
       )(
-        typesOpt.map(IndexedObjectReader.Params.Keys.types -> ValueArg(IndexedObjectReader.Params.types, _))
+        typesOpt.map(IndexedRecordReader.Params.Keys.types -> ValueArg(IndexedRecordReader.Params.types, _))
       )
-      ToolCall(IndexedObjectReader, args)
+      ToolCall(IndexedRecordReader, args)
     }
 
     def tsvWriter(from: String, file: FileValue): ToolCall = ToolCall(TSVWriter, Map(

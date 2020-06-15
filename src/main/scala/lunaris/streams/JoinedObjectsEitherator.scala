@@ -1,12 +1,12 @@
 package lunaris.streams
 
 import lunaris.genomics.{Locus, LocusOrdering}
-import lunaris.recipes.values.LunValue.ObjectValue
+import lunaris.recipes.values.LunValue.RecordValue
 import lunaris.utils.{EitherSeqUtils, Eitherator}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[ObjectValue]],
-                              chromOrdering: Ordering[String]) extends Eitherator[ObjectValue] {
+class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[RecordValue]],
+                              chromOrdering: Ordering[String]) extends Eitherator[RecordValue] {
   val locationOrdering = new LocusOrdering(chromOrdering)
   var snagOpt: Option[Snag] = None
   var allAreExhausted: Boolean = false
@@ -17,11 +17,11 @@ class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[ObjectValue]],
     EitherSeqUtils.traverse(etorsWithBuffers)(_.peekNextLocus()).map(_.flatten).map(_.minOption(locationOrdering))
   }
 
-  class EtorWithBuffer(val objectEtor: Eitherator[ObjectValue]) {
+  class EtorWithBuffer(val objectEtor: Eitherator[RecordValue]) {
     var snagOpt: Option[Snag] = None
     var underlyingIsExhausted: Boolean = false
-    var objectsHere: Seq[ObjectValue] = Seq.empty
-    var objectBeyondOpt: Option[ObjectValue] = None
+    var objectsHere: Seq[RecordValue] = Seq.empty
+    var objectBeyondOpt: Option[RecordValue] = None
 
     loadAllHere()
 
@@ -42,7 +42,7 @@ class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[ObjectValue]],
       }
     }
 
-    def peekNextObject(): Either[Snag, Option[ObjectValue]] = {
+    def peekNextObject(): Either[Snag, Option[RecordValue]] = {
       snagOpt match {
         case Some(snag) => Left(snag)
         case None => Right(objectsHere.headOption)
@@ -58,9 +58,9 @@ class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[ObjectValue]],
       }
     }
 
-    def popObjectWithId(id: String): Option[ObjectValue] = {
-      var resultOpt: Option[ObjectValue] = None
-      val objectsHereNewBuilder = Seq.newBuilder[ObjectValue]
+    def popObjectWithId(id: String): Option[RecordValue] = {
+      var resultOpt: Option[RecordValue] = None
+      val objectsHereNewBuilder = Seq.newBuilder[RecordValue]
       for(objectHere <- objectsHere) {
         if(objectHere.id == id) {
           resultOpt = Some(objectHere)
@@ -78,7 +78,7 @@ class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[ObjectValue]],
     }
   }
 
-  override def next(): Either[Snag, Option[ObjectValue]] = {
+  override def next(): Either[Snag, Option[RecordValue]] = {
     snagOpt match {
       case Some(snag) => Left(snag)
       case None =>
@@ -92,7 +92,7 @@ class JoinedObjectsEitherator(objectEtors: Seq[Eitherator[ObjectValue]],
             case Right(Some(locus)) =>
               val nextId = etorsWithBuffers.find(_.isAtLocus(locus)).get.peekNextObject().toOption.get.get.id
               val objects = etorsWithBuffers.flatMap(_.popObjectWithId(nextId))
-              var snagOrObjectJoined: Either[Snag, ObjectValue] = Right(objects.head)
+              var snagOrObjectJoined: Either[Snag, RecordValue] = Right(objects.head)
               for(object2 <- objects.tail) {
                 snagOrObjectJoined = snagOrObjectJoined.flatMap(_.joinWith(object2))
               }

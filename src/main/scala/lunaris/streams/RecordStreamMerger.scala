@@ -8,7 +8,7 @@ import lunaris.utils.SeqBasedOrdering
 
 object RecordStreamMerger {
 
-  private case class TaggedRecord(record: LunValue.ObjectValue, iSource: Int, isLast: Boolean)
+  private case class TaggedRecord(record: LunValue.RecordValue, iSource: Int, isLast: Boolean)
 
   private def getTaggedRecordOrdering(chroms: Seq[String]): Ordering[TaggedRecord] = {
     val chromosomeOrdering = SeqBasedOrdering(chroms)
@@ -20,7 +20,7 @@ object RecordStreamMerger {
     }
   }
 
-  private def taggedStream(source: Source[LunValue.ObjectValue, RecordStream.Meta], iSource: Int):
+  private def taggedStream(source: Source[LunValue.RecordValue, RecordStream.Meta], iSource: Int):
   Source[TaggedRecord, RecordStream.Meta] = {
     source.map(Some(_)).concat(Source.single(None)).sliding(2).map { recordOpts =>
       val isLast = recordOpts.size < 2 || recordOpts(1).isEmpty
@@ -52,7 +52,7 @@ object RecordStreamMerger {
       (1 until nStreams).forall(streamHasNoMoreForLocus(_, locus))
     }
 
-    private def extractJoinedRecord(): LunValue.ObjectValue = {
+    private def extractJoinedRecord(): LunValue.RecordValue = {
       val firstRecord = records.head.record
       val (sameRecords, otherRecords) =
         records.partition(record => (record.record.id == firstRecord.id) && (record.record.locus == firstRecord.locus))
@@ -60,9 +60,9 @@ object RecordStreamMerger {
       sameRecords.sortBy(_.iSource).map(_.record).reduce((o1, o2) => o1.joinWith(o2).toOption.get)
     }
 
-    def addNext(taggedRecord: TaggedRecord): Seq[LunValue.ObjectValue] = {
+    def addNext(taggedRecord: TaggedRecord): Seq[LunValue.RecordValue] = {
       enterRecord(taggedRecord)
-      val builder = Seq.newBuilder[LunValue.ObjectValue]
+      val builder = Seq.newBuilder[LunValue.RecordValue]
       while (records.nonEmpty && noStreamHasMoreForLocus(records.head.record.locus)) {
         builder += extractJoinedRecord()
       }
@@ -70,8 +70,8 @@ object RecordStreamMerger {
     }
   }
 
-  def merge(meta: RecordStream.Meta, sources: Seq[Source[LunValue.ObjectValue, RecordStream.Meta]]):
-  Source[LunValue.ObjectValue, RecordStream.Meta] = {
+  def merge(meta: RecordStream.Meta, sources: Seq[Source[LunValue.RecordValue, RecordStream.Meta]]):
+  Source[LunValue.RecordValue, RecordStream.Meta] = {
     val taggedSources = sources.zipWithIndex.collect {
       case (source, iSource) => taggedStream(source, iSource)
     }

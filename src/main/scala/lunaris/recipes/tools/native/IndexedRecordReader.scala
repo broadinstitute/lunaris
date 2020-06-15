@@ -13,8 +13,8 @@ import lunaris.streams.RecordProcessor
 import lunaris.utils.{Eitherator, EitheratorStreamsInterop}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object IndexedObjectReader extends tools.Tool {
-  override def resultType: LunType = LunType.ObjectStreamType
+object IndexedRecordReader extends tools.Tool {
+  override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
 
@@ -57,7 +57,7 @@ object IndexedObjectReader extends tools.Tool {
                     index: InputId,
                     idField: String,
                     typesOpt: Option[Map[String, LunType]],
-                    recordProcessor: RecordProcessor[LunValue.ObjectValue],
+                    recordProcessor: RecordProcessor[LunValue.RecordValue],
                     compileContext: LunCompileContext) extends eval.WorkerMaker {
     private var nOrdersField: Int = 0
 
@@ -79,8 +79,8 @@ object IndexedObjectReader extends tools.Tool {
         Some[ObjectStreamWorker]((runContext: LunRunContext) => {
           RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
             RecordProcessor.ignoreFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
-            def objectEtorGenerator(): Eitherator[LunValue.ObjectValue] =
-              headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toObject(idField)))
+            def objectEtorGenerator(): Eitherator[LunValue.RecordValue] =
+              headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toLunRecord(idField)))
                 .map { objectValue =>
                   typesOpt match {
                     case Some(types) =>

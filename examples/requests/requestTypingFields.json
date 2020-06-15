@@ -15,7 +15,7 @@
       "types" : {
         "maf" : "Float"
       },
-      "tool" : "IndexedObjectReader"
+      "tool" : "IndexedRecordReader"
     },
     "write" : {
       "from" : "read",

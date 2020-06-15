@@ -6,12 +6,12 @@ import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunW
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, RecordStream}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.{JoinedObjectsEitherator, RecordStreamMerger}
-import lunaris.utils.{EitherSeqUtils, SeqBasedOrdering}
+import lunaris.streams.RecordStreamMerger
+import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object JoinObjects extends tools.Tool {
-  override def resultType: LunType = LunType.ObjectStreamType
+object JoinRecords extends tools.Tool {
+  override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
 
@@ -19,7 +19,7 @@ object JoinObjects extends tools.Tool {
       val from: String = "from"
     }
 
-    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.ArrayType(LunType.ObjectStreamType), isRequired = true)
+    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.ArrayType(LunType.RecordStreamType), isRequired = true)
   }
 
   override def params: Seq[Tool.Param] = Seq(Params.from)

@@ -30,7 +30,7 @@ object JSONWriter extends Tool {
       val file = "file"
     }
 
-    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.ObjectStreamType, isRequired = true)
+    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.RecordStreamType, isRequired = true)
     val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.FileType, isRequired = false)
   }
 
@@ -69,7 +69,7 @@ object JSONWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      private def writeRecords(source: Source[LunValue.ObjectValue, RecordStream.Meta],
+      private def writeRecords(source: Source[LunValue.RecordValue, RecordStream.Meta],
                                runContext: LunRunContext)(linePrinter: String => Unit): Unit =  {
         linePrinter("{")
         val doneFuture = source.map(Some(_)).concat(Source(Seq(None))).sliding(2). map { recordOpts =>

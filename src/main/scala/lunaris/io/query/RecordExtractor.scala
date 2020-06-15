@@ -5,18 +5,18 @@ import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
 import lunaris.recipes.values.RecordStream
-import lunaris.streams.{Header, Record, RecordProcessor}
+import lunaris.streams.{TsvHeader, TsvRecord, RecordProcessor}
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordExtractor {
 
-  case class HeaderAndRecordEtor(header: Header, meta: RecordStream.Meta, recordEtor: Eitherator[Record])
+  case class HeaderAndRecordEtor(header: TsvHeader, meta: RecordStream.Meta, recordEtor: Eitherator[TsvRecord])
 
   def extractRecords(dataSourceWithIndex: BlockGzippedWithIndex,
                      regionsBySequence: Map[String, Seq[Region]],
                      idField: String,
-                     recordProcessor: RecordProcessor[Record],
+                     recordProcessor: RecordProcessor[TsvRecord],
                      resourceConfig: ResourceConfig): Disposable[Either[Snag, HeaderAndRecordEtor]] = {
     dataSourceWithIndex.index.newReadChannelDisposable(resourceConfig).flatMap { indexReadChannel =>
       val bufferSize = 10000
@@ -33,21 +33,21 @@ object RecordExtractor {
             dataRefiller.currentChunk = TBIChunk.wholeFile
             val snagOrHeader = for {
               line <- dataReader.readLine()
-              header <- Header.parse(line, indexHeader.col_seq, indexHeader.col_beg, indexHeader.col_end)
+              header <- TsvHeader.parse(line, indexHeader.col_seq, indexHeader.col_beg, indexHeader.col_end)
             } yield header
             snagOrHeader match {
               case Left(snag) => Left(snag)
               case Right(header) =>
                 val recordsEtor = headerAndChunksPlusEitherator.chunksPlusEter.flatMap { chunkWithSequenceAndRegions =>
                   dataRefiller.currentChunk = chunkWithSequenceAndRegions.chunk
-                  Record.newEitherator(dataReader, header, recordProcessor).filter { record =>
+                  TsvRecord.newEitherator(dataReader, header, recordProcessor).filter { record =>
                     val sequence = chunkWithSequenceAndRegions.name
                     val regions = chunkWithSequenceAndRegions.regions
                     record.locus.chrom == sequence && regions.exists(_.overlaps(record.locus.region))
                   }
                 }
-                header.toLunObjectType(idField).map { objectType =>
-                  HeaderAndRecordEtor(header, RecordStream.Meta(objectType, indexHeader.names), recordsEtor)
+                header.toLunRecordType(idField).map { recordType =>
+                  HeaderAndRecordEtor(header, RecordStream.Meta(recordType, indexHeader.names), recordsEtor)
                 }
             }
           }

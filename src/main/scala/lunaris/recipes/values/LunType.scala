@@ -28,7 +28,7 @@ object LunType {
       case "Bool" => Right(BoolType)
       case "Unit" => Right(UnitType)
       case "Type" => Right(TypeType)
-      case "Stream[Object]" => Right(ObjectStreamType)
+      case "Stream[Record]" => Right(RecordStreamType)
       case _ =>
         if(string.startsWith("Array[") && string.endsWith("]")) {
           val elementTypeString = string.substring(6, string.length - 1)
@@ -80,7 +80,7 @@ object LunType {
     override val asString: String = "Unit"
   }
 
-  object ObjectStreamType extends LunType {
+  object RecordStreamType extends LunType {
     override def asString: String = "Stream[Object]"
   }
 
@@ -114,13 +114,13 @@ object LunType {
     override def asString: String = s"Map[${valueType.asString}]"
   }
 
-  case class ObjectSpecialFields(id: String, chrom: String, begin: String, end: String)
+  case class RecordSpecialFields(id: String, chrom: String, begin: String, end: String)
 
-  case class ObjectType(specialFields: ObjectSpecialFields,
+  case class RecordType(specialFields: RecordSpecialFields,
                         fields: Seq[String], elementTypes: Map[String, LunType]) extends LunType {
     override def canBeAssignedFrom(oType: LunType): Boolean = {
       oType match {
-        case ObjectType(oSpecialFields, _, oElementTypes) =>
+        case RecordType(oSpecialFields, _, oElementTypes) =>
           (specialFields == oSpecialFields) && elementTypes.collect {
             case (key, thisType) =>
               oElementTypes.get(key) match {
@@ -137,14 +137,14 @@ object LunType {
       s"Object[$typesString]"
     }
 
-    def joinWith(oType: ObjectType): ObjectType = {
+    def joinWith(oType: RecordType): RecordType = {
       val fieldsSet = fields.toSet
       val fieldsNew = fields ++ oType.fields.filter(!fieldsSet(_))
       val elementTypesNew = oType.elementTypes ++ elementTypes
-      ObjectType(specialFields, fieldsNew, elementTypesNew)
+      RecordType(specialFields, fieldsNew, elementTypesNew)
     }
 
-    def changeFieldTypesTo(types: Map[String, LunType]): ObjectType = {
+    def changeFieldTypesTo(types: Map[String, LunType]): RecordType = {
       val eternalTypes =
         Map(
           specialFields.id -> LunType.StringType,
@@ -156,9 +156,9 @@ object LunType {
     }
   }
 
-  object ObjectType {
-    def apply(id: String, chrom: String, begin: String, end: String): ObjectType = {
-      ObjectType(ObjectSpecialFields(id, chrom, begin, end), Seq(id, chrom, begin, end),
+  object RecordType {
+    def apply(id: String, chrom: String, begin: String, end: String): RecordType = {
+      RecordType(RecordSpecialFields(id, chrom, begin, end), Seq(id, chrom, begin, end),
         Map(id -> StringType, chrom -> StringType, begin -> IntType, end -> IntType))
     }
   }

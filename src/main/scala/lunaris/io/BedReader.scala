@@ -2,14 +2,14 @@ package lunaris.io
 
 import lunaris.genomics.Region
 import lunaris.io
-import lunaris.streams.{Header, Record, RecordProcessor}
+import lunaris.streams.{TsvHeader, TsvRecord, RecordProcessor}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.collection.mutable
 
 object BedReader {
 
-  def read(id: InputId, recordProcessor: RecordProcessor[Record],
+  def read(id: InputId, recordProcessor: RecordProcessor[TsvRecord],
            resourceConfig: ResourceConfig = ResourceConfig.empty):
   Either[Snag, Map[String, Seq[Region]]] = {
     id.newReadChannelDisposable(resourceConfig).useUp { readChannel =>
@@ -18,13 +18,13 @@ object BedReader {
       val reader = ByteBufferReader(refiller)
       val snagOrHeader = for {
         line <- reader.readLine()
-        header <- Header.parse(line, 1, 2, 3)
+        header <- TsvHeader.parse(line, 1, 2, 3)
       } yield header
       snagOrHeader match {
         case Left(snag) => Left(snag)
         case Right(header) =>
           var regionsBySeq: Map[String, mutable.Builder[Region, Seq[Region]]] = Map.empty
-          Record.newEitherator(reader, header, recordProcessor).foreach { record =>
+          TsvRecord.newEitherator(reader, header, recordProcessor).foreach { record =>
             val regionsForSeq = regionsBySeq.getOrElse(record.locus.chrom, Seq.newBuilder[Region])
             regionsForSeq += record.locus.region
             regionsBySeq = regionsBySeq + (record.locus.chrom -> regionsForSeq)

@@ -3,7 +3,7 @@ package lunaris.streams
 import lunaris.recipes.values.LunType
 import org.broadinstitute.yootilz.core.snag.Snag
 
-case class Header(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: Int) {
+case class TsvHeader(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: Int) {
   def asString: String = "#" + colNames.mkString("\t")
 
   private def pickHeaderField(colNames: Seq[String], name: String, col: Int): Either[Snag, String] = {
@@ -14,23 +14,23 @@ case class Header(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: Int
     }
   }
 
-  def toLunObjectType(idField: String): Either[Snag, LunType.ObjectType] = {
+  def toLunRecordType(idField: String): Either[Snag, LunType.RecordType] = {
     val snagOrSpecialFields = for {
       chromField <- pickHeaderField(colNames, "chrom", seqCol - 1)
       beginField <- pickHeaderField(colNames, "begin", beginCol - 1)
       endField <- pickHeaderField(colNames, "end", endCol - 1)
-    } yield LunType.ObjectSpecialFields(idField, chromField, beginField, endField)
+    } yield LunType.RecordSpecialFields(idField, chromField, beginField, endField)
     snagOrSpecialFields.map { specialFields =>
       val elementTypes =
         colNames.map(colName => (colName, LunType.StringType)).toMap +
           (specialFields.begin -> LunType.IntType) + (specialFields.end -> LunType.IntType)
-      LunType.ObjectType(specialFields, colNames, elementTypes)
+      LunType.RecordType(specialFields, colNames, elementTypes)
     }
   }
 }
 
-object Header {
-  def parse(line: String, seqCol: Int, beginCol: Int, endCol: Int): Either[Snag, Header] = {
+object TsvHeader {
+  def parse(line: String, seqCol: Int, beginCol: Int, endCol: Int): Either[Snag, TsvHeader] = {
     var line2: String = line.trim
     while (line2.startsWith("#")) {
       line2 = line2.drop(1)
@@ -44,7 +44,7 @@ object Header {
     } else if (colNames.size < endCol) {
       Left(Snag(s"End column should be column $endCol, but we only have $nColNames."))
     } else {
-      Right(Header(colNames, seqCol, beginCol, endCol))
+      Right(TsvHeader(colNames, seqCol, beginCol, endCol))
     }
   }
 }

@@ -6,11 +6,11 @@ import lunaris.recipes.values.LunValue
 import lunaris.utils.{Eitherator, NumberParser}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
-case class Record(header: Header, locus: Locus, values: Seq[String]) {
+case class TsvRecord(header: TsvHeader, locus: Locus, values: Seq[String]) {
   def asString: String = values.mkString("\t")
 
-  def toObject(idField: String): Either[Snag, LunValue.ObjectValue] = {
-    header.toLunObjectType(idField).flatMap { objectType =>
+  def toLunRecord(idField: String): Either[Snag, LunValue.RecordValue] = {
+    header.toLunRecordType(idField).flatMap { objectType =>
       val idCol = header.colNames.indexOf(idField)
       if (idCol < 0) {
         Left(Snag(s"Header line does not contain id field '$idField'."))
@@ -23,13 +23,13 @@ case class Record(header: Header, locus: Locus, values: Seq[String]) {
             (objectType.specialFields.chrom -> LunValue.PrimitiveValue.StringValue(locus.chrom)) +
             (objectType.specialFields.begin -> LunValue.PrimitiveValue.IntValue(locus.region.begin)) +
             (objectType.specialFields.end -> LunValue.PrimitiveValue.IntValue(locus.region.end))
-        Right(LunValue.ObjectValue(id, locus, objectType, objectValues))
+        Right(LunValue.RecordValue(id, locus, objectType, objectValues))
       }
     }
   }
 }
 
-object Record {
+object TsvRecord {
 
   private def outOfBoundsSnag(name: String, index: Int, size: Int): Snag =
     Snag(s"Trying to read field $name from column $index, but record only has $size columns.")
@@ -55,7 +55,7 @@ object Record {
     } yield value
   }
 
-  def parse(line: String, header: Header): Either[Snag, Record] = {
+  def parse(line: String, header: TsvHeader): Either[Snag, TsvRecord] = {
     val values = line.trim.split("\t").toSeq
     for {
       seq <- pickField(values, "sequence", header.seqCol - 1)
@@ -66,16 +66,16 @@ object Record {
         } else {
           parseField(values, "end", header.endCol - 1)(NumberParser.parseInt)
         }
-    } yield Record(header, Locus(seq, Region(begin, end)), values)
+    } yield TsvRecord(header, Locus(seq, Region(begin, end)), values)
   }
 
   def newEitherator(reader: ByteBufferReader,
-                    header: Header,
-                    recordProcessor: RecordProcessor[Record]): Eitherator[Record] = {
+                    header: TsvHeader,
+                    recordProcessor: RecordProcessor[TsvRecord]): Eitherator[TsvRecord] = {
     val lineEitherator =
       Eitherator.fromGeneratorUntilTag(SnagTag.endOfData)(reader.readLine())
     lineEitherator.process { line =>
-      recordProcessor(Record.parse(line, header))
+      recordProcessor(TsvRecord.parse(line, header))
     }
   }
 }

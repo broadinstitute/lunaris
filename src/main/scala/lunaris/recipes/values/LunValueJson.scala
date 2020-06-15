@@ -1,9 +1,9 @@
 package lunaris.recipes.values
 
 import io.circe.syntax._
-import io.circe.{ACursor, DecodingFailure, Encoder, FailedCursor, HCursor, Json}
+import io.circe.{DecodingFailure, Encoder, HCursor, Json}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{BoolValue, FileValue, FloatValue, IntValue, StringValue, UnitValue}
-import lunaris.recipes.values.LunValue.{ArrayValue, MapValue, ObjectValue, PrimitiveValue, TypeValue}
+import lunaris.recipes.values.LunValue.{ArrayValue, MapValue, PrimitiveValue, RecordValue, TypeValue}
 import lunaris.utils.CirceUtils
 
 object LunValueJson {
@@ -17,7 +17,7 @@ object LunValueJson {
     case UnitValue => "()".asJson
     case arrayValue: ArrayValue => arrayValue.values.asJson
     case mapValue: MapValue => mapValue.values.asJson
-    case objectValue: ObjectValue =>
+    case objectValue: RecordValue =>
       Json.obj(objectValue.lunType.fields.flatMap { field =>
         objectValue.values.get(field).map(_.asJson).map(json => (field, json))
       }: _*)

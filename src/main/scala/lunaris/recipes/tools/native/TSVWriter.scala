@@ -11,8 +11,8 @@ import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.LunType.ObjectType
-import lunaris.recipes.values.LunValue.ObjectValue
+import lunaris.recipes.values.LunType.RecordType
+import lunaris.recipes.values.LunValue.RecordValue
 import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStream}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -30,7 +30,7 @@ object TSVWriter extends Tool {
       val file = "file"
     }
 
-    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.ObjectStreamType, isRequired = true)
+    val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.RecordStreamType, isRequired = true)
     val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.FileType, isRequired = false)
   }
 
@@ -69,7 +69,7 @@ object TSVWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      private def headerLine(objectType: ObjectType): String = "#" + objectType.fields.mkString("\t")
+      private def headerLine(objectType: RecordType): String = "#" + objectType.fields.mkString("\t")
 
       private def valueToString(value: LunValue): String = {
         value match {
@@ -78,7 +78,7 @@ object TSVWriter extends Tool {
         }
       }
 
-      private def dataLine(objectValue: ObjectValue): String = {
+      private def dataLine(objectValue: RecordValue): String = {
         objectValue.lunType.fields.map(objectValue.values.get).map(_.map(valueToString))
           .map(_.getOrElse("")).mkString("\t")
       }
