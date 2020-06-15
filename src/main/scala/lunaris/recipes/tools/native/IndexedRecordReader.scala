@@ -3,7 +3,7 @@ package lunaris.recipes.tools.native
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.InputId
 import lunaris.io.query.RecordExtractor
-import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
@@ -58,25 +58,12 @@ object IndexedRecordReader extends tools.Tool {
                     idField: String,
                     typesOpt: Option[Map[String, LunType]],
                     recordProcessor: RecordProcessor[LunValue.RecordValue],
-                    compileContext: LunCompileContext) extends eval.WorkerMaker {
-    private var nOrdersField: Int = 0
-
-    override def nOrders: Int = nOrdersField
-
-    override def orderAnotherWorker: Either[Snag, WorkerMaker.Receipt] = {
-      if (nOrdersField == 0) {
-        nOrdersField = 1
-        Right(WorkerMaker.Receipt(0))
-      } else {
-        Left(Snag(s"Multiplication of streams is not supported at this time."))
-      }
-    }
-
+                    compileContext: LunCompileContext) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     val dataWithIndex: BlockGzippedWithIndex = BlockGzippedWithIndex(file, index)
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
-      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[ObjectStreamWorker] =
-        Some[ObjectStreamWorker]((runContext: LunRunContext) => {
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
+        Some[RecordStreamWorker]((runContext: LunRunContext) => {
           RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
             RecordProcessor.ignoreFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
             def objectEtorGenerator(): Eitherator[LunValue.RecordValue] =

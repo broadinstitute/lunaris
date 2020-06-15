@@ -8,8 +8,8 @@ import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 object RequestExampleMinimalJson extends RequestExample {
   override val idBase: String = "MinimalJson"
 
-  val dataFile: FileValue = PortalData.variants
-  val idField: StringValue = PortalData.idField
+  val dataFile: FileValue = PortalData.Files.variants
+  val idField: StringValue = PortalData.Fields.id
 
   object Keys {
     val read: String = "read"

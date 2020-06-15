@@ -7,3 +7,5 @@ trait ToolInstance {
   def refs: Map[String, String]
   def newWorkerMaker(context: LunCompileContext, workers: Map[String, LunWorker]): Either[Snag, WorkerMaker]
 }
+
+

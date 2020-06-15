@@ -1,7 +1,7 @@
 package lunaris.recipes.tools.native
 
 import lunaris.io.Disposable
-import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, RecordStream}
@@ -41,7 +41,7 @@ object JoinRecords extends tools.Tool {
                                 workers: Map[String, LunWorker]): Either[Snag, WorkerMaker] = {
       EitherSeqUtils.traverse(from) { ref =>
         workers.get(ref) match {
-          case Some(fromWorker: ObjectStreamWorker) => Right(fromWorker)
+          case Some(fromWorker: RecordStreamWorker) => Right(fromWorker)
           case Some(_) => Left(Snag(s"Reference $ref for '${Params.Keys.from}' is not the correct type."))
           case None => Left(Snag(s"No value available for reference $ref for ${Params.Keys.from}."))
         }
@@ -51,22 +51,12 @@ object JoinRecords extends tools.Tool {
 
   override def isFinal: Boolean = false
 
-  class WorkerMaker(fromWorkers: Seq[ObjectStreamWorker]) extends eval.WorkerMaker {
-    private var nOrdersField: Int = 0
+  class WorkerMaker(fromWorkers: Seq[RecordStreamWorker])
+    extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
 
-    override def nOrders: Int = nOrdersField
-
-    override def orderAnotherWorker: Either[Snag, WorkerMaker.Receipt] = {
-      if (nOrdersField == 0) {
-        nOrdersField = 1
-        Right(WorkerMaker.Receipt(0))
-      } else {
-        Left(Snag(s"Multiplication of streams is not supported at this time."))
-      }
-    }
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerMaker.WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = {
-        Some(new ObjectStreamWorker {
+        Some(new RecordStreamWorker {
           override def getSnagOrStreamDisposable(context: LunRunContext):
           Disposable[Either[Snag, RecordStream]] = {
             val snagOrStreamsDisposables = fromWorkers.map(_.getSnagOrStreamDisposable(context))

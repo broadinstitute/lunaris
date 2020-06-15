@@ -10,8 +10,8 @@ object RequestExampleMinimalTsv extends RequestExample {
 
   override def outputFile: FileValue = FileValue(s"response$idBase.tsv")
 
-  val dataFile: FileValue = PortalData.variants
-  val idField: StringValue = PortalData.idField
+  val dataFile: FileValue = PortalData.Files.variants
+  val idField: StringValue = PortalData.Fields.id
 
   object Keys {
     val read: String = "read"

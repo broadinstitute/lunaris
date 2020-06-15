@@ -8,10 +8,10 @@ import java.util.concurrent.TimeUnit
 import akka.stream.scaladsl.{Sink, Source}
 import lunaris.io.{Disposable, OutputId}
 import lunaris.recipes.eval.LunRunContext.Observer
-import lunaris.recipes.eval.LunWorker.ObjectStreamWorker
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
-import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
+import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStream}
 import lunaris.recipes.{eval, tools}
 import lunaris.utils.Eitherator
@@ -51,15 +51,13 @@ object JSONWriter extends Tool {
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
-      workers.get(Params.Keys.from) match {
-        case Some(fromWorker: ObjectStreamWorker) => Right(new WorkerMaker(fromWorker, fileOpt))
-        case Some(_) => Left(Snag(s"Argument for '${Params.Keys.from}' is not the correct type."))
-        case None => Left(Snag(s"No argument provided for ${Params.Keys.from}."))
+      ToolInstanceUtils.newWorkerMakerSingleRef(Params.Keys.from, workers){ fromWorker =>
+        new WorkerMaker(fromWorker, fileOpt)
       }
     }
   }
 
-  class WorkerMaker(fromWorker: ObjectStreamWorker,
+  class WorkerMaker(fromWorker: RecordStreamWorker,
                     fileOpt: Option[OutputId]) extends eval.WorkerMaker {
     override def nOrders: Int = 0
 

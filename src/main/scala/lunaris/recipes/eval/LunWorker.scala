@@ -9,7 +9,7 @@ sealed trait LunWorker {
 }
 
 object LunWorker {
-  trait ObjectStreamWorker extends LunWorker {
+  trait RecordStreamWorker extends LunWorker {
     def getSnagOrStreamDisposable(context: LunRunContext): Disposable[Either[Snag, RecordStream]]
   }
 }

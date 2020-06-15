@@ -8,7 +8,10 @@ object RequestExamplesWriteApp {
 
   val defaultExamplesFolder: OutputId = OutputId("examples/requests")
   val examples: Seq[RequestExample] =
-    Seq(RequestExampleMinimalTsv, RequestExampleMinimalJson, RequestExampleMoreRegions, RequestExampleTypingFields)
+    Seq(
+      RequestExampleMinimalTsv, RequestExampleMinimalJson, RequestExampleMoreRegions, RequestExampleTypingFields,
+      RequestExampleFilter
+    )
 
   def main(args: Array[String]): Unit = {
     val outputFolder =

@@ -1,0 +1,29 @@
+{
+  "id" : "requestFilterTsv",
+  "regions" : {
+    "1" : [
+      {
+        "begin" : 0,
+        "end" : 1000000
+      }
+    ]
+  },
+  "recipe" : {
+    "read" : {
+      "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz",
+      "idField" : "phenotype",
+      "tool" : "IndexedRecordReader"
+    },
+    "filter" : {
+      "from" : "read",
+      "field" : "phenotype",
+      "stringValue" : "T2D",
+      "tool" : "RecordsFilter"
+    },
+    "write" : {
+      "from" : "filter",
+      "file" : "responseFilterTsv.tsv",
+      "tool" : "TSVWriter"
+    }
+  }
+}
