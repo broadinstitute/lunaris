@@ -22,7 +22,7 @@ The *recipe* field points to an object whose properties represent the steps nece
 
 A minimal request: read data from one block-gzipped, location-sorted, tabix-indexed file and export the data as tab-separated values (TSV). It contains two steps, *read* and *write*. Each step specifies a tool to describe what is being done in this step and some arguments. 
 
-The *read* step uses the tool *IndexedObjectReader* to read from a location-sorted block-gzipped tabix-index file into a stream of objects. Required arguments are the file and the name of the id column. If the index file is omitted, it is assumed to be the data file plus suffix ".tbi".
+The *read* step uses the tool *IndexedRecordReader* to read from a location-sorted block-gzipped tabix-index file into a stream of objects. Required arguments are the file and the name of the id column. If the index file is omitted, it is assumed to be the data file plus suffix ".tbi".
 
 The *write* step uses the *TSVWriter* tool to write a stream of objects to a TSV file. The from argument contains the name of the step that produces the stream of objects to be written. file is the file to be written to.
 
@@ -45,7 +45,7 @@ A file in Lunaris can be a local file or a file stored on Google Cloud Storage.
     "read" : {
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
       "idField" : "varId",
-      "tool" : "IndexedObjectReader"
+      "tool" : "IndexedRecordReader"
     },
     "write" : {
       "from" : "read",
@@ -98,7 +98,7 @@ This is achieved by using, in the *write* step, the *JSONWriter* tool (instead o
     "read" : {
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
       "idField" : "varId",
-      "tool" : "IndexedObjectReader"
+      "tool" : "IndexedRecordReader"
     },
     "write" : {
       "from" : "read",
@@ -172,7 +172,7 @@ Here is an example that extracts data from four regions: 1:100000-200000, 1:3000
     "read" : {
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
       "idField" : "varId",
-      "tool" : "IndexedObjectReader"
+      "tool" : "IndexedRecordReader"
     },
     "write" : {
       "from" : "read",
@@ -213,7 +213,7 @@ Here is an example that extracts data from four regions: 1:100000-200000, 1:3000
 *Status: working*
 
 In the previous examples, all data fields were turned into JSON strings except for position. Lunaris knows from the index which is the position field (or, alternatively, the start and end fields), and it knows that these fields are integers. 
-To assign other types, we use the types argument of the IndexedObjectReader. Lunaris types include "String", "File", "Int", "Float", "Bool" as well as arrays and objects.
+To assign other types, we use the types argument of the IndexedRecordReader. Lunaris types include "String", "File", "Int", "Float", "Bool" as well as arrays and objects.
 
 #### Request
 
@@ -235,7 +235,7 @@ To assign other types, we use the types argument of the IndexedObjectReader. Lun
       "types" : {
           "maf" : "Float"
       },
-      "tool" : "IndexedObjectReader"
+      "tool" : "IndexedRecordReader"
     },
     "write" : {
       "from" : "read",
@@ -268,6 +268,57 @@ To assign other types, we use the types argument of the IndexedObjectReader. Lun
 }
 ~~~
 
+### Example: Filtering by field value
+
+*Status: working*
+
+The following example filters records, only retaining records where the field "phenotype" 
+has the String "T2D" as value.
+
+IndexedRecordReader reads the data, RecordsFilter filters, and the TSVWriter writes it.
+
+#### Request
+
+~~~
+{
+  "id" : "requestFilterTsv",
+  "regions" : {
+    "1" : [
+      {
+        "begin" : 0,
+        "end" : 1000000
+      }
+    ]
+  },
+  "recipe" : {
+    "read" : {
+      "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz",
+      "idField" : "varId",
+      "tool" : "IndexedRecordReader"
+    },
+    "filter" : {
+      "from" : "read",
+      "field" : "phenotype",
+      "stringValue" : "T2D",
+      "tool" : "RecordsFilter"
+    },
+    "write" : {
+      "from" : "filter",
+      "file" : "responseFilterTsv.tsv",
+      "tool" : "TSVWriter"
+    }
+  }
+}
+~~~
+
+#### Data
+
+*TODO*
+
+#### Response
+
+*TODO*
+
 ### Example: Picking fields
 
 *Status: in progress*
@@ -290,7 +341,7 @@ However, id, chromosome, position, start and end fields are never discarded.
   },
   "recipe" : {
     "read" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://yeoldegooglebucket/variants.tsv.gz",
       "idField" : "varId"
       "fields" ["maf", "p_value"]
@@ -353,7 +404,7 @@ For every id, all objects of the same id are combined into a new object with the
   },
   "recipe" : {
     "readVariants" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://yeoldegooglebucket/variants.tsv.gz",
       "idField" : "varId"
       "types" : {
@@ -362,7 +413,7 @@ For every id, all objects of the same id are combined into a new object with the
       }
     }, 
     "readAssociations" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://yeoldegooglebucket/associations.tsv.gz",
       "idField" : "varId"
       "types" : {
@@ -436,7 +487,7 @@ A realistic example of how T2D portal data would be extracted.
   },
   "recipe" : {
     "readVariants" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/variants.tsv.gz",
       "idField" : "varId",
       "fields" : ["varId", "chromosome", "position", "alt", "maf"],
@@ -448,7 +499,7 @@ A realistic example of how T2D portal data would be extracted.
       }
     },
     "readAssociations" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/associations.tsv.gz",
       "idFields" : ["varId", "phenotype"],
       "fields" : 
@@ -475,7 +526,7 @@ A realistic example of how T2D portal data would be extracted.
       "path" : "phenotypes"
     }
     "readPosteriors" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/posteriors.tsv.gz",
       "idFields" : ["varId", "phenotype"],
       "fields" : 
@@ -500,7 +551,7 @@ A realistic example of how T2D portal data would be extracted.
       "path" : "phenotypes"
     }
     "readRegions" : {
-      "tool" : "IndexedObjectReader",
+      "tool" : "IndexedRecordReader",
       "file" : "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/regions.tsv.gz",
       "idFields" : ["varId", "regionId"],
       "fields" : [ "varId", "chromosome", "position", "regionId" ],
@@ -600,24 +651,34 @@ A realistic example of how T2D portal data would be extracted.
 
 ### Object streams
 
-Each location-sorted block-gzipped tabix-indexed file is read as a sorted stream of objects.
-An object in Lunaris is an ordered list of key/value pairs, where the key is a String and the value can be of one of a number of types. Lunaris' types are very similar to those of JSON, but have a few more distinctions, for example Lunaris has an Int type.
+Each location-sorted block-gzipped tabix-indexed file is read as a sorted stream of records.
+A record in Lunaris is an ordered list of key/value pairs, where the key is a String and the value can be of one of a
+number of types. Lunaris' types are very similar to those of JSON, but have a few more distinctions, for example 
+Lunaris has an Int type.
 
-Each object has as a minimum four core fields representing the id, the chromosome or sequence, begin and end. These can have any keys. begin and end may be the same field, in which case the actual end is the begin plus one, in line with Tabix specs. id and chromosome are of type String, while begin and end are of type Int.
+Each record has as a minimum four core fields representing the id, the chromosome or sequence, begin and end. These 
+can have any keys. begin and end may be the same field, in which case the actual end is the begin plus one, in line 
+with Tabix specs. id and chromosome are of type String, while begin and end are of type Int.
 
-The stream of objects is sorted by genomic location, which means it is sorted by chromosome, begin and end, in this order. Multiple objects in a stream can have the same id, but any objects with the same id must also have the same chromosome, begin and end. Some operations, such as joining streams or writing objects to JSON, require that a stream has only one object per id. This can be ensured by grouping, which collapses all objects with the same id into one.
+The stream of records is sorted by genomic location, which means it is sorted by chromosome, begin and end, in this 
+order. Multiple records in a stream can have the same id, but any records with the same id must also have the same
+chromosome, begin and end. Some operations, such as joining streams or writing recordss to JSON, require that a 
+stream has only one record per id. This can be ensured by grouping, which collapses all records with the same id
+into one. It can also be achieved by filtering, depending on the data.
 
-Typically, the id is a variant id, but it need not be.
+Typically, the id is a variant id, but it does not need to be.
 
 ### The recipe
 
-The recipe is a JSON object with each property representing a step consisting of a tool and a set of arguments. Some of these arguments are references to other steps, which means this step consumes the output of the other step, typically a stream of objects.
+The recipe is a JSON object with each property representing a step consisting of a tool and a set of arguments.
+Some of these arguments are references to other steps, which means this step consumes the output of the other step,
+typically a stream of records.
 
 ### Tools
 
-#### IndexedObjectReader
+#### IndexedRecordReader
 
-This tool reads a stream of objects from a given file, which can be a local file or an object on Google Cloud Storage.
+This tool reads a stream of records from a given file, which can be a local file or an object on Google Cloud Storage.
 
 ##### Arguments
 
@@ -625,19 +686,23 @@ This tool reads a stream of objects from a given file, which can be a local file
 
 *index (optional)*: The location of the index. If not given, the index is assumed to be the file plus the ".tbi" suffix.
 
-*idField (required)*: the name of the column containing the object id.
+*idField (required)*: the name of the column containing the record id.
 
-*fields (optional)*: the fields to be read. If missing, read all fields. Core fields are always included, regardless of this argument: idField is given separately, and the chromosome, begin and end are taken from the index file.
+*fields (optional)*: the fields to be read. If missing, read all fields. Core fields are always included, regardless
+of this argument: idField is given separately, and the chromosome, begin and end are taken from the index file.
 
-*types (optional)*: the types of the fields. The types of core fields are fixed to String for id and chromosome and Int for begin and end, and cannot be changed. All fields not  explicitly typed are treated as String.
+*types (optional)*: the types of the fields. The types of core fields are fixed to String for id and chromosome and
+Int for begin and end, and cannot be changed. All fields not  explicitly typed are treated as String.
 
 #### GroupAsObject
 
-Merges all objects with the same id in a stream into a single object. Core fields, which are assumed the same if the id is the same, are kept intact. Other fields are moved to sub-objects according to the specified path followed by the value of the subIdField.
+Merges all recordss with the same id in a stream into a single record. Core fields, which are assumed the same if
+the id is the same, are kept intact. Other fields are moved to sub-objects according to the specified path followed
+by the value of the subIdField.
 
 ##### Arguments
 
-*from (required)*: reference to the step that provides the stream of objects as input.
+*from (required)*: reference to the step that provides the stream of records as input.
 
 *subIdField (required)*: field whose values are used to point to the sub-objects containing the grouped fields
 

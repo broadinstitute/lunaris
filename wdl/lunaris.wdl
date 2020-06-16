@@ -30,13 +30,13 @@ task run_lunaris {
   }
   runtime {
     preemptible: 3
-    docker: "gcr.io/v2f-public-resources/lunaris:1.0.2"
+    docker: "gcr.io/v2f-public-resources/lunaris:1.1.0"
     cpu: 1
     memory: "5 GB"
     disks: "local-disk 20 HDD"
   }
   command <<<
-    lunaris ~{lunaris_input}
+    lunaris batch --request-file=~{lunaris_input}
   >>>
   output {
     Array[File] output_files = output_file_names
