@@ -23,7 +23,7 @@ RUN apt -y update && \
     cd /work && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v1.0.2 && \
+    git checkout v1.1.0 && \
     sbt debian:packageBin && \
     apt -y install ./target/lunaris_1.1.0_all.deb && \
     cd /work && \
