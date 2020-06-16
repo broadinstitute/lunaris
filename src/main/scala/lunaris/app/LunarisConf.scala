@@ -6,8 +6,9 @@ class LunarisConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   version(LunarisInfo.versionLong)
   banner(
     """Usage: lunaris batch|server ...
-      |Lunaris is a stream processor to extract, combine and munge genomics-related data from location-sorted block-gzipped tabix-indexed files.
-      |Files can be local, on Google Cloud Storage or on Terra.
+      |Lunaris is a stream processor to extract, combine and munge genomics-related data from location-sorted
+      |block-gzipped tabix-indexed files.
+      |Files can be local, or on Google Cloud Storage, including on Terra.
       |""".stripMargin)
   footer("For more or more updated information, check https://github.com/broadinstitute/lunaris")
   val batch = new Subcommand("batch") {
