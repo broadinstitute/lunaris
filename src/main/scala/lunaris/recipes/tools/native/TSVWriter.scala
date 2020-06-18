@@ -5,7 +5,8 @@ import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
-import akka.stream.scaladsl.Sink
+import akka.NotUsed
+import akka.stream.scaladsl.{Sink, Source}
 import lunaris.io.{Disposable, OutputId}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
@@ -87,19 +88,26 @@ object TSVWriter extends Tool {
         Await.result(doneFuture, FiniteDuration(100, TimeUnit.SECONDS))
       }
 
-      override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable]((context: LunRunContext) => {
-        fromWorker.getSnagOrStreamDisposable(context).useUp {
-          case Left(snag) => context.observer.logSnag(snag)
-          case Right(headerAndRecordEtor) =>
-            fileOpt match {
-              case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
-                Disposable.forCloseable(new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))).useUp {
-                  writer => writeStreamAsTsv(headerAndRecordEtor, context)(writer.println)
+      override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable](new LunRunnable {
+        override def execute(context: LunRunContext): Unit = {
+          fromWorker.getSnagOrStreamDisposable(context).useUp {
+            case Left(snag) => context.observer.logSnag(snag)
+            case Right(headerAndRecordEtor) =>
+              fileOpt match {
+                case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
+                  Disposable.forCloseable(new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))).useUp {
+                    writer => writeStreamAsTsv(headerAndRecordEtor, context)(writer.println)
+                  }
                 }
+                case None => writeStreamAsTsv(headerAndRecordEtor, context)(println)
               }
-              case None => writeStreamAsTsv(headerAndRecordEtor, context)(println)
-            }
+          }
         }
+
+        override def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStream.Meta]]] =
+          fromWorker.getSnagOrStreamDisposable(context).map(_.map { recordStream =>
+            recordStream.source.map(dataLine)
+          })
       })
     }
   }

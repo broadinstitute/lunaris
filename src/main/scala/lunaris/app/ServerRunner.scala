@@ -1,19 +1,19 @@
 package lunaris.app
 
-import java.nio.charset.StandardCharsets
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.http.scaladsl.server.Directives.{complete, get, path}
-import akka.stream.scaladsl.Source
-import akka.util.ByteString
-import better.files.Resource
+import akka.http.scaladsl.model.ContentTypes
+import akka.http.scaladsl.server.Directives.{complete, get, path, _}
+import akka.stream.Materializer
+import lunaris.io.ResourceConfig
+import lunaris.io.request.RequestJson
+import lunaris.recipes.RecipeChecker
+import lunaris.recipes.eval.{LunCompiler, LunRunContext}
 import lunaris.utils.HttpUtils
-import akka.http.scaladsl.server.Directives._
+import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.io.{StdIn, Source => ScalaSource}
+import scala.io.StdIn
 
 object ServerRunner {
   val host: String = "localhost"
@@ -21,22 +21,64 @@ object ServerRunner {
 
   def run(): Unit = {
     println(s"Starting web service at http://$host:$port")
-    println(Resource.asStream("oops"))
-    implicit val system: ActorSystem = ActorSystem("my-system")
-    implicit val executionContext: ExecutionContextExecutor = system.dispatcher
+    implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
+    implicit val materializer: Materializer = Materializer(actorSystem)
+    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val route =
       concat(
         path("lunaris" / "lunaris.html") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/html/lunaris.html")
+              HttpUtils.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/lunaris.html")
             )
           }
         },
-        path("lunaris" / "lunaris.css") {
+        path("lunaris" / "css" / "lunaris.css") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/css/lunaris.css")
+              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.css, "web/css/lunaris.css")
+            )
+          }
+        },
+        path("lunaris" / "js" / "lunaris.js") {
+          get {
+            complete(
+              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.css, "web/js/lunaris.js")
+            )
+          }
+        },
+        path("lunaris" / "query") {
+          post {
+            decodeRequest {
+              entity(as[String]) { requestString =>
+                val snagOrRunnable = for {
+                  request <- RequestJson.parse(requestString)
+                  _ <- RecipeChecker.checkRecipe(request.recipe)
+                  runnable <- LunCompiler.compile(request)
+                } yield runnable
+                snagOrRunnable match {
+                  case Left(snag) => complete(HttpUtils.forError(snag.report))
+                  case Right(runnable) =>
+                    val runContext =
+                      LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
+                    runnable.getStream(runContext).useUp {
+                      case Left(snag) => complete(HttpUtils.forError(snag.report))
+                      case Right(recordStream) =>
+                        complete(HttpUtils.fromTsvStream(recordStream.recover { ex =>
+                          val report = Snag(ex).report
+                          println(report)
+                          report
+                        }))
+                    }
+                }
+              }
+            }
+          }
+        },
+        pathPrefix("lunaris" / "requests" / Remaining) { requestFile =>
+          get {
+            complete(
+              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.json, "web/requests/" + requestFile)
             )
           }
         }
@@ -49,7 +91,7 @@ object ServerRunner {
       println("Scheduled shutdown of web service.")
       binding.unbind()
     }
-      .onComplete(_ => system.terminate())
+      .onComplete(_ => actorSystem.terminate())
     println("Done!")
   }
 }

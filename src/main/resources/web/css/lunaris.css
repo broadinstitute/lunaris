@@ -1,4 +1,4 @@
-body {
+body, button, textarea {
     background-color: black;
     color: yellow;
     font-family: Sans-Serif, sans-serif;
