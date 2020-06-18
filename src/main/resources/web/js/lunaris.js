@@ -70,7 +70,7 @@ async function* makeTextFileLineIterator(requestUrl, httpInit) {
 }
 
 function addResponseLine(line) {
-    responseDisplayArea().value = responseDisplayArea().value + line
+    responseDisplayArea().value = responseDisplayArea().value + line + "\n"
 }
 
 async function query() {

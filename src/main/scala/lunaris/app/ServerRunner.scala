@@ -61,7 +61,7 @@ object ServerRunner {
                   case Right(runnable) =>
                     val runContext =
                       LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
-                    runnable.getStream(runContext).useUp {
+                    runnable.getStream(runContext).a match {
                       case Left(snag) => complete(HttpUtils.forError(snag.report))
                       case Right(recordStream) =>
                         complete(HttpUtils.fromTsvStream(recordStream.recover { ex =>
