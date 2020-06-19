@@ -17,7 +17,7 @@ import scala.io.StdIn
 
 object ServerRunner {
   val host: String = "localhost"
-  val port: Int = 8080
+  val port: Int = 80
 
   def run(): Unit = {
     println(s"Starting web service at http://$host:$port")
@@ -83,7 +83,7 @@ object ServerRunner {
           }
         }
       )
-    val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
+    val bindingFuture = Http().bindAndHandle(route, "localhost", port)
     println(s"Web service is now running at http://$host:$port/.")
     println("Press RETURN to stop...")
     StdIn.readLine() // let it run until user presses return
