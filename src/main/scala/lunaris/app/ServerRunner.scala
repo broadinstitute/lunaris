@@ -16,10 +16,14 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 
 object ServerRunner {
-  val host: String = "localhost"
-  val port: Int = 80
+  object Defaults {
+    val host: String = "localhost"
+    val port: Int = 8080
+  }
 
-  def run(): Unit = {
+  def run(hostOpt: Option[String], portOpt: Option[Int]): Unit = {
+    val host = hostOpt.getOrElse(Defaults.host)
+    val port = portOpt.getOrElse(Defaults.port)
     println(s"Starting web service at http://$host:$port")
     implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
     implicit val materializer: Materializer = Materializer(actorSystem)
@@ -83,7 +87,7 @@ object ServerRunner {
           }
         }
       )
-    val bindingFuture = Http().bindAndHandle(route, "localhost", port)
+    val bindingFuture = Http().bindAndHandle(route, host, port)
     println(s"Web service is now running at http://$host:$port/.")
     println("Press RETURN to stop...")
     StdIn.readLine() // let it run until user presses return

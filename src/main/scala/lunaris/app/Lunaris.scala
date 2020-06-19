@@ -12,7 +12,7 @@ object Lunaris {
         val input = InputId(conf.batch.requestFile())
         BatchRunner.run(input)
       case List(conf.server) =>
-        ServerRunner.run()
+        ServerRunner.run(conf.server.host.toOption, conf.server.port.toOption)
     }
   }
 }
