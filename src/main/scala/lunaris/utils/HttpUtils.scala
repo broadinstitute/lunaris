@@ -14,6 +14,7 @@ object HttpUtils {
     val js: MediaType.WithOpenCharset = MediaTypes.`application/javascript`
     val tsv: ContentType.WithCharset = MediaTypes.`text/tab-separated-values`.withCharset(HttpCharsets.`UTF-8`)
     val json: ContentType.WithFixedCharset = model.ContentTypes.`application/json`
+    val plain: ContentType.WithCharset = model.ContentTypes.`text/plain(UTF-8)`
   }
 
   def fromTsvStream(tsvStream: Source[String, _]): HttpEntity.Chunked = {
@@ -29,17 +30,7 @@ object HttpUtils {
   }
 
   def forError(message: String): HttpEntity.Strict = {
-    val string =
-      s"""
-        |<html>
-        |<head>
-        |<title>Error: $message</title>
-        |</head>
-        |<body>
-        |<h1>Error!</h1>
-        |<p>Error: $message</p>
-        |</body>
-        |</html>""".stripMargin
-    HttpEntity(ContentTypes.html, string)
+    val string = "ERROR: " + message
+    HttpEntity(ContentTypes.plain, string)
   }
 }

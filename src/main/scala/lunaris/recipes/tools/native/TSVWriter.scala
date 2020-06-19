@@ -6,7 +6,7 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import akka.NotUsed
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import lunaris.io.{Disposable, OutputId}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
@@ -106,7 +106,9 @@ object TSVWriter extends Tool {
 
         override def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStream.Meta]]] =
           fromWorker.getSnagOrStreamDisposable(context).map(_.map { recordStream =>
-            recordStream.source.map(dataLine)
+            val meta = recordStream.meta
+            Source.single(headerLine(meta.objectType)).concat(recordStream.source.map(dataLine))
+              .mapMaterializedValue(_ => meta)
           })
       })
     }

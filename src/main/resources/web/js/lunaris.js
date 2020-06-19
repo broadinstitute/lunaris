@@ -11,6 +11,10 @@ async function submitRequest() {
     await query();
 }
 
+function updateStatusReport(report) {
+    document.getElementById("statusReport").innerText = report
+}
+
 async function loadExample1() {
     await loadExample("requestMinimalTsv.json")
 }
@@ -34,7 +38,10 @@ async function loadExample5() {
 async function loadExample(fileName) {
     fetch("requests/" + fileName)
         .then(response => response.text())
-        .then(data => requestEditArea().value = data);
+        .then(data => {
+            requestEditArea().value = data;
+            updateStatusReport("Loaded example " + fileName)
+        });
 }
 
 async function* makeTextFileLineIterator(requestUrl, httpInit) {
@@ -83,7 +90,9 @@ async function query() {
         },
         body: lunRequest
     };
+    updateStatusReport("Processing request, please wait.")
     for await (let line of makeTextFileLineIterator(requestUrl, httpInit)) {
         addResponseLine(line);
     }
+    updateStatusReport("Completed request. Check response below.")
 }
