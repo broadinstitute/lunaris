@@ -69,7 +69,7 @@ object JSONWriter extends Tool {
 
       def toLineSource(recordSource: Source[LunValue.RecordValue, RecordStream.Meta], meta: RecordStream.Meta):
       Source[String, RecordStream.Meta] = {
-        Source.single("{").concat(recordSource.map(Some(_)).concat(Source(Seq(None))).sliding(2). map { recordOpts =>
+        Source.single("{\n").concat(recordSource.map(Some(_)).concat(Source(Seq(None))).sliding(2). map { recordOpts =>
           val isLast = recordOpts.size < 2 || recordOpts(1).isEmpty
           val record = recordOpts.head.get
           val objectJsonString = LunValueJson.toJson(record)
@@ -77,7 +77,7 @@ object JSONWriter extends Tool {
             "  \"" + record.id + "\" : " + objectJsonString.replace("\n", "\n  ")
           val maybeComma = if(isLast) "" else ","
           idWithJson + maybeComma
-        }).concat(Source.single("}")).mapMaterializedValue(_ => meta)
+        }).concat(Source.single("}\n")).mapMaterializedValue(_ => meta)
       }
 
       private def writeRecords(source: Source[LunValue.RecordValue, RecordStream.Meta],
