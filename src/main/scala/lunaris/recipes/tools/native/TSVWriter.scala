@@ -108,6 +108,7 @@ object TSVWriter extends Tool {
           fromWorker.getSnagOrStreamDisposable(context).map(_.map { recordStream =>
             val meta = recordStream.meta
             Source.single(headerLine(meta.objectType)).concat(recordStream.source.map(dataLine))
+              .map(_ + "\n")
               .mapMaterializedValue(_ => meta)
           })
       })
