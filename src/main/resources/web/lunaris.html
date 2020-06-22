@@ -1,0 +1,105 @@
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <style id="stndz-style"></style>
+    <title>Lunaris Version 1.2.1</title>
+    <link rel="stylesheet" href="css/lunaris.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+        integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <script src="js/lunaris.js"></script>
+    <style>
+        .lunaris-jumbotron {
+            background-image: linear-gradient(#003366, #336699);
+            color: #ff9;
+
+        }
+
+        .lunaris-text-area {
+            background-color: #eee;
+            border: solid 1px #ccc;
+            color: #000;
+            font-size: 14px;
+            padding: 15px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="jumbotron lunaris-jumbotron jumbotron-fluid text-center">
+        <h1 class="display-2"><img src="http://kp4cd.org/sites/default/files/lunaris/lunaris_logo_white.svg"
+                style="width: 80px; vertical-align: -10px;"  alt="Lunaris logo"/> Lunaris
+        </h1>
+        <p class="lead">(Version 1.2.1)</p>
+        <hr class="my-4">
+        <p>Search parameters </p>
+        <p class="lead">Chromosome: <span id="chr"></span>, begin: <span id="begin"></span>, end: <span
+                id="end"></span>,
+            trait ID : <span id="trait"></span>
+        </p>
+    </div>
+
+
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12 text-center">
+                <p>Status: <span class="btn btn-warning" id="statusReport">Enter a request below and submit.</span>
+                </p>
+                <p>To learn about input options, please visit <a
+                        href="https://github.com/broadinstitute/lunaris/blob/master/README.md">full
+                        documentation</a> page.</p>
+            </div>
+        </div>
+        <div class="row" style="margin-top: 20px;">
+            <div class="col-md-3">
+                <h4>1. Load input example and edit parameters</h4>
+
+                <div class="list-group list-group-flush">
+                    <button class="list-group-item list-group-item-action list-group-item-warning"
+                        onclick="loadExample1()">Input: region,
+                        output: TSV</button>
+                    <button class="list-group-item list-group-item-action list-group-item-warning"
+                        onclick="loadExample2()">Input: region,
+                        output: json</button>
+                    <button class="list-group-item list-group-item-action list-group-item-warning"
+                        onclick="loadExample3()">Input: multiple
+                        regions, output:
+                        json</button>
+                    <button class="list-group-item list-group-item-action list-group-item-warning"
+                        onclick="loadExample4()">Input: region +
+                        field type, output:
+                        json</button>
+                    <button class="list-group-item list-group-item-action list-group-item-warning"
+                        onclick="loadExample5()">Input: region +
+                        trait, output:
+                        tsv</button>
+                </div>
+            </div>
+            <div class="col-md-9">
+                <textarea class="lunaris-text-area" id="requestEditArea" cols="100" rows="22"></textarea>
+            </div>
+        </div>
+        <div class="row" style="margin-top: 20px;">
+            <div class="col-md-3">
+                <h4>2. Submit request</h4>
+                <button class="btn btn-primary btn-lz" onclick="submitRequest()">Submit request</button>
+            </div>
+            <div class="col-md-9">
+                <textarea class="lunaris-text-area" id="responseDisplayArea" cols="100" rows="22"></textarea>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let searchParam = new URLSearchParams(window.location.search);
+        document.getElementById("chr").innerHTML = searchParam.get('chr');
+        document.getElementById("begin").innerHTML = searchParam.get('begin');
+        document.getElementById("end").innerHTML = searchParam.get('end');
+        document.getElementById("trait").innerHTML = searchParam.get('trait');
+    </script>
+
+</body>
+
+</html>
