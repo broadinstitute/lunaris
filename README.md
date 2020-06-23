@@ -1,8 +1,44 @@
 # Lunaris
 
-Lunaris is an app to extract and aggregate data from multiple files, with particular focus on location-sorted block-gzipped tabix-indexed files, which are typically too large to fit into memory. A typical use-case is extracting data from files stored in a Terra workspace, but any files on local disk or in Google Cloud Storage can be used.
+Lunaris is an app to extract and aggregate data from multiple files, with particular focus on location-sorted 
+block-gzipped tabix-indexed files, which are typically too large to fit into memory.
 
-Since files are too large to fit into memory, Lunaris relies on stream-processing, traversing all location-sorted files simultaneously in parallel, aggregating data from different files, but pointing at the same genomic location in each file at any given time. Lunaris also accepts unsorted support files as long as they are small enough to be comfortably loaded into memory.
+Lunaris can be run in batch mode or as a web server. In batch mode, it reads a request from a file (or Google Cloud 
+Storage object) and writes the output to one or more files (or Google Storage objects). As a web service, the request
+is submitted via HTTP POST and the output is sent back as response. By default, the server expects requests at 
+`/lunaris/query` and offers a WebUI at `/lunaris/lunaris.html` to edit requests (with examples) and view responses.
+
+A typical use-case of batch mode is extracting
+data from files stored in a Terra workspace, but any files on local disk or in Google Cloud Storage can be used.
+
+Since files are too large to fit into memory, Lunaris relies on stream-processing, traversing all location-sorted
+files simultaneously in parallel, aggregating data from different files, but pointing at the same genomic location in
+each file at any given time. Lunaris also accepts unsorted support files as long as they are small enough to be
+comfortably loaded into memory.
+
+## Usage
+
+~~~
+Lunaris Version 1.2.1 (c) 2020 Broad Institute
+Usage: lunaris batch|server ...
+Lunaris is a stream processor to extract, combine and munge genomics-related data from location-sorted
+block-gzipped tabix-indexed files.
+Files can be local, or on Google Cloud Storage, including on Terra.
+
+  -h, --help      Show help message
+  -v, --version   Show version of this program
+
+Subcommand: batch
+Loads a request from file and executes it.
+  -r, --request-file  <arg>   Location of file containing request in JSON.
+  -h, --help                  Show help message
+Subcommand: server
+Web service: accepts HTML POST requests at http://<host>/lunaris/query and offers a WebUI at http://<host>/lunaris.lunaris.html
+  -h, --host  <arg>   Host to bind to, e.g. localhost, 0.0.0.0
+  -p, --port  <arg>   Port to bind to, e.g. 80, 8080
+      --help          Show help message
+For more or more updated information, check https://github.com/broadinstitute/lunaris
+~~~
 
 ## API Overview
 
@@ -12,7 +48,8 @@ The input file contains a JSON object with properties id, regions and recipe.
 
 The *id* field is an arbitrary String chosen by the requester to identify the request.
 
-The *regions* field contains an object with a key for every chromosome or sequence, each pointing to an array of regions which have a start and an end.
+The *regions* field contains an object with a key for every chromosome or sequence, each pointing to an array of 
+regions which have a start and an end.
 
 The *recipe* field points to an object whose properties represent the steps necessary to produce the desired output.
 
@@ -20,7 +57,9 @@ The *recipe* field points to an object whose properties represent the steps nece
 
 *Status: working*
 
-A minimal request: read data from one block-gzipped, location-sorted, tabix-indexed file and export the data as tab-separated values (TSV). It contains two steps, *read* and *write*. Each step specifies a tool to describe what is being done in this step and some arguments. 
+A minimal request: read data from one block-gzipped, location-sorted, tabix-indexed file and export the data as 
+tab-separated values (TSV). It contains two steps, *read* and *write*. Each step specifies a tool to describe what
+is being done in this step and some arguments. 
 
 The *read* step uses the tool *IndexedRecordReader* to read from a location-sorted block-gzipped tabix-index file into a stream of objects. Required arguments are the file and the name of the id column. If the index file is omitted, it is assumed to be the data file plus suffix ".tbi".
 

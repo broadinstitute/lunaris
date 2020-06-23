@@ -18,8 +18,8 @@ class LunarisConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   addSubcommand(batch)
   val server = new Subcommand("server") {
     val host = opt[String](descr = "Host to bind to, e.g. localhost, 0.0.0.0", required = false)
-    val port = opt[Int](descr = "Port to bind to, e.g. 80 8080", required = false)
-    banner("Web service - not yet implemented.")
+    val port = opt[Int](descr = "Port to bind to, e.g. 80, 8080", required = false)
+    banner("Web service: accepts HTML POST requests at http://<host>/lunaris/query and offers a WebUI at http://<host>/lunaris.lunaris.html")
   }
   addSubcommand(server)
   requireSubcommand()

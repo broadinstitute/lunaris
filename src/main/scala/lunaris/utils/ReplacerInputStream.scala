@@ -62,7 +62,7 @@ object ReplacerInputStream {
 
   }
 
-  class PreReplaceBuffer(bytes: Array[Byte], nBytesStored: Int) {
+  class PreReplaceBuffer(val bytes: Array[Byte], var nBytesStored: Int) {
     def nBytesFree: Int = bytes.length - nBytesStored
 
     def loadFromInputStream(in: InputStream): Int = {
@@ -109,7 +109,7 @@ object ReplacerInputStream {
     }
   }
 
-  class PostReplaceBuffer(byteArrays: Seq[Array[Byte]]) {
+  class PostReplaceBuffer(var byteArrays: Seq[Array[Byte]]) {
     def size: Int = byteArrays.map(_.length).sum
   }
 
