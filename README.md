@@ -21,19 +21,20 @@ comfortably loaded into memory.
 ~~~
 Lunaris Version 1.2.1 (c) 2020 Broad Institute
 Usage: lunaris batch|server ...
-Lunaris is a stream processor to extract, combine and munge genomics-related data from location-sorted
-block-gzipped tabix-indexed files.
+Lunaris is a stream processor to extract, combine and munge genomics-related data from
+location-sorted block-gzipped tabix-indexed files.
 Files can be local, or on Google Cloud Storage, including on Terra.
 
   -h, --help      Show help message
   -v, --version   Show version of this program
 
 Subcommand: batch
-Loads a request from file and executes it.
+Loads a request from file or Google Cloud Storage object and executes it.
   -r, --request-file  <arg>   Location of file containing request in JSON.
   -h, --help                  Show help message
 Subcommand: server
-Web service: accepts HTML POST requests at http://<host>/lunaris/query and offers a WebUI at http://<host>/lunaris.lunaris.html
+Web service: accepts HTML POST requests at http://<host>/lunaris/query
+and offers a WebUI at http://<host>/lunaris.lunaris.html
   -h, --host  <arg>   Host to bind to, e.g. localhost, 0.0.0.0
   -p, --port  <arg>   Port to bind to, e.g. 80, 8080
       --help          Show help message
