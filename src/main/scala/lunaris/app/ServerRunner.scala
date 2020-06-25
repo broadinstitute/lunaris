@@ -3,6 +3,7 @@ package lunaris.app
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.ContentTypes
+import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.stream.Materializer
 import lunaris.io.ResourceConfig
@@ -81,9 +82,11 @@ object ServerRunner {
         },
         pathPrefix("lunaris" / "requests" / Remaining) { requestFile =>
           get {
-            complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.json, "web/requests/" + requestFile)
-            )
+            respondWithHeader(`Access-Control-Allow-Origin`.*) {
+              complete(
+                HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.json, "web/requests/" + requestFile)
+              )
+            }
           }
         }
       )

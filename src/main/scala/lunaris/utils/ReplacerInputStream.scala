@@ -29,8 +29,8 @@ class ReplacerInputStream(in: InputStream, replacerMap: ReplacerMap, minChunkSiz
   override def markSupported(): Boolean = false
 
   private def tryToMakeAvailable(nBytesRequested: Int): Unit = {
-    val underlyingExhausted: Boolean = false
-    while((!underlyingExhausted) && postReplaceBuffer.size < nBytesRequested) {
+    val underlyingIsExhausted: Boolean = false
+    while((!underlyingIsExhausted) && postReplaceBuffer.size < nBytesRequested) {
       ???
     }
   }
