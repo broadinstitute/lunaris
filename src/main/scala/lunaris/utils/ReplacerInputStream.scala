@@ -3,6 +3,7 @@ package lunaris.utils
 import java.io.{FilterInputStream, IOException, InputStream}
 import java.util
 
+import lunaris.utils.ReplacerInputStream.PreReplaceBuffer.ReadResult
 import lunaris.utils.ReplacerInputStream.{PostReplaceBuffer, PreReplaceBuffer, ReplacerMap}
 import lunaris.utils.ReplacerInputStream.ReplacerMap.{MatchResult, MatchesBeginning, NoMatchForFirstNBytes}
 
@@ -11,12 +12,19 @@ class ReplacerInputStream(in: InputStream, replacerMap: ReplacerMap, minChunkSiz
   private val targetChunkSize: Int = Math.max(replacerMap.maxPatternSize, minChunkSize)
   private val preReplaceBuffer: PreReplaceBuffer = PreReplaceBuffer(targetChunkSize)
   private val postReplaceBuffer: PostReplaceBuffer = PostReplaceBuffer.newEmpty()
+  private var haveReachedEndOfIn: Boolean = false
 
-  override def read(): Int = ???
+  override def read(): Int = {
+    tryToMakeAvailable(1)
+    postReplaceBuffer.popOneByte()
+  }
 
-  override def read(b: Array[Byte]): Int = ???
+  override def read(buff: Array[Byte]): Int = read(buff, 0, buff.length)
 
-  override def read(b: Array[Byte], off: Int, len: Int): Int = ???
+  override def read(buff: Array[Byte], off: Int, len: Int): Int = {
+    tryToMakeAvailable(len)
+    postReplaceBuffer.popBytes(buff, off, len)
+  }
 
   override def skip(n: Long): Long = ???
 
@@ -29,12 +37,18 @@ class ReplacerInputStream(in: InputStream, replacerMap: ReplacerMap, minChunkSiz
   override def markSupported(): Boolean = false
 
   private def tryToMakeAvailable(nBytesRequested: Int): Unit = {
-    val underlyingIsExhausted: Boolean = false
-    while((!underlyingIsExhausted) && postReplaceBuffer.size < nBytesRequested) {
-      ???
+    while ((!haveReachedEndOfIn) && postReplaceBuffer.size < nBytesRequested) {
+      val readResult = preReplaceBuffer.loadFromInputStream(in)
+      haveReachedEndOfIn = readResult.haveReachedEndOfInputStream
+      replacerMap.attemptMatch(preReplaceBuffer) match {
+        case MatchesBeginning(nBytesToReplace, replacement) =>
+          postReplaceBuffer.add(replacement)
+          preReplaceBuffer.dropFirstNBytes(nBytesToReplace)
+        case NoMatchForFirstNBytes(nBytes) =>
+          postReplaceBuffer.add(preReplaceBuffer.popFirstNBytes(nBytes))
+      }
     }
   }
-
 }
 
 object ReplacerInputStream {
@@ -53,9 +67,9 @@ object ReplacerInputStream {
     override def attemptMatch(preReplaceBuffer: PreReplaceBuffer): MatchResult = {
       var matchAtBeginOpt: Option[MatchesBeginning] = None
       val mapIter = map.iterator
-      while(matchAtBeginOpt.isEmpty && mapIter.hasNext) {
+      while (matchAtBeginOpt.isEmpty && mapIter.hasNext) {
         val (pattern, replacement) = mapIter.next()
-        if(matchesBeginning(preReplaceBuffer, pattern)) {
+        if (matchesBeginning(preReplaceBuffer, pattern)) {
           matchAtBeginOpt = Some(MatchesBeginning(pattern.length, replacement))
         }
       }
@@ -64,7 +78,7 @@ object ReplacerInputStream {
         case None =>
           var pos: Int = 1
           val patterns = map.keys
-          while(!possibleMatchAt(preReplaceBuffer, pos, patterns)) {
+          while (!possibleMatchAt(preReplaceBuffer, pos, patterns)) {
             pos += 1
           }
           NoMatchForFirstNBytes(pos)
@@ -88,12 +102,12 @@ object ReplacerInputStream {
     private def possibleMatchAt(buffer: PreReplaceBuffer, pos: Int, patterns: Iterable[Array[Byte]]): Boolean = {
       var foundPossibleMatch: Boolean = false
       val patternIter = patterns.iterator
-      while((!foundPossibleMatch) && patternIter.hasNext) {
+      while ((!foundPossibleMatch) && patternIter.hasNext) {
         val pattern = patternIter.next()
         var isMatchingSoFar: Boolean = true
         var i: Int = 0
-        while(i < pattern.length && (pos+ i) < buffer.nBytesStored) {
-          isMatchingSoFar &&= buffer.bytes(pos+i) == pattern(i)
+        while (i < pattern.length && (pos + i) < buffer.nBytesStored) {
+          isMatchingSoFar &&= buffer.bytes(pos + i) == pattern(i)
           i += 1
         }
         foundPossibleMatch ||= isMatchingSoFar
@@ -116,20 +130,20 @@ object ReplacerInputStream {
   class PreReplaceBuffer(val bytes: Array[Byte], var nBytesStored: Int) {
     def nBytesFree: Int = bytes.length - nBytesStored
 
-    def loadFromInputStream(in: InputStream): Int = {
+    def loadFromInputStream(in: InputStream): ReadResult = {
       var nBytesLoaded: Int = 0
-      var failedToRead: Boolean = false
+      var haveReachedEndOfInputStream: Boolean = false
       var nBytesToLoad: Int = nBytesFree
-      while (nBytesToLoad > 0 && !failedToRead) {
+      while (nBytesToLoad > 0 && !haveReachedEndOfInputStream) {
         nBytesLoaded = in.read(bytes, nBytesStored, nBytesToLoad)
         if (nBytesLoaded > 0) {
           nBytesStored += nBytesLoaded
         } else {
-          failedToRead = true
+          haveReachedEndOfInputStream = true
         }
         nBytesToLoad = nBytesFree
       }
-      nBytesLoaded
+      ReadResult(nBytesLoaded, haveReachedEndOfInputStream)
     }
 
     def dropFirstNBytes(nBytes: Int): Unit = {
@@ -146,13 +160,69 @@ object ReplacerInputStream {
 
   object PreReplaceBuffer {
     def apply(size: Int): PreReplaceBuffer = new PreReplaceBuffer(new Array[Byte](size), 0)
+
+    case class ReadResult(nBytesRead: Int, haveReachedEndOfInputStream: Boolean)
+
   }
 
-  class PostReplaceBuffer(var byteArrays: Seq[Array[Byte]]) {
+  class PostReplaceBuffer(var byteArrays: Seq[Array[Byte]], var offset: Int = 0) {
     def size: Int = byteArrays.map(_.length).sum
+
+    def add(byteArray: Array[Byte]): Unit = {
+      if(byteArray.nonEmpty) {
+        byteArrays :+= byteArray
+      }
+    }
+
+    def popOneByte(): Int = {
+      if(byteArrays.isEmpty) {
+        -1
+      } else {
+        val byteArraysHead = byteArrays.head
+        val firstByte = byteArraysHead(offset)
+        offset += 1
+        if(offset == byteArraysHead.length) {
+          byteArrays = byteArrays.tail
+          offset = 0
+        }
+        firstByte
+      }
+    }
+
+    def popBytesChunk(buffer: Array[Byte], buffOff: Int, nBytesRequested: Int): Int = {
+      val nBytesTarget = Math.min(nBytesRequested, buffer.length - buffOff)
+      val byteArraysHead = byteArrays.head
+      val nBytesInHead = byteArraysHead.length - offset
+      if(nBytesTarget < nBytesInHead) {
+        System.arraycopy(byteArraysHead, offset, buffer, buffOff, nBytesTarget)
+        offset += nBytesTarget
+        nBytesTarget
+      } else {
+        System.arraycopy(byteArraysHead, offset, buffer, buffOff, nBytesInHead)
+        byteArrays = byteArrays.tail
+        offset = 0
+        nBytesInHead
+      }
+    }
+
+    def popBytes(buffer: Array[Byte], buffOff: Int, len: Int): Int = {
+      if(len == 0) {
+        0
+      } else if(byteArrays.isEmpty) {
+        -1
+      } else {
+        var nBytesPopped: Int = 0
+        val nBytesPoppedTarget = Math.min(len, buffer.length - buffOff)
+        while(byteArrays.nonEmpty && nBytesPopped < nBytesPoppedTarget) {
+          nBytesPopped += popBytesChunk(buffer, buffOff + nBytesPopped, nBytesPoppedTarget - nBytesPopped)
+        }
+        nBytesPopped
+      }
+    }
   }
 
   object PostReplaceBuffer {
     def newEmpty(): PostReplaceBuffer = new PostReplaceBuffer(Seq.empty)
   }
+
 }
