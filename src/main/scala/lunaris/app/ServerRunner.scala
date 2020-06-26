@@ -17,6 +17,7 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 
 object ServerRunner {
+
   object Defaults {
     val host: String = "localhost"
     val port: Int = 8080
@@ -53,28 +54,30 @@ object ServerRunner {
           }
         },
         path("lunaris" / "query") {
-          post {
-            decodeRequest {
-              entity(as[String]) { requestString =>
-                val snagOrRunnable = for {
-                  request <- RequestJson.parse(requestString)
-                  _ <- RecipeChecker.checkRecipe(request.recipe)
-                  runnable <- LunCompiler.compile(request)
-                } yield runnable
-                snagOrRunnable match {
-                  case Left(snag) => complete(HttpUtils.forError(snag.report))
-                  case Right(runnable) =>
-                    val runContext =
-                      LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
-                    runnable.getStream(runContext).a match {
-                      case Left(snag) => complete(HttpUtils.forError(snag.report))
-                      case Right(recordStream) =>
-                        complete(HttpUtils.fromTsvStream(recordStream.recover { ex =>
-                          val report = Snag(ex).report
-                          println(report)
-                          report
-                        }))
-                    }
+          respondWithHeader(`Access-Control-Allow-Origin`.*) {
+            post {
+              decodeRequest {
+                entity(as[String]) { requestString =>
+                  val snagOrRunnable = for {
+                    request <- RequestJson.parse(requestString)
+                    _ <- RecipeChecker.checkRecipe(request.recipe)
+                    runnable <- LunCompiler.compile(request)
+                  } yield runnable
+                  snagOrRunnable match {
+                    case Left(snag) => complete(HttpUtils.forError(snag.report))
+                    case Right(runnable) =>
+                      val runContext =
+                        LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
+                      runnable.getStream(runContext).a match {
+                        case Left(snag) => complete(HttpUtils.forError(snag.report))
+                        case Right(recordStream) =>
+                          complete(HttpUtils.fromTsvStream(recordStream.recover { ex =>
+                            val report = Snag(ex).report
+                            println(report)
+                            report
+                          }))
+                      }
+                  }
                 }
               }
             }
@@ -82,11 +85,9 @@ object ServerRunner {
         },
         pathPrefix("lunaris" / "requests" / Remaining) { requestFile =>
           get {
-            respondWithHeader(`Access-Control-Allow-Origin`.*) {
-              complete(
-                HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.json, "web/requests/" + requestFile)
-              )
-            }
+            complete(
+              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.json, "web/requests/" + requestFile)
+            )
           }
         }
       )
