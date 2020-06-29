@@ -7,7 +7,10 @@ import lunaris.utils.ReplacerInputStream.PreReplaceBuffer.ReadResult
 import lunaris.utils.ReplacerInputStream.{PostReplaceBuffer, PreReplaceBuffer, ReplacerMap}
 import lunaris.utils.ReplacerInputStream.ReplacerMap.{MatchResult, MatchesBeginning, NoMatchForFirstNBytes}
 
-class ReplacerInputStream(in: InputStream, replacerMap: ReplacerMap, minChunkSize: Int) extends FilterInputStream(in) {
+class ReplacerInputStream(in: InputStream,
+                          replacerMap: ReplacerMap,
+                          minChunkSize: Int = ReplacerInputStream.chunkSizeDefault)
+  extends FilterInputStream(in) {
 
   private val targetChunkSize: Int = Math.max(replacerMap.maxPatternSize, minChunkSize)
   private val preReplaceBuffer: PreReplaceBuffer = PreReplaceBuffer(targetChunkSize)
@@ -26,9 +29,26 @@ class ReplacerInputStream(in: InputStream, replacerMap: ReplacerMap, minChunkSiz
     postReplaceBuffer.popBytes(buff, off, len)
   }
 
-  override def skip(n: Long): Long = ???
+  override def skip(n: Long): Long = {
+    var nSkipped: Long = 0
+    var mightGetMore: Boolean = true
+    while(nSkipped < n && mightGetMore) {
+      val nChunk = Math.min(n - nSkipped, ReplacerInputStream.skipChunkSize).toInt
+      tryToMakeAvailable(nChunk)
+      val nSkippedNew = postReplaceBuffer.dropBytes(nChunk)
+      if(nSkippedNew > 0) {
+        nSkipped += nSkippedNew
+      } else {
+        mightGetMore = false
+      }
+    }
+    nSkipped
+  }
 
-  override def available(): Int = ???
+  override def available(): Int = {
+    tryToMakeAvailable(targetChunkSize)
+    postReplaceBuffer.size
+  }
 
   override def mark(readlimit: Int): Unit = throw new IOException("ReplacerInputStream does not support mark().")
 
@@ -52,6 +72,9 @@ class ReplacerInputStream(in: InputStream, replacerMap: ReplacerMap, minChunkSiz
 }
 
 object ReplacerInputStream {
+
+  val chunkSizeDefault: Int = 1024
+  val skipChunkSize: Int = 4096
 
   trait ReplacerMap {
     def maxPatternSize: Int
@@ -218,6 +241,27 @@ object ReplacerInputStream {
         }
         nBytesPopped
       }
+    }
+
+    def dropBytesChunk(nBytesToDrop: Int): Int = {
+      val bytesArraysHead = byteArrays.head
+      val nBytesInHead = bytesArraysHead.length - offset
+      if(nBytesToDrop < nBytesInHead) {
+        offset += nBytesToDrop
+        nBytesToDrop
+      } else {
+        byteArrays = byteArrays.tail
+        offset = 0
+        nBytesInHead
+      }
+    }
+
+    def dropBytes(nBytesToDrop: Int): Int = {
+      var nBytesDropped: Int = 0
+      while(byteArrays.nonEmpty && nBytesDropped < nBytesToDrop) {
+        nBytesDropped += dropBytesChunk(nBytesToDrop - nBytesDropped)
+      }
+      nBytesDropped
     }
   }
 
