@@ -1,6 +1,7 @@
 package lunaris.utils
 
 import java.io.{FilterInputStream, IOException, InputStream}
+import java.nio.charset.StandardCharsets
 import java.util
 
 import lunaris.utils.ReplacerInputStream.PreReplaceBuffer.ReadResult
@@ -56,16 +57,33 @@ class ReplacerInputStream(in: InputStream,
 
   override def markSupported(): Boolean = false
 
+  private def log(any: Any): Unit = println(any)
+
+  private def logStatus(): Unit = {
+    log(s"Pre-buffer size ${preReplaceBuffer.nBytesStored}, post-buffer size ${postReplaceBuffer.size} " +
+    s"exhausted input: $haveReachedEndOfIn.")
+  }
+
+  private def thereArePreReplacementBytes: Boolean = preReplaceBuffer.nBytesStored > 0 || !haveReachedEndOfIn
+
   private def tryToMakeAvailable(nBytesRequested: Int): Unit = {
-    while ((!haveReachedEndOfIn) && postReplaceBuffer.size < nBytesRequested) {
+//    logStatus()
+//    log(s"Trying to make available $nBytesRequested")
+    while (thereArePreReplacementBytes && postReplaceBuffer.size < nBytesRequested) {
+//      log("Loading from input")
       val readResult = preReplaceBuffer.loadFromInputStream(in)
       haveReachedEndOfIn = readResult.haveReachedEndOfInputStream
+//      logStatus()
       replacerMap.attemptMatch(preReplaceBuffer) match {
         case MatchesBeginning(nBytesToReplace, replacement) =>
+//          log(s"Replacing $nBytesToReplace bytes by '$replacement'.")
           postReplaceBuffer.add(replacement)
           preReplaceBuffer.dropFirstNBytes(nBytesToReplace)
+//          logStatus()
         case NoMatchForFirstNBytes(nBytes) =>
+//          log(s"Passing through $nBytes unchanged.")
           postReplaceBuffer.add(preReplaceBuffer.popFirstNBytes(nBytes))
+//          logStatus()
       }
     }
   }
@@ -76,6 +94,21 @@ object ReplacerInputStream {
   val chunkSizeDefault: Int = 1024
   val skipChunkSize: Int = 4096
 
+  def apply(in: InputStream,
+            replacerMap: ReplacerMap,
+            minChunkSize: Int = ReplacerInputStream.chunkSizeDefault): ReplacerInputStream =
+    new ReplacerInputStream(in, replacerMap, minChunkSize)
+
+  def fromBytesMap(in: InputStream,
+                   bytesMap: Map[Array[Byte], Array[Byte]],
+                   minChunkSize: Int = ReplacerInputStream.chunkSizeDefault): ReplacerInputStream =
+    apply(in, ReplacerMap.fromBytesMap(bytesMap), minChunkSize)
+
+  def fromStringMap(in: InputStream,
+                    stringMap: Map[String, String],
+                    minChunkSize: Int = ReplacerInputStream.chunkSizeDefault): ReplacerInputStream =
+    apply(in, ReplacerMap.fromStringMap(stringMap), minChunkSize)
+
   trait ReplacerMap {
     def maxPatternSize: Int
 
@@ -83,7 +116,8 @@ object ReplacerInputStream {
   }
 
   class SimpleReplacerMap(map: Map[Array[Byte], Array[Byte]]) extends ReplacerMap {
-    private val maxPatternSizeVal: Int = map.keySet.map(_.length).max
+    private val maxPatternSizeVal: Int =
+      if(map.isEmpty) 0 else map.keySet.map(_.length).max
 
     override def maxPatternSize: Int = maxPatternSizeVal
 
@@ -101,7 +135,7 @@ object ReplacerInputStream {
         case None =>
           var pos: Int = 1
           val patterns = map.keys
-          while (!possibleMatchAt(preReplaceBuffer, pos, patterns)) {
+          while (pos < preReplaceBuffer.nBytesStored && !possibleMatchAt(preReplaceBuffer, pos, patterns)) {
             pos += 1
           }
           NoMatchForFirstNBytes(pos)
@@ -141,6 +175,14 @@ object ReplacerInputStream {
 
   object ReplacerMap {
     def fromBytesMap(map: Map[Array[Byte], Array[Byte]]): SimpleReplacerMap = new SimpleReplacerMap(map)
+
+    def fromStringMap(map: Map[String, String]): SimpleReplacerMap = {
+      fromBytesMap(
+        map.map {
+          case (key, value) => (key.getBytes(StandardCharsets.UTF_8), value.getBytes(StandardCharsets.UTF_8))
+        }
+      )
+    }
 
     sealed trait MatchResult
 
