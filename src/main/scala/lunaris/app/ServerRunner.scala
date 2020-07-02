@@ -8,6 +8,7 @@ import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.stream.Materializer
 import lunaris.io.ResourceConfig
 import lunaris.io.request.RequestJson
+import lunaris.io.request.examples.ParamsReplacer
 import lunaris.recipes.RecipeChecker
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
 import lunaris.utils.HttpUtils
@@ -49,7 +50,7 @@ object ServerRunner {
         path("lunaris" / "js" / "lunaris.js") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.css, "web/js/lunaris.js")
+              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/lunaris.js")
             )
           }
         },
@@ -84,9 +85,13 @@ object ServerRunner {
           }
         },
         pathPrefix("lunaris" / "requests" / Remaining) { requestFile =>
-          get {
-            complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.json, "web/requests/" + requestFile)
+          get { httpRequestContext =>
+            val paramsMap = httpRequestContext.request.uri.query().toMap
+            val inputStreamFilter = ParamsReplacer.getInputStreamFilter(paramsMap)
+            httpRequestContext.complete(
+              HttpUtils
+                .fromFilteredResourceOrError(HttpUtils.ContentTypes.json,
+                  "web/requests/" + requestFile)(inputStreamFilter)
             )
           }
         }

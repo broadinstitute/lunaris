@@ -36,7 +36,12 @@ async function loadExample5() {
 }
 
 async function loadExample(fileName) {
-    fetch("requests/" + fileName)
+    let url = "requests/" + fileName;
+    let params = (new URL(document.location)).searchParams.toString();
+    if(params.length > 0) {
+        url = url + "?" + params;
+    }
+    fetch(url)
         .then(response => response.text())
         .then(data => {
             requestEditArea().value = data;

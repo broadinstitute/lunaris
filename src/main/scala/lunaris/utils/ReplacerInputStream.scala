@@ -91,7 +91,7 @@ class ReplacerInputStream(in: InputStream,
 
 object ReplacerInputStream {
 
-  val chunkSizeDefault: Int = 1024
+  val chunkSizeDefault: Int = 2048
   val skipChunkSize: Int = 4096
 
   def apply(in: InputStream,
@@ -174,6 +174,11 @@ object ReplacerInputStream {
   }
 
   object ReplacerMap {
+    case class Entry(in: String, replace: String, substitute:String) {
+      def asPair: (String, String) = {
+        (in, in.replaceAll(replace, substitute))
+      }
+    }
     def fromBytesMap(map: Map[Array[Byte], Array[Byte]]): SimpleReplacerMap = new SimpleReplacerMap(map)
 
     def fromStringMap(map: Map[String, String]): SimpleReplacerMap = {
@@ -183,6 +188,8 @@ object ReplacerInputStream {
         }
       )
     }
+
+    def fromEntries(entries: Iterable[Entry]): SimpleReplacerMap = fromStringMap(entries.map(_.asPair).toMap)
 
     sealed trait MatchResult
 
