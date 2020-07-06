@@ -16,13 +16,19 @@ class LunarisConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val requestFile = opt[String](descr = "Location of file containing request in JSON.", required = true)
   }
   addSubcommand(batch)
-  val server = new Subcommand("server") {
+  trait WebService { _: ScallopConf =>
     val host = opt[String](descr = "Host to bind to, e.g. localhost, 0.0.0.0", required = false)
     val port = opt[Int](descr = "Port to bind to, e.g. 80, 8080", required = false)
+  }
+  val server = new Subcommand("server") with WebService {
     banner("Web service: accepts HTML POST requests at http://<host>/lunaris/query \n" +
       "and offers a WebUI at http://<host>/lunaris.lunaris.html")
   }
   addSubcommand(server)
+  val variantEffectPredictor = new Subcommand("variant-effect-predictor") with WebService {
+    banner("Variant effect predictor.")
+  }
+  addSubcommand(variantEffectPredictor)
   requireSubcommand()
   verify()
 }

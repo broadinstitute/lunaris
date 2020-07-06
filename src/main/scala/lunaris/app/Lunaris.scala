@@ -6,6 +6,7 @@ import lunaris.io.InputId
 
 object Lunaris {
   def main(args: Array[String]): Unit = {
+    println(s"This is ${LunarisInfo.versionLong}")
     val conf = new LunarisConf(args)
     conf.subcommands match {
       case List(conf.batch) =>
@@ -13,6 +14,9 @@ object Lunaris {
         BatchRunner.run(input)
       case List(conf.server) =>
         ServerRunner.run(conf.server.host.toOption, conf.server.port.toOption)
+      case List(conf.variantEffectPredictor) =>
+        VariantEffectPredictorServerRunner.run(conf.variantEffectPredictor.host.toOption,
+          conf.variantEffectPredictor.port.toOption)
     }
   }
 }

@@ -16,7 +16,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.io.StdIn
 
-object ServerRunner {
+object VariantEffectPredictorServerRunner {
 
   object Defaults {
     val host: String = "localhost"
@@ -30,7 +30,7 @@ object ServerRunner {
     implicit val materializer: Materializer = Materializer(actorSystem)
     val route: Route =
       concat(
-        path("lunaris" / "lunaris.html") {
+        path("lunaris" / "predictor.html") {
           get {
             complete(
               HttpUtils.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/lunaris.html")

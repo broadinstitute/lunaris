@@ -2,8 +2,11 @@ package lunaris.utils
 
 import java.io.InputStream
 
-import akka.http.scaladsl.model
-import akka.http.scaladsl.model.{ContentType, HttpCharsets, HttpEntity, MediaType, MediaTypes, MessageEntity}
+import akka.actor.ActorSystem
+import akka.http.scaladsl.{Http, model}
+import akka.http.scaladsl.model.{ContentType, HttpCharsets, HttpEntity, MediaTypes, MessageEntity}
+import akka.http.scaladsl.server.Route
+import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
@@ -45,5 +48,23 @@ object HttpUtils {
   def forError(message: String): HttpEntity.Strict = {
     val string = "ERROR: " + message
     HttpEntity(ContentTypes.plain, string)
+  }
+
+  def runWebServiceUntil(route: Route,
+                         host: String,
+                         port: Int)(waiter: => Unit)(implicit actorSystem: ActorSystem): Unit = {
+    println(s"Starting web service at http://$host:$port")
+    val bindingFuture = Http().bindAndHandle(route, host, port)(Materializer(actorSystem))
+    println(s"Web service is now running at http://$host:$port/.")
+    println("Press RETURN to stop...")
+    waiter
+    bindingFuture.flatMap { binding =>
+      println("Web service now scheduled to shut down.")
+      binding.unbind()
+    }(actorSystem.dispatcher)
+      .onComplete { _ =>
+        actorSystem.terminate()
+        println("Web service has been shut down.")
+      }(actorSystem.dispatcher)
   }
 }
