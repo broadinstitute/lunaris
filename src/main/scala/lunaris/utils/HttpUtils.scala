@@ -50,9 +50,9 @@ object HttpUtils {
     HttpEntity(ContentTypes.plain, string)
   }
 
-  def runWebServiceUntil(route: Route,
-                         host: String,
-                         port: Int)(waiter: => Unit)(implicit actorSystem: ActorSystem): Unit = {
+  def runWebServiceWhileWaiting(route: Route,
+                                host: String,
+                                port: Int)(waiter: => Unit)(implicit actorSystem: ActorSystem): Unit = {
     println(s"Starting web service at http://$host:$port")
     val bindingFuture = Http().bindAndHandle(route, host, port)(Materializer(actorSystem))
     println(s"Web service is now running at http://$host:$port/.")

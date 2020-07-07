@@ -93,6 +93,6 @@ object ServerRunner {
           }
         }
       )
-    HttpUtils.runWebServiceUntil(route, host, port)(StdIn.readLine())
+    HttpUtils.runWebServiceWhileWaiting(route, host, port)(StdIn.readLine())
   }
 }
