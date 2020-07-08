@@ -22,32 +22,36 @@ object HttpUtils {
     val plain: ContentType.WithCharset = model.ContentTypes.`text/plain(UTF-8)`
   }
 
-  def fromTsvStream(tsvStream: Source[String, _]): HttpEntity.Chunked = {
-    HttpEntity(ContentTypes.tsv, tsvStream.map(string => ByteString(string)))
-  }
+  object ResponseBuilder {
+    def fromHtmlString(string: String): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.html, string)
 
-  def fromResourceOpt(contentType: ContentType, location: String): Option[HttpEntity.Chunked] = {
-    ResourceUtils.resourceAsStreamOpt(location).map(HttpEntity(contentType, _))
-  }
+    def fromTsvStream(tsvStream: Source[String, _]): HttpEntity.Chunked = {
+      HttpEntity(ContentTypes.tsv, tsvStream.map(string => ByteString(string)))
+    }
 
-  def fromFilteredResourceOpt(contentType: ContentType, location: String)(filter: InputStream => InputStream):
-  Option[HttpEntity.Chunked] = {
-    ResourceUtils.resourceAsFilteredStreamOpt(location)(filter).map(HttpEntity(contentType, _))
-  }
+    def fromResourceOpt(contentType: ContentType, location: String): Option[HttpEntity.Chunked] = {
+      ResourceUtils.resourceAsStreamOpt(location).map(HttpEntity(contentType, _))
+    }
 
-  def fromResourceOrError(contentType: ContentType, location: String): MessageEntity = {
-    fromResourceOpt(contentType, location).getOrElse[MessageEntity](forError(s"Could not load resource at $location."))
-  }
+    def fromFilteredResourceOpt(contentType: ContentType, location: String)(filter: InputStream => InputStream):
+    Option[HttpEntity.Chunked] = {
+      ResourceUtils.resourceAsFilteredStreamOpt(location)(filter).map(HttpEntity(contentType, _))
+    }
 
-  def fromFilteredResourceOrError(contentType: ContentType, location: String)(filter: InputStream => InputStream):
-  MessageEntity = {
-    fromFilteredResourceOpt(contentType, location)(filter)
-      .getOrElse[MessageEntity](forError(s"Could not load resource at $location."))
-  }
+    def fromResourceOrError(contentType: ContentType, location: String): MessageEntity = {
+      fromResourceOpt(contentType, location).getOrElse[MessageEntity](forError(s"Could not load resource at $location."))
+    }
 
-  def forError(message: String): HttpEntity.Strict = {
-    val string = "ERROR: " + message
-    HttpEntity(ContentTypes.plain, string)
+    def fromFilteredResourceOrError(contentType: ContentType, location: String)(filter: InputStream => InputStream):
+    MessageEntity = {
+      fromFilteredResourceOpt(contentType, location)(filter)
+        .getOrElse[MessageEntity](forError(s"Could not load resource at $location."))
+    }
+
+    def forError(message: String): HttpEntity.Strict = {
+      val string = "ERROR: " + message
+      HttpEntity(ContentTypes.plain, string)
+    }
   }
 
   def runWebServiceWhileWaiting(route: Route,

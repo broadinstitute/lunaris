@@ -33,21 +33,21 @@ object ServerRunner {
         path("lunaris" / "lunaris.html") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/lunaris.html")
+              HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/lunaris.html")
             )
           }
         },
         path("lunaris" / "css" / "lunaris.css") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.css, "web/css/lunaris.css")
+              HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.css, "web/css/lunaris.css")
             )
           }
         },
         path("lunaris" / "js" / "lunaris.js") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/lunaris.js")
+              HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/lunaris.js")
             )
           }
         },
@@ -62,14 +62,14 @@ object ServerRunner {
                     runnable <- LunCompiler.compile(request)
                   } yield runnable
                   snagOrRunnable match {
-                    case Left(snag) => complete(HttpUtils.forError(snag.report))
+                    case Left(snag) => complete(HttpUtils.ResponseBuilder.forError(snag.report))
                     case Right(runnable) =>
                       val runContext =
                         LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
                       runnable.getStream(runContext).a match {
-                        case Left(snag) => complete(HttpUtils.forError(snag.report))
+                        case Left(snag) => complete(HttpUtils.ResponseBuilder.forError(snag.report))
                         case Right(recordStream) =>
-                          complete(HttpUtils.fromTsvStream(recordStream.recover { ex =>
+                          complete(HttpUtils.ResponseBuilder.fromTsvStream(recordStream.recover { ex =>
                             val report = Snag(ex).report
                             println(report)
                             report
@@ -86,7 +86,7 @@ object ServerRunner {
             val paramsMap = httpRequestContext.request.uri.query().toMap
             val inputStreamFilter = ParamsReplacer.getInputStreamFilter(paramsMap)
             httpRequestContext.complete(
-              HttpUtils
+              HttpUtils.ResponseBuilder
                 .fromFilteredResourceOrError(HttpUtils.ContentTypes.json,
                   "web/requests/" + requestFile)(inputStreamFilter)
             )

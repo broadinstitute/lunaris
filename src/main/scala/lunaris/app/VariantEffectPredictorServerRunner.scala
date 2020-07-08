@@ -1,11 +1,13 @@
 package lunaris.app
 
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.ContentTypes
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
+import akka.stream.scaladsl.Source
 import lunaris.io.ResourceConfig
 import lunaris.io.request.RequestJson
 import lunaris.io.request.examples.ParamsReplacer
@@ -33,22 +35,37 @@ object VariantEffectPredictorServerRunner {
         path("lunaris" / "predictor.html") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/predictor.html")
+              HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/predictor.html")
             )
           }
         },
         path("lunaris" / "css" / "lunaris.css") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.css, "web/css/lunaris.css")
+              HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.css, "web/css/lunaris.css")
             )
           }
         },
         path("lunaris" / "js" / "predictor.js") {
           get {
             complete(
-              HttpUtils.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/predictor.js")
+              HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/predictor.js")
             )
+          }
+        },
+        path("lunaris" / "predictor" / "upload") {
+          post {
+            decodeRequest {
+              extractRequestContext { requestContext =>
+                implicit val materializer: Materializer = requestContext.materializer
+                fileUpload("inputfile") {
+                  case (metadata, byteSource) =>
+                    complete(
+                      HttpUtils.ResponseBuilder.fromHtmlString(s"Uploading file ${metadata.fileName}.")
+                    )
+                }
+              }
+            }
           }
         }
       )
