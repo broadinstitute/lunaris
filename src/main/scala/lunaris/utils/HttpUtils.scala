@@ -23,6 +23,8 @@ object HttpUtils {
   }
 
   object ResponseBuilder {
+    def fromPlainTextString(string: String): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.plain, string)
+
     def fromHtmlString(string: String): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.html, string)
 
     def fromTsvStream(tsvStream: Source[String, _]): HttpEntity.Chunked = {

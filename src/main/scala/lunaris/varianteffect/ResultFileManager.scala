@@ -1,5 +1,7 @@
 package lunaris.varianteffect
 
+import java.util.concurrent.TimeUnit
+
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.Materializer
@@ -13,7 +15,9 @@ import lunaris.utils.NumberParser
 import lunaris.varianteffect.ResultFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-import scala.concurrent.ExecutionContextExecutor
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContextExecutor}
+import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
 class ResultFileManager(val resultFolder: File) {
@@ -69,9 +73,9 @@ class ResultFileManager(val resultFolder: File) {
       variantsByChrom + (chrom -> variantsForChromNew)
     }
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    val outputFileName = outputFileNameForId(resultId)
     variantsByChromFut.map { variantsByChrom =>
-      val request = VariantEffectRequestBuilder.buildRequest(resultId, variantsByChrom, outputFileName)
+      val request =
+        VariantEffectRequestBuilder.buildRequest(resultId, variantsByChrom, outputFilePathForId(resultId))
       LunCompiler.compile(request)
     }.collect {
       case Right(runnable) =>
@@ -79,7 +83,7 @@ class ResultFileManager(val resultFolder: File) {
           LunRunContext(Materializer(actorSystem), ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
         runnable.execute(context)
     }.onComplete {
-      case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileName))
+      case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileNameForId(resultId)))
       case Failure(exception) => updateStatus(resultId, ResultStatus.createFailed(exception.getMessage))
     }
   }
@@ -95,8 +99,12 @@ class ResultFileManager(val resultFolder: File) {
   }
 
   def streamResults(resultId: ResultId): Either[Snag, Source[ByteString, NotUsed]] = {
-    outputFilePathForId(resultId)
-    ???
+    val outputFile = outputFilePathForId(resultId)
+    try {
+      Right(Source.fromIterator(() => outputFile.lineIterator).map(ByteString(_)))
+    } catch {
+      case NonFatal(ex) => Left(Snag(ex))
+    }
   }
 }
 

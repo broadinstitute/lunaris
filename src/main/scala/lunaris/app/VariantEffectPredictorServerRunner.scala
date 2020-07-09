@@ -5,7 +5,9 @@ import akka.http.scaladsl.model.ContentTypes
 import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
+import better.files.File
 import lunaris.utils.HttpUtils
+import lunaris.varianteffect.ResultFileManager
 
 import scala.io.StdIn
 
@@ -19,6 +21,8 @@ object VariantEffectPredictorServerRunner {
   def run(hostOpt: Option[String], portOpt: Option[Int]): Unit = {
     val host = hostOpt.getOrElse(Defaults.host)
     val port = portOpt.getOrElse(Defaults.port)
+    val resultsFolder = File("variantEffectResults")
+    val resultFileManager = new ResultFileManager(resultsFolder)
     implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
     implicit val materializer: Materializer = Materializer(actorSystem)
     val route: Route =
@@ -51,8 +55,9 @@ object VariantEffectPredictorServerRunner {
                 implicit val materializer: Materializer = requestContext.materializer
                 fileUpload("inputfile") {
                   case (metadata, byteSource) =>
+                    val resultId = resultFileManager.submit(metadata.fileName, byteSource)
                     complete(
-                      HttpUtils.ResponseBuilder.fromHtmlString(s"Uploading file ${metadata.fileName}.")
+                      HttpUtils.ResponseBuilder.fromPlainTextString(resultId.toString)
                     )
                 }
               }

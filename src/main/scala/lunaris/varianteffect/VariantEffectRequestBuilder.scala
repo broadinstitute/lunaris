@@ -1,5 +1,6 @@
 package lunaris.varianteffect
 
+import better.files.File
 import lunaris.genomics.Variant
 import lunaris.io.request.Request
 import lunaris.io.request.examples.RequestExamplesUtils.{PortalData, ToolCalls}
@@ -11,7 +12,7 @@ object VariantEffectRequestBuilder {
 
   def buildRequest(resultId: ResultId,
                    variantsByChrom: Map[String, Set[Variant]],
-                   outputFileName: String): Request = {
+                   outputFile: File): Request = {
 
     val requestId = "variant_effect_predictor_" + resultId.toString
 
@@ -19,7 +20,7 @@ object VariantEffectRequestBuilder {
 
     val dataFile: FileValue = PortalData.Files.variants
     val idField: StringValue = PortalData.Fields.varId
-    val outputFileValue: FileValue = FileValue(outputFileName)
+    val outputFileValue: FileValue = FileValue(outputFile.toString())
 
     object Keys {
       val read: String = "read"
