@@ -13,18 +13,34 @@ function submit() {
 
     formData.append("inputFile", inputFile);
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
-        .then((response) => response.text())
+        .then((response) => {
+            if(!response.ok) {
+                throw "Could not submit " + inputFile.name + ": " + response.statusText
+            }
+            return response.text();
+        })
         .then((id) => {
             addStatusEntry(inputFile.name, id);
             lunarisVariantPredictor.inputFileNames[id] = inputFile.name;
             lunarisVariantPredictor.idsPending.push(id);
             getStatus(id);
-        });
+        }).catch(showCouldNotSubmit);
+}
+
+function getStatusAreaNode() {
+    return document.getElementById("status_area");
+}
+
+function showCouldNotSubmit(message) {
+    const pNode = document.createElement("p");
+    pNode.innerText = message;
+    const statusAreaNode = getStatusAreaNode();
+    statusAreaNode.append(pNode);
 }
 
 function addStatusEntry(inputFileName, id) {
     const pNode = document.createElement("p");
-    const statusAreaNode = document.getElementById("status_area");
+    const statusAreaNode = getStatusAreaNode();
     statusAreaNode.append(pNode);
     pNode.setAttribute("id", id)
     showInitialStatus(pNode, inputFileName);
