@@ -11,12 +11,12 @@ import lunaris.varianteffect.ResultFileManager.ResultId
 object VariantEffectRequestBuilder {
 
   def buildRequest(resultId: ResultId,
-                   variantsByChrom: Map[String, Set[Variant]],
+                   variantsByChrom: Map[String, Seq[Variant]],
                    outputFile: File): Request = {
 
     val requestId = "variant_effect_predictor_" + resultId.toString
 
-    val regions = variantsByChrom.view.mapValues(_.map(_.toLocus.region).toSeq).toMap
+    val regions = variantsByChrom.view.mapValues(_.map(_.toLocus.region)).toMap
 
     val dataFile: FileValue = PortalData.Files.variants
     val idField: StringValue = PortalData.Fields.varId

@@ -1,7 +1,8 @@
 package lunaris.app
 
-import scala.language.reflectiveCalls
+import better.files.File
 
+import scala.language.reflectiveCalls
 import lunaris.io.InputId
 
 object Lunaris {
@@ -15,8 +16,11 @@ object Lunaris {
       case List(conf.server) =>
         ServerRunner.run(conf.server.host.toOption, conf.server.port.toOption)
       case List(conf.variantEffectPredictor) =>
-        VariantEffectPredictorServerRunner.run(conf.variantEffectPredictor.host.toOption,
-          conf.variantEffectPredictor.port.toOption)
+        VariantEffectPredictorServerRunner.run(
+          conf.variantEffectPredictor.host.toOption,
+          conf.variantEffectPredictor.port.toOption,
+          conf.variantEffectPredictor.resultsFolder.toOption.map(File(_))
+        )
     }
   }
 }

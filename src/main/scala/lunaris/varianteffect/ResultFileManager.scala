@@ -1,7 +1,5 @@
 package lunaris.varianteffect
 
-import java.util.concurrent.TimeUnit
-
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.Materializer
@@ -15,8 +13,8 @@ import lunaris.utils.NumberParser
 import lunaris.varianteffect.ResultFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContextExecutor}
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
@@ -47,9 +45,13 @@ class ResultFileManager(val resultFolder: File) {
 
   def outputFilePathForId(resultId: ResultId): File = resultFolder / outputFileNameForId(resultId)
 
-  def scheduleCalculation(resultId: ResultId,
-                          stream: Source[ByteString, Any])(implicit actorSystem: ActorSystem): Unit = {
-    val variantsByChromFut = stream.via(Framing.delimiter(ByteString("/n"), Int.MaxValue, allowTruncation = true))
+  def newVariantsByChromFuture(resultId: ResultId,
+                               stream: Source[ByteString, Any])(
+                                implicit actorSystem: ActorSystem
+                              ): Future[Map[String, Seq[Variant]]] = {
+    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+
+    stream.via(Framing.delimiter(ByteString("\n"), Int.MaxValue))
       .map(_.utf8String)
       .filter(!_.startsWith("#"))
       .mapConcat { line =>
@@ -66,14 +68,24 @@ class ResultFileManager(val resultFolder: File) {
         } else {
           Seq.empty
         }
-      }.runFold(Map.empty[String, Set[Variant]]) { (variantsByChrom, variant) =>
+      }.runFold(Map.empty[String, mutable.Builder[Variant, Seq[Variant]]]) { (variantsByChrom, variant) =>
       val chrom = variant.chrom
-      val variantsForChrom = variantsByChrom.getOrElse(chrom, Set.empty)
-      val variantsForChromNew = variantsForChrom + variant
-      variantsByChrom + (chrom -> variantsForChromNew)
-    }
+      variantsByChrom.get(chrom) match {
+        case Some(variantsForChrom) =>
+          variantsForChrom += variant
+          variantsByChrom
+        case None =>
+          val variantsForChrom = Seq.newBuilder[Variant]
+          variantsForChrom += variant
+          variantsByChrom + (chrom -> variantsForChrom)
+      }
+    }.map(_.view.mapValues(_.result()).toMap)
+  }
+
+  def newQueryFuture(resultId: ResultId,
+                     variantsByChrom: Map[String, Seq[Variant]])(implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    variantsByChromFut.map { variantsByChrom =>
+    val queryFuture = Future {
       val request =
         VariantEffectRequestBuilder.buildRequest(resultId, variantsByChrom, outputFilePathForId(resultId))
       LunCompiler.compile(request)
@@ -82,16 +94,30 @@ class ResultFileManager(val resultFolder: File) {
         val context =
           LunRunContext(Materializer(actorSystem), ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
         runnable.execute(context)
-    }.onComplete {
+    }
+    queryFuture.onComplete {
       case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileNameForId(resultId)))
       case Failure(exception) => updateStatus(resultId, ResultStatus.createFailed(exception.getMessage))
     }
+    queryFuture
   }
 
-  def submit(fileName: String, stream: Source[ByteString, Any])(implicit actorSystem: ActorSystem): ResultId = {
+  def newUploadAndQueryFutureFuture(resultId: ResultId,
+                                    stream: Source[ByteString, Any])(
+                                     implicit actorSystem: ActorSystem): Future[Future[Unit]] = {
+    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    newVariantsByChromFuture(resultId, stream).map { variantsByChrom =>
+      newQueryFuture(resultId, variantsByChrom)
+    }
+  }
+
+  class SubmissionResponse(val resultId: ResultId, val futFut: Future[Future[Unit]])
+
+  def submit(fileName: String,
+             stream: Source[ByteString, Any])(implicit actorSystem: ActorSystem): SubmissionResponse = {
     val resultId = ResultId.createNew(fileName)
-    scheduleCalculation(resultId, stream)
-    resultId
+    val futFut = newUploadAndQueryFutureFuture(resultId, stream)
+    new SubmissionResponse(resultId, futFut)
   }
 
   def getStatus(resultId: ResultId): ResultStatus = {
@@ -116,7 +142,7 @@ object ResultFileManager {
 
   object ResultId {
     def createNew(inputFileName: String): ResultId =
-      ResultId(inputFileName, Random.nextLong(), System.currentTimeMillis())
+      ResultId(inputFileName, 1 + Random.nextLong(Long.MaxValue), System.currentTimeMillis())
 
     def fromString(string: String): Either[Snag, ResultId] = {
       val parts = string.split("_")
