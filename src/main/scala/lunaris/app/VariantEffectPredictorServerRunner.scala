@@ -8,6 +8,7 @@ import akka.stream.Materializer
 import better.files.File
 import lunaris.utils.HttpUtils
 import lunaris.varianteffect.ResultFileManager
+import lunaris.varianteffect.ResultFileManager.ResultId
 
 import scala.io.StdIn
 
@@ -70,6 +71,24 @@ object VariantEffectPredictorServerRunner {
                         }
                     }
                   }
+                }
+              }
+            },
+            path("lunaris" / "predictor" / "results" / Remaining) { resultIdString =>
+              get {
+                val snagOrSource = for {
+                  resultId <- ResultId.fromString(resultIdString)
+                  source <- resultFileManager.streamResults(resultId)
+                } yield source
+               snagOrSource  match {
+                  case Left(snag) =>
+                    complete(
+                      HttpUtils.ResponseBuilder.forError(snag.message)
+                    )
+                  case Right(source) =>
+                    complete(
+                      HttpUtils.ResponseBuilder.fromTsvByteStream(source)
+                    )
                 }
               }
             }

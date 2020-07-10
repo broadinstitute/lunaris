@@ -27,6 +27,10 @@ object HttpUtils {
 
     def fromHtmlString(string: String): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.html, string)
 
+    def fromTsvByteStream(tsvByteStream: Source[ByteString, _]): HttpEntity.Chunked = {
+      HttpEntity(ContentTypes.tsv, tsvByteStream)
+    }
+
     def fromTsvStream(tsvStream: Source[String, _]): HttpEntity.Chunked = {
       HttpEntity(ContentTypes.tsv, tsvStream.map(string => ByteString(string)))
     }

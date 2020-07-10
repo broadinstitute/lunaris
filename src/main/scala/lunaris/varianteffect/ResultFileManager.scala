@@ -127,7 +127,7 @@ class ResultFileManager(val resultFolder: File) {
   def streamResults(resultId: ResultId): Either[Snag, Source[ByteString, NotUsed]] = {
     val outputFile = outputFilePathForId(resultId)
     try {
-      Right(Source.fromIterator(() => outputFile.lineIterator).map(ByteString(_)))
+      Right(Source.fromIterator(() => outputFile.lineIterator).map(line => ByteString(line + "\n")))
     } catch {
       case NonFatal(ex) => Left(Snag(ex))
     }
