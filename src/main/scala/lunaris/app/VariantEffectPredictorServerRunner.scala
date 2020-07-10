@@ -7,7 +7,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import better.files.File
 import lunaris.utils.HttpUtils
-import lunaris.varianteffect.ResultFileManager
+import lunaris.varianteffect.{ResultFileManager, VariantEffectJson}
 import lunaris.varianteffect.ResultFileManager.ResultId
 
 import scala.io.StdIn
@@ -61,7 +61,7 @@ object VariantEffectPredictorServerRunner {
                 decodeRequest {
                   extractRequestContext { requestContext =>
                     implicit val materializer: Materializer = requestContext.materializer
-                    fileUpload("inputfile") {
+                    fileUpload("inputFile") {
                       case (metadata, byteSource) =>
                         val submissionResponse = resultFileManager.submit(metadata.fileName, byteSource)
                         onSuccess(submissionResponse.futFut) { _ =>
@@ -72,6 +72,17 @@ object VariantEffectPredictorServerRunner {
                     }
                   }
                 }
+              }
+            },
+            path("lunaris" / "predictor" / "status" / Remaining) { resultIdString =>
+              get {
+                val status = ResultId.fromString(resultIdString) match {
+                  case Left(snag) => ResultFileManager.ResultStatus.createInvalid(snag.message)
+                  case Right(resultId) => resultFileManager.getStatus(resultId)
+                }
+                complete(
+                  HttpUtils.ResponseBuilder.fromJson(VariantEffectJson.resultStatusToJson(status))
+                )
               }
             },
             path("lunaris" / "predictor" / "results" / Remaining) { resultIdString =>

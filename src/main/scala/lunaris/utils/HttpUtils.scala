@@ -9,6 +9,7 @@ import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
+import io.circe.Json
 
 
 object HttpUtils {
@@ -23,6 +24,8 @@ object HttpUtils {
   }
 
   object ResponseBuilder {
+    def fromJson(json: Json): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.json, json.spaces2)
+
     def fromPlainTextString(string: String): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.plain, string)
 
     def fromHtmlString(string: String): HttpEntity.Strict = HttpEntity(HttpUtils.ContentTypes.html, string)

@@ -116,6 +116,7 @@ class ResultFileManager(val resultFolder: File) {
   def submit(fileName: String,
              stream: Source[ByteString, Any])(implicit actorSystem: ActorSystem): SubmissionResponse = {
     val resultId = ResultId.createNew(fileName)
+    updateStatus(resultId, ResultStatus.createSubmitted())
     val futFut = newUploadAndQueryFutureFuture(resultId, stream)
     new SubmissionResponse(resultId, futFut)
   }
@@ -159,6 +160,8 @@ object ResultFileManager {
   }
 
   sealed trait ResultStatus {
+    def statusCode: Int
+
     def isSubmitted: Boolean
 
     def isCompleted: Boolean
@@ -176,7 +179,23 @@ object ResultFileManager {
 
   object ResultStatus {
 
+    case class Invalid(timestamp: Long, message: String) extends ResultStatus {
+      override def statusCode: Int = -19
+
+      override def isSubmitted: Boolean = false
+
+      override def isCompleted: Boolean = false
+
+      override def hasSucceeded: Boolean = false
+
+      override def hasFailed: Boolean = false
+
+      override def outputFileOpt: Option[String] = None
+    }
+
     case class Unknown(timestamp: Long) extends ResultStatus {
+      override def statusCode: Int = -1
+
       override def isSubmitted: Boolean = false
 
       override def isCompleted: Boolean = false
@@ -191,6 +210,8 @@ object ResultFileManager {
     }
 
     case class Submitted(timestamp: Long) extends ResultStatus {
+      override def statusCode: Int = 1
+
       override def isSubmitted: Boolean = true
 
       override def isCompleted: Boolean = false
@@ -205,6 +226,8 @@ object ResultFileManager {
     }
 
     case class Succeeded(timestamp: Long, outputFile: String) extends ResultStatus {
+      override def statusCode: Int = 7
+
       override def isSubmitted: Boolean = true
 
       override def isCompleted: Boolean = true
@@ -213,12 +236,14 @@ object ResultFileManager {
 
       override def hasFailed: Boolean = false
 
-      override def message: String = s"Success! Output file is $outputFile"
+      override def message: String = s"Success!"
 
       override def outputFileOpt: Option[String] = Some(outputFile)
     }
 
     case class Failed(timestamp: Long, message: String) extends ResultStatus {
+      override def statusCode: Int = 19
+
       override def isSubmitted: Boolean = true
 
       override def isCompleted: Boolean = true
@@ -229,6 +254,8 @@ object ResultFileManager {
 
       override def outputFileOpt: Option[String] = None
     }
+
+    def createInvalid(message: String): Invalid = Invalid(System.currentTimeMillis(), message)
 
     def createUnknown(): Unknown = Unknown(System.currentTimeMillis())
 
