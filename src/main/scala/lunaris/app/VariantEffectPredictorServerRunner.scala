@@ -1,16 +1,18 @@
 package lunaris.app
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.model.ContentTypes
+import akka.http.scaladsl.model.{ContentTypes, Multipart}
 import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import better.files.File
 import lunaris.utils.HttpUtils
-import lunaris.varianteffect.{ResultFileManager, VariantEffectJson}
+import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
 import lunaris.varianteffect.ResultFileManager.ResultId
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
+import scala.util.{Failure, Success}
 
 object VariantEffectPredictorServerRunner {
 
@@ -33,6 +35,7 @@ object VariantEffectPredictorServerRunner {
       case Right(_) =>
         implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
         implicit val materializer: Materializer = Materializer(actorSystem)
+        implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
         val route: Route =
           concat(
             path("lunaris" / "predictor.html") {
@@ -59,16 +62,23 @@ object VariantEffectPredictorServerRunner {
             path("lunaris" / "predictor" / "upload") {
               post {
                 decodeRequest {
-                  extractRequestContext { requestContext =>
-                    implicit val materializer: Materializer = requestContext.materializer
-                    fileUpload("inputFile") {
-                      case (metadata, byteSource) =>
-                        val submissionResponse = resultFileManager.submit(metadata.fileName, byteSource)
-                        onSuccess(submissionResponse.futFut) { _ =>
-                          complete(
-                            HttpUtils.ResponseBuilder.fromPlainTextString(submissionResponse.resultId.toString)
-                          )
-                        }
+                  entity(as[Multipart.FormData]) { httpFormData =>
+                    val uploadFut = httpFormData.parts.mapAsync(1) {
+                      VariantEffectFormData.FormField.bodyPartToFieldFut(_)
+                    }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
+                      fieldsByName + (field.name -> field)
+                    }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
+                      resultFileManager.submit(variantEffectFormData)
+                    }
+                    onComplete(uploadFut) {
+                      case Success(submissionResponse) =>
+                        complete(
+                          HttpUtils.ResponseBuilder.fromPlainTextString(submissionResponse.resultId.toString)
+                        )
+                      case Failure(ex) =>
+                        complete(
+                          HttpUtils.ResponseBuilder.fromPlainTextString(ex.getMessage)
+                        )
                     }
                   }
                 }
@@ -91,7 +101,7 @@ object VariantEffectPredictorServerRunner {
                   resultId <- ResultId.fromString(resultIdString)
                   source <- resultFileManager.streamResults(resultId)
                 } yield source
-               snagOrSource  match {
+                snagOrSource match {
                   case Left(snag) =>
                     complete(
                       HttpUtils.ResponseBuilder.forError(snag.message)

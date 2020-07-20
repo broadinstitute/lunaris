@@ -3,7 +3,7 @@ package lunaris.varianteffect
 import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.Materializer
-import akka.stream.scaladsl.{Framing, Source}
+import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import better.files.File
 import lunaris.genomics.Variant
@@ -13,7 +13,6 @@ import lunaris.utils.NumberParser
 import lunaris.varianteffect.ResultFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-import scala.collection.mutable
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
@@ -45,49 +44,12 @@ class ResultFileManager(val resultFolder: File) {
 
   def outputFilePathForId(resultId: ResultId): File = resultFolder / outputFileNameForId(resultId)
 
-  def newVariantsByChromFuture(resultId: ResultId,
-                               stream: Source[ByteString, Any])(
-                                implicit actorSystem: ActorSystem
-                              ): Future[Map[String, Seq[Variant]]] = {
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-
-    stream.via(Framing.delimiter(ByteString("\n"), Int.MaxValue))
-      .map(_.utf8String)
-      .filter(!_.startsWith("#"))
-      .mapConcat { line =>
-        val fields = line.split("\t")
-        if (fields.length >= 5) {
-          NumberParser.parseInt(fields(1)) match {
-            case Left(_) => Seq.empty
-            case Right(pos) =>
-              val chrom = fields(0)
-              val ref = fields(3)
-              val alt = fields(4)
-              Seq(Variant(chrom, pos, ref, alt))
-          }
-        } else {
-          Seq.empty
-        }
-      }.runFold(Map.empty[String, mutable.Builder[Variant, Seq[Variant]]]) { (variantsByChrom, variant) =>
-      val chrom = variant.chrom
-      variantsByChrom.get(chrom) match {
-        case Some(variantsForChrom) =>
-          variantsForChrom += variant
-          variantsByChrom
-        case None =>
-          val variantsForChrom = Seq.newBuilder[Variant]
-          variantsForChrom += variant
-          variantsByChrom + (chrom -> variantsForChrom)
-      }
-    }.map(_.view.mapValues(_.result()).toMap)
-  }
-
   def newQueryFuture(resultId: ResultId,
-                     variantsByChrom: Map[String, Seq[Variant]])(implicit actorSystem: ActorSystem): Future[Unit] = {
+                     formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val queryFuture = Future {
       val request =
-        VariantEffectRequestBuilder.buildRequest(resultId, variantsByChrom, outputFilePathForId(resultId))
+        VariantEffectRequestBuilder.buildRequest(resultId, formData.variantsByChrom, outputFilePathForId(resultId))
       LunCompiler.compile(request)
     }.collect {
       case Right(runnable) =>
@@ -102,23 +64,20 @@ class ResultFileManager(val resultFolder: File) {
     queryFuture
   }
 
-  def newUploadAndQueryFutureFuture(resultId: ResultId,
-                                    stream: Source[ByteString, Any])(
-                                     implicit actorSystem: ActorSystem): Future[Future[Unit]] = {
+  def newUploadAndQueryFutureFuture(resultId: ResultId, formData: VariantEffectFormData)(
+                                     implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    newVariantsByChromFuture(resultId, stream).map { variantsByChrom =>
-      newQueryFuture(resultId, variantsByChrom)
-    }
+    newQueryFuture(resultId, formData)
   }
 
-  class SubmissionResponse(val resultId: ResultId, val futFut: Future[Future[Unit]])
+  class SubmissionResponse(val resultId: ResultId, val fut: Future[Unit])
 
-  def submit(fileName: String,
-             stream: Source[ByteString, Any])(implicit actorSystem: ActorSystem): SubmissionResponse = {
-    val resultId = ResultId.createNew(fileName)
+  def submit(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
+    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    val resultId = ResultId.createNew(formData.fileName)
     updateStatus(resultId, ResultStatus.createSubmitted())
-    val futFut = newUploadAndQueryFutureFuture(resultId, stream)
-    new SubmissionResponse(resultId, futFut)
+    val fut = newUploadAndQueryFutureFuture(resultId, formData)
+    new SubmissionResponse(resultId, fut)
   }
 
   def getStatus(resultId: ResultId): ResultStatus = {
