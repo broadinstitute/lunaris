@@ -30,7 +30,26 @@ case class TsvHeader(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: 
 }
 
 object TsvHeader {
-  def parse(line: String, seqCol: Int, beginCol: Int, endCol: Int): Either[Snag, TsvHeader] = {
+  def lineIsIgnored(line: String): Boolean = line.startsWith("##")
+
+  def lineHasColumnNames(line: String): Boolean = (!lineIsIgnored(line)) && line.startsWith("#")
+
+  def parseLines(seqCol: Int, beginCol: Int, endCol: Int)(
+    lineGen: () => Either[Snag, String]): Either[Snag, TsvHeader] = {
+    var snagOrHeaderOpt: Option[Either[Snag, TsvHeader]] = None
+    while (snagOrHeaderOpt.isEmpty) {
+      lineGen() match {
+        case Left(snag) => snagOrHeaderOpt = Some(Left(snag))
+        case Right(line) =>
+          if (lineHasColumnNames(line)) {
+            snagOrHeaderOpt = Some(parseLine(line, seqCol, beginCol, endCol))
+          }
+      }
+    }
+    snagOrHeaderOpt.get
+  }
+
+  def parseLine(line: String, seqCol: Int, beginCol: Int, endCol: Int): Either[Snag, TsvHeader] = {
     var line2: String = line.trim
     while (line2.startsWith("#")) {
       line2 = line2.drop(1)

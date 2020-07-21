@@ -18,7 +18,7 @@ object BedReader {
       val reader = ByteBufferReader(refiller)
       val snagOrHeader = for {
         line <- reader.readLine()
-        header <- TsvHeader.parse(line, 1, 2, 3)
+        header <- TsvHeader.parseLine(line, 1, 2, 3)
       } yield header
       snagOrHeader match {
         case Left(snag) => Left(snag)

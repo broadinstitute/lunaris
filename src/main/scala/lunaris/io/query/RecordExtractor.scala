@@ -31,10 +31,8 @@ object RecordExtractor {
             val dataRefiller = ByteBufferRefiller.bgunzip(dataReadChannel, dataBufferSize)
             val dataReader = ByteBufferReader(dataRefiller)
             dataRefiller.currentChunk = TBIChunk.wholeFile
-            val snagOrHeader = for {
-              line <- dataReader.readLine()
-              header <- TsvHeader.parse(line, indexHeader.col_seq, indexHeader.col_beg, indexHeader.col_end)
-            } yield header
+            val snagOrHeader =
+              TsvHeader.parseLines(indexHeader.col_seq, indexHeader.col_beg, indexHeader.col_end)(dataReader.readLine)
             snagOrHeader match {
               case Left(snag) => Left(snag)
               case Right(header) =>
