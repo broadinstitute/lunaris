@@ -17,7 +17,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-class ResultFileManager(val resultFolder: File) {
+class ResultFileManager(val resultFolder: File, val dataFile: String, val varId: String) {
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
 
@@ -49,7 +49,9 @@ class ResultFileManager(val resultFolder: File) {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val queryFuture = Future {
       val request =
-        VariantEffectRequestBuilder.buildRequest(resultId, formData.variantsByChrom, outputFilePathForId(resultId))
+        VariantEffectRequestBuilder.buildRequest(
+          resultId, formData.variantsByChrom, outputFilePathForId(resultId), dataFile, varId
+        )
       LunCompiler.compile(request)
     }.collect {
       case Right(runnable) =>

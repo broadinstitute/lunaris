@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import better.files.File
+import lunaris.io.InputId
 import lunaris.utils.HttpUtils
 import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
 import lunaris.varianteffect.ResultFileManager.ResultId
@@ -19,14 +20,13 @@ object VariantEffectPredictorServerRunner {
   object Defaults {
     val host: String = "localhost"
     val port: Int = 8080
-    val resultsFolder: File = File("target")
   }
 
-  def run(hostOpt: Option[String], portOpt: Option[Int], resultsFolderOpt: Option[File]): Unit = {
+  def run(hostOpt: Option[String], portOpt: Option[Int], resultsFolder: File,
+          dataFile: String, varId: String): Unit = {
     val host = hostOpt.getOrElse(Defaults.host)
     val port = portOpt.getOrElse(Defaults.port)
-    val resultsFolder = resultsFolderOpt.getOrElse(Defaults.resultsFolder)
-    val resultFileManager = new ResultFileManager(resultsFolder)
+    val resultFileManager = new ResultFileManager(resultsFolder, dataFile, varId)
     resultFileManager.resultsFolderOrSnag() match {
       case Left(snag) =>
         println("Unable to establish storage for result file")

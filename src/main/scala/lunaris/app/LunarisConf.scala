@@ -27,7 +27,9 @@ class LunarisConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   addSubcommand(server)
   val variantEffectPredictor = new Subcommand("variant-effect-predictor") with WebService {
     banner("Variant effect predictor.")
-    val resultsFolder = opt[String](descr = "Folder to store results.")
+    val resultsFolder = opt[String](descr = "Folder to store results.", required = true)
+    val dataFile = opt[String](descr = "File with variant data", required = true)
+    val varId = opt[String](descr = "Name of column with variant id", required = true)
   }
   addSubcommand(variantEffectPredictor)
   requireSubcommand()
