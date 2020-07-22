@@ -20,7 +20,7 @@ object RequestExampleMoreRegions extends RequestExample {
     Request(id,
       Regions.moreRegions,
       Recipe(Map(
-        Keys.read -> ToolCalls.indexedObjectReader(dataFile, idField),
+        Keys.read -> ToolCalls.indexedObjectReader(dataFile, None, idField),
         Keys.write -> ToolCalls.jsonWriter(Keys.read, outputFile)
       ))
     )

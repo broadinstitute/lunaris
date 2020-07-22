@@ -20,7 +20,7 @@ object RequestExampleMinimalJson extends RequestExample {
     Request(id,
       Regions.simpleRegion,
       Recipe(Map(
-        Keys.read -> ToolCalls.indexedObjectReader(dataFile, idField),
+        Keys.read -> ToolCalls.indexedObjectReader(dataFile, None, idField),
         Keys.write -> ToolCalls.jsonWriter(Keys.read, outputFile)
       ))
     )

@@ -6,8 +6,11 @@ import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import better.files.File
-import lunaris.io.InputId
-import lunaris.utils.HttpUtils
+import lunaris.data.BlockGzippedWithIndex
+import lunaris.io.{InputId, ResourceConfig}
+import lunaris.io.query.{HeaderExtractor, HeaderJson}
+import lunaris.streams.TsvHeader
+import lunaris.utils.{HttpUtils, SnagJson}
 import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
 import lunaris.varianteffect.ResultFileManager.ResultId
 
@@ -23,10 +26,11 @@ object VariantEffectPredictorServerRunner {
   }
 
   def run(hostOpt: Option[String], portOpt: Option[Int], resultsFolder: File,
-          dataFile: String, varId: String): Unit = {
+          dataFileWithIndex: BlockGzippedWithIndex, varId: String): Unit = {
     val host = hostOpt.getOrElse(Defaults.host)
     val port = portOpt.getOrElse(Defaults.port)
-    val resultFileManager = new ResultFileManager(resultsFolder, dataFile, varId)
+    val resourceConfig = ResourceConfig.empty
+    val resultFileManager = new ResultFileManager(resultsFolder, dataFileWithIndex, varId, resourceConfig)
     resultFileManager.resultsFolderOrSnag() match {
       case Left(snag) =>
         println("Unable to establish storage for result file")
@@ -109,6 +113,20 @@ object VariantEffectPredictorServerRunner {
                   case Right(source) =>
                     complete(
                       HttpUtils.ResponseBuilder.fromTsvByteStream(source)
+                    )
+                }
+              }
+            },
+            path("lunaris" / "predictor" / "schema") {
+              get {
+                HeaderExtractor.extractHeader(dataFileWithIndex, resourceConfig).useUp {
+                  case Left(snag) =>
+                    complete(
+                      HttpUtils.ResponseBuilder.fromJson(SnagJson.snagEncoder(snag))
+                    )
+                  case Right(header) =>
+                    complete(
+                      HttpUtils.ResponseBuilder.fromJson(HeaderJson.headerEncoder(header))
                     )
                 }
               }

@@ -6,7 +6,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import better.files.File
-import lunaris.genomics.Variant
+import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
 import lunaris.utils.NumberParser
@@ -17,7 +17,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-class ResultFileManager(val resultFolder: File, val dataFile: String, val varId: String) {
+class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzippedWithIndex, val varId: String,
+                        resourceConfig: ResourceConfig) {
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
 
@@ -50,13 +51,14 @@ class ResultFileManager(val resultFolder: File, val dataFile: String, val varId:
     val queryFuture = Future {
       val request =
         VariantEffectRequestBuilder.buildRequest(
-          resultId, formData.variantsByChrom, outputFilePathForId(resultId), dataFile, varId
+          resultId, formData.variantsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
+          Some(dataFileWithIndex.index.toString), varId
         )
       LunCompiler.compile(request)
     }.collect {
       case Right(runnable) =>
         val context =
-          LunRunContext(Materializer(actorSystem), ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
+          LunRunContext(Materializer(actorSystem), resourceConfig, LunRunContext.Observer.forLogger(println))
         runnable.execute(context)
     }
     queryFuture.onComplete {

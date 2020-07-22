@@ -1,6 +1,7 @@
 package lunaris.app
 
 import better.files.File
+import lunaris.data.BlockGzippedWithIndex
 
 import scala.language.reflectiveCalls
 import lunaris.io.InputId
@@ -16,11 +17,16 @@ object Lunaris {
       case List(conf.server) =>
         ServerRunner.run(conf.server.host.toOption, conf.server.port.toOption)
       case List(conf.variantEffectPredictor) =>
+        val dataFileWithIndex =
+          BlockGzippedWithIndex(
+            conf.variantEffectPredictor.dataFile(),
+            conf.variantEffectPredictor.indexFile.toOption
+          )
         VariantEffectPredictorServerRunner.run(
           conf.variantEffectPredictor.host.toOption,
           conf.variantEffectPredictor.port.toOption,
           conf.variantEffectPredictor.resultsFolder.map(File(_))(),
-          conf.variantEffectPredictor.dataFile(),
+          dataFileWithIndex,
           conf.variantEffectPredictor.varId()
         )
     }

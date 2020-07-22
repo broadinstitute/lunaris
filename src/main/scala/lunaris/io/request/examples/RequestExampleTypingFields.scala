@@ -23,7 +23,7 @@ object RequestExampleTypingFields extends RequestExample {
     Request(id,
       Regions.simpleRegion,
       Recipe(Map(
-        Keys.read -> ToolCalls.indexedObjectReader(dataFile, idField, Some(types)),
+        Keys.read -> ToolCalls.indexedObjectReader(dataFile, None, idField, Some(types)),
         Keys.write -> ToolCalls.jsonWriter(Keys.read, outputFile)
       ))
     )

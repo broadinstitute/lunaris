@@ -25,7 +25,7 @@ object RequestExampleFilter extends RequestExample {
     Request(id,
       Regions.somewhatBiggerRegion,
       Recipe(Map(
-        Keys.read -> ToolCalls.indexedObjectReader(dataFile, varId),
+        Keys.read -> ToolCalls.indexedObjectReader(dataFile, None, varId),
         Keys.filter -> ToolCalls.filter(Keys.read, phenotype, stringValue),
         Keys.write -> ToolCalls.tsvWriter(Keys.filter, outputFile)
       ))

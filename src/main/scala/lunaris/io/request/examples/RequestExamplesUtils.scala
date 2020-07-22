@@ -42,13 +42,15 @@ object RequestExamplesUtils {
       }
     }
     def indexedObjectReader(file: FileValue,
+                            indexOpt: Option[FileValue],
                             idField: StringValue,
                             typesOpt: Option[MapValue] = None): ToolCall = {
       val args = Utils.buildArgs(
         IndexedRecordReader.Params.Keys.file -> ValueArg(IndexedRecordReader.Params.file, file),
         IndexedRecordReader.Params.Keys.idField -> ValueArg(IndexedRecordReader.Params.idField, idField)
       )(
-        typesOpt.map(IndexedRecordReader.Params.Keys.types -> ValueArg(IndexedRecordReader.Params.types, _))
+        indexOpt.map(IndexedRecordReader.Params.Keys.index -> ValueArg(IndexedRecordReader.Params.index, _)),
+        typesOpt.map(IndexedRecordReader.Params.Keys.types -> ValueArg(IndexedRecordReader.Params.types, _)),
       )
       ToolCall(IndexedRecordReader, args)
     }

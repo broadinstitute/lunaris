@@ -12,13 +12,17 @@ object VariantEffectRequestBuilder {
 
   def buildRequest(resultId: ResultId,
                    variantsByChrom: Map[String, Seq[Variant]],
-                   outputFile: File, dataFileName: String, varId: String): Request = {
+                   outputFile: File,
+                   dataFileName: String,
+                   indexFileNameOpt: Option[String],
+                   varId: String): Request = {
 
     val requestId = "variant_effect_predictor_" + resultId.toString
 
     val regions = variantsByChrom.view.mapValues(_.map(_.toLocus.region)).toMap
 
     val dataFile: FileValue = FileValue(dataFileName)
+    val indexFileOpt: Option[FileValue] = indexFileNameOpt.map(FileValue)
     val idField: StringValue = StringValue(varId)
     val outputFileValue: FileValue = FileValue(outputFile.toString())
 
@@ -30,7 +34,7 @@ object VariantEffectRequestBuilder {
     Request(requestId,
       regions,
       Recipe(Map(
-        Keys.read -> ToolCalls.indexedObjectReader(dataFile, idField),
+        Keys.read -> ToolCalls.indexedObjectReader(dataFile, indexFileOpt, idField),
         Keys.write -> ToolCalls.tsvWriter(Keys.read, outputFileValue)
       ))
     )
