@@ -27,6 +27,22 @@ function submit() {
         }).catch(showCouldNotSubmit);
 }
 
+function getSchema() {
+    fetch("/lunaris/predictor/schema")
+        .then((response) => {
+            return response.json();
+        })
+        .then((schema) => {
+            var schemaNode = document.getElementById("schema");
+            if(schema.isError) {
+                schemaNode.innerText = "Unable to load available fields: " + schema.message;
+            }
+            if(schema.col_names) {
+                schemaNode.innerText = "Available fields: " + schema.col_names.join(", ");
+            }
+        })
+}
+
 function getStatusAreaNode() {
     return document.getElementById("status_area");
 }
