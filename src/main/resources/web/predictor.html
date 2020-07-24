@@ -6,7 +6,7 @@
     <script src="js/predictor.js"></script>
 </head>
 
-<body onload="getSchema()">
+<body onload="init()">
 <h1><img src="http://kp4cd.org/sites/default/files/lunaris/lunaris_logo_white.svg"
          style="width: 80px; vertical-align: -10px;" alt="Lunaris logo"/>
     Lunaris Variant Predictor Version 1.2.4
@@ -14,16 +14,26 @@
 
 
 <p>This is the Lunaris Variant Effect Predictor Version 1.2.4. Submit a VCF file.</p>
+
+<p id="status_area"></p>
+
+<p>
+    <label for="fieldSelect">Select field</label>
+    <select id="fieldSelect"></select>
+    <button>Insert</button>
+</p>
+<p>
+    <label for="filtersText">Filter conditions:</label>
+</p>
+<p>
+    <textarea id="filtersText" rows="10" cols="100"></textarea>
+</p>
 <p id="schema">Available fields not yet loaded.</p>
 <p>
     <label for="inputfile">Select a file:</label>
     <input type="file" id="inputfile" name="myfile">
     <button onclick="submit()">Submit</button>
 </p>
-
-<span id="status_area">
-
-</span>
 
 </body>
 
