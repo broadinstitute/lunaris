@@ -2,11 +2,13 @@ const lunarisVariantPredictor = {
     "inputFileNames": {},
     "statuses": {},
     "idsPending": [],
-    "fieldNames": []
+    "fieldNames": [],
+    "operators": ["==", "=~"]
 }
 
 function init() {
     getSchema();
+    // addFilterGroup();
 }
 
 
@@ -56,14 +58,9 @@ function getSchema() {
                 statusTextNode.innerText = "Unable to load available fields: " + schema.message;
             }
             if (schema.col_names) {
-                const fieldSelectNode = document.getElementById("fieldSelect");
                 lunarisVariantPredictor.fieldNames = temporaryHackToFixDataProblem(schema.col_names);
                 const statusTextNode = getStatusAreaNode();
                 statusTextNode.innerText = "Loaded " + lunarisVariantPredictor.fieldNames.length + " field names."
-                fieldSelectNode.options.length = 0;
-                lunarisVariantPredictor.fieldNames.forEach(col => {
-                    fieldSelectNode.options.add(new Option(col));
-                })
             }
         })
 }
@@ -138,4 +135,72 @@ function updatePendingStatuses() {
         i++;
     }
     lunarisVariantPredictor.idsPending = idsPendingNew;
+}
+
+function createSelectWithOptions(options) {
+    const select = document.createElement("select");
+    options.forEach((option) => {
+        select.options.add(new Option(option));
+    })
+    return select;
+}
+
+function addFilter(group) {
+    const filterNode = document.createElement("span");
+    filterNode.classList.add("filter");
+    filterNode.appendChild(document.createTextNode("("));
+    const fieldSelect = createSelectWithOptions(lunarisVariantPredictor.fieldNames);
+    fieldSelect.classList.add("fieldSelect");
+    filterNode.appendChild(fieldSelect);
+    const operatorSelect = createSelectWithOptions(lunarisVariantPredictor.operators);
+    operatorSelect.classList.add("operatorSelect");
+    filterNode.appendChild(operatorSelect);
+    const valueInput = document.createElement("input");
+    valueInput.setAttribute("size", "20");
+    filterNode.appendChild(valueInput);
+    filterNode.appendChild(document.createTextNode(")"));
+    group.appendChild(filterNode);
+}
+
+function countFilterGroups(filterGroupsParent) {
+    let n = 0;
+    filterGroupsParent.childNodes.forEach( (childNode) => {
+        if (childNode.classList && childNode.classList.contains("filterGroup")) {
+            n++;
+        }
+    })
+    return n;
+}
+
+function getLastFilterGroup(filterGroupsParent) {
+    let lastGroup = null;
+    filterGroupsParent.childNodes.forEach( (childNode) => {
+        if (childNode.classList && childNode.classList.contains("filterGroup")) {
+            lastGroup = childNode;
+        }
+    })
+    return lastGroup;
+}
+
+function tightenButton(button) {
+    button.style.margin = "0px 0px 0px 0px";
+    button.style.border = "0px";
+    button.style.padding = "0px";
+}
+
+function addFilterGroup() {
+    const buttonNode = document.getElementById("addFilterGroupButton");
+    tightenButton(buttonNode);
+    const filterGroupsParent = document.getElementById("filterGroups");
+    const newFilterGroup = document.createElement("span");
+    newFilterGroup.classList.add("filterGroup");
+    addFilter(newFilterGroup);
+    if(countFilterGroups(filterGroupsParent) === 0) {
+        filterGroupsParent.insertBefore(newFilterGroup, buttonNode);
+    } else {
+        const nodeAfter = getLastFilterGroup(filterGroupsParent).nextSibling;
+        const andNode = document.createTextNode(" && ");
+        filterGroupsParent.insertBefore(andNode, nodeAfter);
+        filterGroupsParent.insertBefore(newFilterGroup, nodeAfter);
+    }
 }
