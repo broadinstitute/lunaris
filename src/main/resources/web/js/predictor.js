@@ -3,7 +3,7 @@ const lunarisVariantPredictor = {
     "statuses": {},
     "idsPending": [],
     "fieldNames": [],
-    "operators": ["==", "=~"],
+    "operators": ["==", "=~", "==", "!=~"],
     "filterGroupCounter": 0
 }
 
@@ -62,6 +62,7 @@ function getSchema() {
                 lunarisVariantPredictor.fieldNames = temporaryHackToFixDataProblem(schema.col_names);
                 const statusTextNode = getStatusAreaNode();
                 statusTextNode.innerText = "Loaded " + lunarisVariantPredictor.fieldNames.length + " field names."
+                addFilterGroup();
             }
         })
 }
@@ -189,7 +190,7 @@ function addFilter(group) {
         group.insertBefore(filterNode, nodeAfter);
     } else {
         const nodeAfter = getLastChildOfClass(group, "filter").nextSibling;
-        const operatorNode = document.createTextNode(" || ");
+        const operatorNode = document.createTextNode(" OR ");
         group.insertBefore(operatorNode, nodeAfter);
         group.insertBefore(filterNode, nodeAfter);
     }
@@ -217,8 +218,8 @@ function addFilterGroup() {
         filterGroupsParent.insertBefore(newFilterGroup, buttonNode);
     } else {
         const nodeAfter = getLastChildOfClass(filterGroupsParent, "filterGroup").nextSibling;
-        const andNode = document.createTextNode(" && ");
-        filterGroupsParent.insertBefore(andNode, nodeAfter);
+        filterGroupsParent.insertBefore(document.createElement("br"), nodeAfter);
+        filterGroupsParent.insertBefore(document.createTextNode("AND "), nodeAfter);
         filterGroupsParent.insertBefore(newFilterGroup, nodeAfter);
     }
 }
