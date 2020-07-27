@@ -3,7 +3,8 @@ const lunarisVariantPredictor = {
     "statuses": {},
     "idsPending": [],
     "fieldNames": [],
-    "operators": ["==", "=~"]
+    "operators": ["==", "=~"],
+    "filterGroupCounter": 0
 }
 
 function init() {
@@ -145,6 +146,30 @@ function createSelectWithOptions(options) {
     return select;
 }
 
+function countChildrenOfClass(filterGroupsParent, className) {
+    let n = 0;
+    filterGroupsParent.childNodes.forEach( (childNode) => {
+        if (childNode.classList && childNode.classList.contains(className)) {
+            n++;
+        }
+    })
+    return n;
+}
+function getLastChildOfClass(parent, className) {
+    let lastGroup = null;
+    parent.childNodes.forEach( (childNode) => {
+        if (childNode.classList && childNode.classList.contains(className)) {
+            lastGroup = childNode;
+        }
+    })
+    return lastGroup;
+}
+function tightenButton(button) {
+    button.style.margin = "0px 0px 0px 0px";
+    button.style.border = "0px";
+    button.style.padding = "0px";
+}
+
 function addFilter(group) {
     const filterNode = document.createElement("span");
     filterNode.classList.add("filter");
@@ -159,33 +184,15 @@ function addFilter(group) {
     valueInput.setAttribute("size", "20");
     filterNode.appendChild(valueInput);
     filterNode.appendChild(document.createTextNode(")"));
-    group.appendChild(filterNode);
-}
-
-function countFilterGroups(filterGroupsParent) {
-    let n = 0;
-    filterGroupsParent.childNodes.forEach( (childNode) => {
-        if (childNode.classList && childNode.classList.contains("filterGroup")) {
-            n++;
-        }
-    })
-    return n;
-}
-
-function getLastFilterGroup(filterGroupsParent) {
-    let lastGroup = null;
-    filterGroupsParent.childNodes.forEach( (childNode) => {
-        if (childNode.classList && childNode.classList.contains("filterGroup")) {
-            lastGroup = childNode;
-        }
-    })
-    return lastGroup;
-}
-
-function tightenButton(button) {
-    button.style.margin = "0px 0px 0px 0px";
-    button.style.border = "0px";
-    button.style.padding = "0px";
+    if(countChildrenOfClass(group, "filter") === 0) {
+        const nodeAfter = getLastChildOfClass(group, "addFilterButton");
+        group.insertBefore(filterNode, nodeAfter);
+    } else {
+        const nodeAfter = getLastChildOfClass(group, "filter").nextSibling;
+        const operatorNode = document.createTextNode(" || ");
+        group.insertBefore(operatorNode, nodeAfter);
+        group.insertBefore(filterNode, nodeAfter);
+    }
 }
 
 function addFilterGroup() {
@@ -193,12 +200,23 @@ function addFilterGroup() {
     tightenButton(buttonNode);
     const filterGroupsParent = document.getElementById("filterGroups");
     const newFilterGroup = document.createElement("span");
+    const id = "filterGroup" + lunarisVariantPredictor.filterGroupCounter;
+    lunarisVariantPredictor.filterGroupCounter++;
+    newFilterGroup.id = id;
     newFilterGroup.classList.add("filterGroup");
+    newFilterGroup.append(document.createTextNode("("));
     addFilter(newFilterGroup);
-    if(countFilterGroups(filterGroupsParent) === 0) {
+    const addFilterButton = document.createElement("button");
+    addFilterButton.innerHTML = "&oplus;"
+    addFilterButton.classList.add("addFilterButton");
+    tightenButton(addFilterButton);
+    addFilterButton.onclick = function() { addFilter(document.getElementById(id)); }
+    newFilterGroup.appendChild(addFilterButton);
+    newFilterGroup.appendChild(document.createTextNode(")"));
+    if(countChildrenOfClass(filterGroupsParent, "filterGroup") === 0) {
         filterGroupsParent.insertBefore(newFilterGroup, buttonNode);
     } else {
-        const nodeAfter = getLastFilterGroup(filterGroupsParent).nextSibling;
+        const nodeAfter = getLastChildOfClass(filterGroupsParent, "filterGroup").nextSibling;
         const andNode = document.createTextNode(" && ");
         filterGroupsParent.insertBefore(andNode, nodeAfter);
         filterGroupsParent.insertBefore(newFilterGroup, nodeAfter);
