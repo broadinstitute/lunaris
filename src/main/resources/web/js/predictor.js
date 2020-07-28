@@ -4,7 +4,8 @@ const lunarisVariantPredictor = {
     "idsPending": [],
     "fieldNames": [],
     "operators": ["==", "=~", "==", "!=~"],
-    "filterGroupCounter": 0
+    "filterGroupCounter": 0,
+    "filterCounter": 0
 }
 
 function init() {
@@ -173,8 +174,14 @@ function tightenButton(button) {
 
 function addFilter(group) {
     const filterNode = document.createElement("span");
+    const id = "filter" + lunarisVariantPredictor.filterCounter;
+    lunarisVariantPredictor.filterCounter++;
+    filterNode.id = id;
     filterNode.classList.add("filter");
-    filterNode.appendChild(document.createTextNode("("));
+    const openParenNode = document.createElement("span");
+    openParenNode.innerText = "(";
+    openParenNode.classList.add("openParen");
+    filterNode.appendChild(openParenNode);
     const fieldSelect = createSelectWithOptions(lunarisVariantPredictor.fieldNames);
     fieldSelect.classList.add("fieldSelect");
     filterNode.appendChild(fieldSelect);
@@ -184,15 +191,40 @@ function addFilter(group) {
     const valueInput = document.createElement("input");
     valueInput.setAttribute("size", "20");
     filterNode.appendChild(valueInput);
-    filterNode.appendChild(document.createTextNode(")"));
+    const removeFilterButton = document.createElement("button");
+    removeFilterButton.innerHTML = "&ominus;";
+    tightenButton(removeFilterButton);
+    removeFilterButton.onclick = function() { removeFilter(document.getElementById(id)); }
+    filterNode.append(removeFilterButton);
+    const closeParenNode = document.createElement("span");
+    closeParenNode.innerText = ")";
+    closeParenNode.classList.add("closeParen");
+    filterNode.appendChild(closeParenNode);
     if(countChildrenOfClass(group, "filter") === 0) {
         const nodeAfter = getLastChildOfClass(group, "addFilterButton");
         group.insertBefore(filterNode, nodeAfter);
     } else {
         const nodeAfter = getLastChildOfClass(group, "filter").nextSibling;
-        const operatorNode = document.createTextNode(" OR ");
+        const operatorNode = document.createElement("span");
+        operatorNode.innerText = " OR ";
+        operatorNode.classList.add("operator");
         group.insertBefore(operatorNode, nodeAfter);
         group.insertBefore(filterNode, nodeAfter);
+    }
+}
+
+function removeFilter(filterNode) {
+    const filterGroupNode = filterNode.parentNode;
+    const previousNode = filterNode.previousSibling;
+    const nextNode = filterNode.nextSibling;
+    filterNode.remove();
+    if(previousNode.classList.contains("openParen") && nextNode.classList.contains("operator")) {
+        nextNode.remove();
+    } else if(previousNode.classList.contains("operator")) {
+        previousNode.remove();
+    }
+    if(countChildrenOfClass(filterGroupNode, "filter") === 0) {
+        removeFilterGroup(filterGroupNode);
     }
 }
 
@@ -205,7 +237,10 @@ function addFilterGroup() {
     lunarisVariantPredictor.filterGroupCounter++;
     newFilterGroup.id = id;
     newFilterGroup.classList.add("filterGroup");
-    newFilterGroup.append(document.createTextNode("("));
+    const openParenNode = document.createElement("span");
+    openParenNode.innerText = "(";
+    openParenNode.classList.add("openParen");
+    newFilterGroup.append(openParenNode);
     addFilter(newFilterGroup);
     const addFilterButton = document.createElement("button");
     addFilterButton.innerHTML = "&oplus;"
@@ -213,13 +248,29 @@ function addFilterGroup() {
     tightenButton(addFilterButton);
     addFilterButton.onclick = function() { addFilter(document.getElementById(id)); }
     newFilterGroup.appendChild(addFilterButton);
-    newFilterGroup.appendChild(document.createTextNode(")"));
+    const closeParenNode = document.createElement("span");
+    closeParenNode.innerText =  ")";
+    closeParenNode.classList.add("closeParen");
+    newFilterGroup.appendChild(closeParenNode);
     if(countChildrenOfClass(filterGroupsParent, "filterGroup") === 0) {
         filterGroupsParent.insertBefore(newFilterGroup, buttonNode);
     } else {
         const nodeAfter = getLastChildOfClass(filterGroupsParent, "filterGroup").nextSibling;
-        filterGroupsParent.insertBefore(document.createElement("br"), nodeAfter);
-        filterGroupsParent.insertBefore(document.createTextNode("AND "), nodeAfter);
+        const operatorNode = document.createElement("span");
+        operatorNode.innerHTML = "<br>AND ";
+        operatorNode.classList.add("operator");
+        filterGroupsParent.insertBefore(operatorNode, nodeAfter);
         filterGroupsParent.insertBefore(newFilterGroup, nodeAfter);
+    }
+}
+
+function removeFilterGroup(filterGroupNode) {
+    const previousNode = filterGroupNode.previousSibling;
+    const nextNode = filterGroupNode.nextSibling;
+    filterGroupNode.remove();
+    if(previousNode.classList.contains("openParen")  && nextNode.classList.contains("operator")) {
+        nextNode.remove();
+    } else if(previousNode.classList.contains("operator")) {
+        previousNode.remove();
     }
 }
