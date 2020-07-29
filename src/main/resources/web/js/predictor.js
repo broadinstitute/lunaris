@@ -3,7 +3,7 @@ const lunarisVariantPredictor = {
     "statuses": {},
     "idsPending": [],
     "fieldNames": [],
-    "operators": ["==", "=~", "==", "!=~"],
+    "operators": ["==", "=~", "!=", "!=~"],
     "filterGroupCounter": 0,
     "filterCounter": 0
 }
@@ -20,6 +20,7 @@ function submit() {
     const inputFile = document.getElementById("inputfile").files[0];
     const formData = new FormData();
 
+    formData.append("filter", extractFilterExpression());
     formData.append("inputFile", inputFile);
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
         .then((response) => {
@@ -189,6 +190,7 @@ function addFilter(group) {
     operatorSelect.classList.add("operatorSelect");
     filterNode.appendChild(operatorSelect);
     const valueInput = document.createElement("input");
+    valueInput.classList.add("valueInput");
     valueInput.setAttribute("size", "20");
     filterNode.appendChild(valueInput);
     const removeFilterButton = document.createElement("button");
@@ -273,4 +275,51 @@ function removeFilterGroup(filterGroupNode) {
     } else if(previousNode.classList.contains("operator")) {
         previousNode.remove();
     }
+}
+
+function extractFilterExpression() {
+    const filterGroupsParent = document.getElementById("filterGroups");
+    const filterGroupNodes = [];
+    filterGroupsParent.childNodes.forEach((childNode) => {
+        if(childNode.classList && childNode.classList.contains("filterGroup")) {
+            filterGroupNodes.push(childNode);
+        }
+    })
+    const filterStringsArray = filterGroupNodes.map((filterGroup) => {
+        const filters = [];
+        filterGroup.childNodes.forEach((childNode) => {
+            if(childNode.classList.contains("filter")) {
+                filters.push(childNode);
+            }
+        })
+        return filters.flatMap((filter) => {
+            let field;
+            let operator;
+            let value;
+            filter.childNodes.forEach((childNode) => {
+                if (childNode.classList.contains("fieldSelect")) {
+                    if (childNode.options) {
+                        field = childNode.options[childNode.selectedIndex].value;
+                    }
+                } else if (childNode.classList.contains("operatorSelect")) {
+                    if (childNode.options) {
+                        operator = childNode.options[childNode.selectedIndex].value;
+                    }
+                } else if (childNode.classList.contains("valueInput")) {
+                    if (childNode.value && childNode.value.length > 0) {
+                        value = childNode.value;
+                    }
+                }
+            });
+            if (field && operator && value) {
+                return ["(`" + field + "` " + operator + " \"" + value + "\")"];
+            } else {
+                return [];
+            }
+        });
+    });
+    return filterStringsArray
+        .filter((filterStrings) => filterStrings.length > 0)
+        .map((filterStrings) => "(" + filterStrings.join(" OR ") + ")")
+        .join(" AND ");
 }
