@@ -2,6 +2,7 @@ package lunaris.varianteffect
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Multipart
+import akka.util.ByteString
 import lunaris.genomics.Variant
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -20,6 +21,10 @@ object VariantEffectFormData {
     def name: String
   }
 
+  case class FilterField(filter: String) extends FormField {
+    override def name: String = FormField.Keys.filter
+  }
+
   case class InputFileField(fileName: String, variantsByChrom: Map[String, Seq[Variant]]) extends FormField {
     override def name: String = FormField.Keys.inputFile
   }
@@ -29,6 +34,7 @@ object VariantEffectFormData {
   object FormField {
 
     object Keys {
+      val filter: String = "filter"
       val inputFile: String = "inputFile"
     }
 
@@ -36,6 +42,8 @@ object VariantEffectFormData {
       implicit actorSystem: ActorSystem): Future[FormField] = {
       implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
       bodyPart.name match {
+        case Keys.filter =>
+          bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FilterField)
         case Keys.inputFile =>
           VcfStreamVariantsReader.newVariantsByChromFuture(bodyPart.entity.dataBytes).map { variantsByChrom =>
             InputFileField(bodyPart.filename.get, variantsByChrom)
