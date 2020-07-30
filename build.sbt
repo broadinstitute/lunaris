@@ -10,6 +10,7 @@ val circeV = "0.13.0"
 val scallopV = "3.4.0"
 val akkaHttpV = "10.1.12"
 val akkaStreamV = "2.6.5"
+val fastParseV = "2.2.2"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
@@ -21,7 +22,8 @@ lazy val mainDeps = Seq(
   "io.circe" %% "circe-parser" % circeV,
   "org.rogach" %% "scallop" % scallopV,
   "com.typesafe.akka" %% "akka-http"   % akkaHttpV,
-  "com.typesafe.akka" %% "akka-stream" % akkaStreamV
+  "com.typesafe.akka" %% "akka-stream" % akkaStreamV,
+  "com.lihaoyi" %% "fastparse" % fastParseV
 )
 
 lazy val testDeps = Set(
