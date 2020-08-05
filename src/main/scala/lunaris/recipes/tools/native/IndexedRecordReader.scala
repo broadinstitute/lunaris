@@ -65,7 +65,7 @@ object IndexedRecordReader extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker]((runContext: LunRunContext) => {
           RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
-            RecordProcessor.ignoreFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
+            RecordProcessor.printSnagsDropFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
             def objectEtorGenerator(): Eitherator[LunValue.RecordValue] =
               headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toLunRecord(idField)))
                 .map { objectValue =>

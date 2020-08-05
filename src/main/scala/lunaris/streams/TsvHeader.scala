@@ -14,11 +14,20 @@ case class TsvHeader(colNames: Seq[String], seqCol: Int, beginCol: Int, endCol: 
     }
   }
 
+  private def checkIdFieldIsInHeader(idField: String): Either[Snag, Unit] = {
+    if(colNames.contains(idField)) {
+      Right(())
+    } else {
+      Left(Snag(s"Id field `$idField` missing in header."))
+    }
+  }
+
   def toLunRecordType(idField: String): Either[Snag, LunType.RecordType] = {
     val snagOrSpecialFields = for {
       chromField <- pickHeaderField(colNames, "chrom", seqCol - 1)
       beginField <- pickHeaderField(colNames, "begin", beginCol - 1)
       endField <- pickHeaderField(colNames, "end", endCol - 1)
+      _ <- checkIdFieldIsInHeader(idField)
     } yield LunType.RecordSpecialFields(idField, chromField, beginField, endField)
     snagOrSpecialFields.map { specialFields =>
       val elementTypes =

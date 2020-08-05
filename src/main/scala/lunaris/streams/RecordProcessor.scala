@@ -16,6 +16,14 @@ object RecordProcessor {
     case Right(record) => Right(Some(record))
   }
 
+  def printSnagsDropFaultyRecords[T]: RecordProcessor[T] = {
+    case Left(snag) =>
+      println(snag.message)
+      Right(None)
+    case Right(record) =>
+      Right(Some(record))
+  }
+
   def newFaultyRecordsLogger[T](): RecordProcessor[T] = new RecordProcessor[T] {
     var snags: Seq[Snag] = Vector.empty
 

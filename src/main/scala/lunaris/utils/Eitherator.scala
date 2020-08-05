@@ -164,7 +164,9 @@ object Eitherator {
           nextItemNew
       }
       snagOrAOpt match {
-        case Left(snag) => throw new RuntimeException(snag.message)
+        case Left(snag) =>
+          println(snag.message)
+          throw new RuntimeException(snag.message)
         case Right(aOpt) => aOpt
       }
 
