@@ -4,7 +4,7 @@
 # Usage:
 # ./deploy_to_google_cloud_repo.sh <Google project name> <Lunaris version>
 # Example:
-# ./deploy_to_google_cloud_repo.sh v2f-public-resources 1.0.2
+# ./deploy_to_google_cloud_repo.sh v2f-public-resources 1.2.5
 
 project=$1
 version=$2

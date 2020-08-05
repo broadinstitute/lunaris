@@ -30,7 +30,7 @@ task run_lunaris {
   }
   runtime {
     preemptible: 3
-    docker: "gcr.io/v2f-public-resources/lunaris:1.1.0"
+    docker: "gcr.io/v2f-public-resources/lunaris:1.2.5"
     cpu: 1
     memory: "5 GB"
     disks: "local-disk 20 HDD"

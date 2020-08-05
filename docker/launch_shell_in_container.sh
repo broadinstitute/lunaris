@@ -4,7 +4,7 @@
 
 version=$1
 if [[ -z ${version} ]]; then
-    echo "Need to specify version (e.g. 1.0.2)."
+    echo "Need to specify version (e.g. 1.2.5)."
     exit
 fi
 image=lunaris:${version}
