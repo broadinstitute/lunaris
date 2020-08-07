@@ -1,6 +1,6 @@
 package lunaris.recipes.parsing
 
-import fastparse.NoWhitespace._
+import fastparse.ScalaWhitespace._
 import fastparse._
 import lunaris.expressions.BooleanRecordExpression.{AndExpression, OrExpression}
 import lunaris.expressions.{BooleanRecordExpression, FieldFilterExpression}
@@ -15,9 +15,9 @@ object RecordExpressionParser {
 
     def bareFieldNamePart[_: P]: P[Unit] = P(CharPred(Character.isJavaIdentifierPart))
 
-    def bareFieldName[_: P]: P[String] = P(bareFieldNameStart ~ bareFieldNamePart.rep).!
+    def bareFieldName[_: P]: P[String] = P(bareFieldNameStart ~/ bareFieldNamePart.rep).!
 
-    def tickedFieldName[_: P]: P[String] = P(P("`") ~ CharsWhile(_ != '`').! ~ P("`"))
+    def tickedFieldName[_: P]: P[String] = P(P("`") ~/ CharsWhile(_ != '`').! ~ P("`"))
 
     def fieldName[_: P]: P[String] = P(bareFieldName | tickedFieldName)
 
@@ -33,14 +33,14 @@ object RecordExpressionParser {
     def fieldTestOperator[_: P]: P[FieldOperator] =
       P(equalOperator | notEqualOperator | matchesOperator | notMatchesOperator)
 
-    def fieldTestValue[_: P]: P[String] = P(P("\"") ~ CharPred(_ != '"').rep.! ~ P("\""))
+    def fieldTestValue[_: P]: P[String] = P(P("\"") ~/ CharPred(_ != '"').rep.! ~ P("\""))
 
     def fieldTest[_: P]: P[FieldFilterExpression] =
       P(fieldName ~ fieldTestOperator ~ fieldTestValue).map {
         case (field, operator, value) => operator.createFilter(field, value)
       }
 
-    def parensExpression[_: P]: P[OrExpression] = P(P("(") ~ orExpression ~ P(")"))
+    def parensExpression[_: P]: P[OrExpression] = P(P("(") ~/ orExpression ~ P(")"))
 
     def tightFilterExpression[_: P]: P[BooleanRecordExpression] = P(fieldTest | parensExpression)
 
