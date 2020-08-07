@@ -14,6 +14,40 @@ trait FieldFilterExpression extends BooleanRecordExpression {
 
 object FieldFilterExpression {
 
+  sealed trait FieldOperator {
+    def string: String
+    def createFilter(field: String, value: String): StringFilter
+  }
+
+  sealed trait FieldOperatorTyped[F <: StringFilter] extends FieldOperator {
+    def string: String
+    def createFilter(field: String, value: String): F
+  }
+
+  object EqualOperator extends FieldOperatorTyped[StringEqual] {
+    override val string: String = "=="
+
+    override def createFilter(field: String, value: String): StringEqual = StringEqual(field, value)
+  }
+
+  object NotEqualOperator extends FieldOperatorTyped[StringNotEqual] {
+    override val string: String = "!="
+
+    override def createFilter(field: String, value: String): StringNotEqual = StringNotEqual(field, value)
+  }
+
+  object MatchesOperator extends FieldOperatorTyped[StringMatches] {
+    override val string: String = "=~"
+
+    override def createFilter(field: String, value: String): StringMatches = StringMatches(field, value)
+  }
+
+  object NotMatchesOperator extends FieldOperatorTyped[StringNotMatches] {
+    override val string: String = "!=~"
+
+    override def createFilter(field: String, value: String): StringNotMatches = StringNotMatches(field, value)
+  }
+
   trait StringFilter extends FieldFilterExpression {
     def stringTest(string: String): Boolean
 
