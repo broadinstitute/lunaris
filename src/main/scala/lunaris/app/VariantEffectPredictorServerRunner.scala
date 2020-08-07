@@ -9,6 +9,7 @@ import better.files.File
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.{InputId, ResourceConfig}
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
+import lunaris.recipes.parsing.RecordExpressionParser
 import lunaris.streams.TsvHeader
 import lunaris.utils.{HttpUtils, SnagJson}
 import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
@@ -72,6 +73,14 @@ object VariantEffectPredictorServerRunner {
                     }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
                       fieldsByName + (field.name -> field)
                     }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
+                      val filterString = variantEffectFormData.filterString
+                      println("FILTER: " + filterString)
+                      RecordExpressionParser.parse(filterString) match {
+                        case Left(snag) =>
+                          println("ERROR parsing filter!\n" + snag.message + "\n" + snag.report)
+                        case Right(filterExpression) =>
+                          println("FILTER: " + filterExpression)
+                      }
                       resultFileManager.submit(variantEffectFormData)
                     }
                     onComplete(uploadFut) {

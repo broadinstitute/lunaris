@@ -10,17 +10,21 @@ trait FieldFilterExpression extends BooleanRecordExpression {
   def field: String
 
   override def fields: Set[String] = Set(field)
+
+  override def cleaned: FieldFilterExpression
 }
 
 object FieldFilterExpression {
 
   sealed trait FieldOperator {
     def string: String
+
     def createFilter(field: String, value: String): StringFilter
   }
 
   sealed trait FieldOperatorTyped[F <: StringFilter] extends FieldOperator {
     def string: String
+
     def createFilter(field: String, value: String): F
   }
 
@@ -62,6 +66,8 @@ object FieldFilterExpression {
         case None => Right(PrimitiveValue.BoolValue(false))
       }
     }
+
+    override def cleaned: StringFilter = this
   }
 
   case class StringEqual(field: String, value: String) extends StringFilter {
@@ -71,16 +77,18 @@ object FieldFilterExpression {
   case class StringNotEqual(field: String, value: String) extends StringFilter {
     override def stringTest(string: String): Boolean = string != value
   }
+
   case class StringMatches(field: String, regexString: String) extends StringFilter {
     val regex: Regex = regexString.r
+
     override def stringTest(string: String): Boolean = regex.matches(string)
   }
+
   case class StringNotMatches(field: String, regexString: String) extends StringFilter {
     val regex: Regex = regexString.r
+
     override def stringTest(string: String): Boolean = !regex.matches(string)
   }
-
-
 
 
 }

@@ -7,14 +7,17 @@ import lunaris.genomics.Variant
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
-case class VariantEffectFormData(fileName: String, variantsByChrom: Map[String, Seq[Variant]])
+case class VariantEffectFormData(fileName: String,
+                                 variantsByChrom: Map[String, Seq[Variant]],
+                                 filterString: String)
 
 object VariantEffectFormData {
   def fromFields(fields: Map[String, FormField]): VariantEffectFormData = {
     val inputFileField = fields(FormField.Keys.inputFile).asInstanceOf[InputFileField]
     val fileName = inputFileField.fileName
     val variantsByChrom = inputFileField.variantsByChrom
-    VariantEffectFormData(fileName, variantsByChrom)
+    val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
+    VariantEffectFormData(fileName, variantsByChrom, filterString)
   }
 
   sealed trait FormField {
