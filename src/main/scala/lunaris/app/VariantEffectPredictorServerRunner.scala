@@ -73,14 +73,6 @@ object VariantEffectPredictorServerRunner {
                     }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
                       fieldsByName + (field.name -> field)
                     }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
-                      val filterString = variantEffectFormData.filterString
-                      println("FILTER: " + filterString)
-                      RecordExpressionParser.parse(filterString) match {
-                        case Left(snag) =>
-                          println("ERROR parsing filter!\n" + snag.message + "\n" + snag.report)
-                        case Right(filterExpression) =>
-                          println("FILTER: " + filterExpression)
-                      }
                       resultFileManager.submit(variantEffectFormData)
                     }
                     onComplete(uploadFut) {

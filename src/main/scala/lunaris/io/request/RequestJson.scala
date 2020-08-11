@@ -6,7 +6,7 @@ import io.circe.parser.decode
 import io.circe.syntax._
 import io.circe.{Decoder, DecodingFailure, Encoder, HCursor, Json}
 import lunaris.recipes.Recipe
-import lunaris.recipes.tools.native.ToolRegistry
+import lunaris.recipes.tools.builtin.ToolRegistry
 import lunaris.recipes.tools.{Tool, ToolCall}
 import lunaris.recipes.values.LunValueJson
 import lunaris.recipes.values.LunValueJson.valueEncoder

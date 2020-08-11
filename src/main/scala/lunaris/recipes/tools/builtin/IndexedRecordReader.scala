@@ -1,4 +1,4 @@
-package lunaris.recipes.tools.native
+package lunaris.recipes.tools.builtin
 
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.InputId

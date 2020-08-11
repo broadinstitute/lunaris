@@ -10,7 +10,7 @@ object RequestExamplesWriteApp {
   val examples: Seq[RequestExample] =
     Seq(
       RequestExampleMinimalTsv, RequestExampleMinimalJson, RequestExampleMoreRegions, RequestExampleTypingFields,
-      RequestExampleFilter
+      RequestExampleSimpleFilter
     )
 
   def main(args: Array[String]): Unit = {

@@ -5,8 +5,8 @@ import lunaris.io.request.examples.RequestExamplesUtils.{PortalData, Regions, To
 import lunaris.recipes.Recipe
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
-object RequestExampleFilter extends RequestExample {
-  override val idBase: String = "FilterTsv"
+object RequestExampleSimpleFilter extends RequestExample {
+  override val idBase: String = "SimpleFilterTsv"
 
   override def outputFile: FileValue = FileValue(s"response$idBase.tsv")
 
@@ -26,7 +26,7 @@ object RequestExampleFilter extends RequestExample {
       Regions.somewhatBiggerRegion,
       Recipe(Map(
         Keys.read -> ToolCalls.indexedObjectReader(dataFile, None, varId),
-        Keys.filter -> ToolCalls.filter(Keys.read, phenotype, stringValue),
+        Keys.filter -> ToolCalls.simpleFilter(Keys.read, phenotype, stringValue),
         Keys.write -> ToolCalls.tsvWriter(Keys.filter, outputFile)
       ))
     )

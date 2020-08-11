@@ -12,7 +12,7 @@ object EitherSeqUtils {
 
   def foreach[A, B](xs: Seq[A])(f: A => Either[Snag, B]): Either[Snag, Unit] = {
     val i = xs.iterator
-    while (i.hasNext) f(i.next) match {
+    while (i.hasNext) f(i.next()) match {
       case Right(_) => ()
       case Left(e) => return Left(e)
     }
@@ -39,12 +39,12 @@ object EitherSeqUtils {
     val builder = Seq.newBuilder[B]
     val iter = xs.iterator
     while (iter.hasNext) {
-      f(iter.next) match {
+      f(iter.next()) match {
         case Right(b) => builder += b
         case Left(snag) => return Left(snag)
       }
     }
-    Right(builder.result)
+    Right(builder.result())
   }
 
   def fill[A](n: Int)(f: => Either[Snag, A]): Either[Snag, Seq[A]] = {
@@ -57,7 +57,7 @@ object EitherSeqUtils {
       }
       i += 1
     }
-    Right(builder.result)
+    Right(builder.result())
   }
 
   def traverseMap[K, V, W](map: Map[K, V])(f: V => Either[Snag, W]): Either[Snag, Map[K, W]] = {

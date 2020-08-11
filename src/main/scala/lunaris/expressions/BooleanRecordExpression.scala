@@ -1,11 +1,14 @@
 package lunaris.expressions
 
-import lunaris.recipes.values.LunValue
+import lunaris.expressions.LunRecordExpression.LunRecordExpressionTyped
+import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.BoolValue
 import org.broadinstitute.yootilz.core.snag.Snag
 
-trait BooleanRecordExpression extends LunRecordExpression[BoolValue] {
+trait BooleanRecordExpression extends LunRecordExpressionTyped[BoolValue] {
   override def cleaned: BooleanRecordExpression
+
+  override def returnType: LunType.BoolType.type = LunType.BoolType
 }
 
 object BooleanRecordExpression {

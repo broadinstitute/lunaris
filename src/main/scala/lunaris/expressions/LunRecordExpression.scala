@@ -1,22 +1,34 @@
 package lunaris.expressions
 
-import lunaris.recipes.values.LunValue
+import lunaris.recipes.values.{LunType, LunValue}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-trait LunRecordExpression[+V <: LunValue] {
+trait LunRecordExpression {
   def fields: Set[String]
 
-  def evaluate(record: LunValue.RecordValue): Either[Snag, V]
+  def evaluate(record: LunValue.RecordValue): Either[Snag, LunValue]
 
-  def cleaned: LunRecordExpression[V]
+  def cleaned: LunRecordExpression
+
+  def returnType: LunType
 }
 
 object LunRecordExpression {
 
-  trait OperatorChainExpression[+V <: LunValue] extends LunRecordExpression[V] {
-    def terms: Seq[LunRecordExpression[V]]
+  trait LunRecordExpressionTyped[+V <: LunValue] extends LunRecordExpression {
+    override def fields: Set[String]
 
-    def fields: Set[String] = terms.toSet[LunRecordExpression[V]].flatMap(_.fields)
+    override def evaluate(record: LunValue.RecordValue): Either[Snag, V]
+
+    override def cleaned: LunRecordExpressionTyped[V]
+  }
+
+
+
+  trait OperatorChainExpression[+V <: LunValue] extends LunRecordExpressionTyped[V] {
+    def terms: Seq[LunRecordExpressionTyped[V]]
+
+    def fields: Set[String] = terms.toSet[LunRecordExpressionTyped[V]].flatMap(_.fields)
   }
 
   trait PrimitiveOperatorChain[V, L <: LunValue.PrimitiveValue.LunTypedPrimitiveValue[V]]

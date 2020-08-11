@@ -33,7 +33,7 @@ object IOUtils {
     }
     snagOpt match {
       case Some(snag) => Left(snag)
-      case None => Right(new String(builder.result))
+      case None => Right(new String(builder.result()))
     }
   }
 

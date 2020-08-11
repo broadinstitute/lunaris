@@ -163,6 +163,10 @@ object LunType {
     }
   }
 
+  case class ExpressionType(returnType: LunType) extends LunType {
+    override def asString: String = s"Expression[${returnType.asString}]"
+  }
+
   object AnyType extends LunType {
     override def canBeAssignedFrom(oType: LunType): Boolean = true
 

@@ -3,18 +3,20 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.native.{IndexedRecordReader, JSONWriter, RecordsFilter, TSVWriter}
-import lunaris.recipes.values.LunValue.MapValue
+import lunaris.recipes.tools.builtin.{IndexedRecordReader, JSONWriter, RecordsFilter, RecordsSimpleFilter, TSVWriter}
+import lunaris.recipes.values.LunValue.{ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
 object RequestExamplesUtils {
 
   object PortalData {
     val folder: String = "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/"
+
     object Fields {
       val varId: StringValue = StringValue("var_id")
       val phenotype: StringValue = StringValue("phenotype")
     }
+
     object Files {
       val associations: FileValue = FileValue(folder + "associations.tsv.gz")
       val associationsDkd: FileValue = FileValue(folder + "associations.dkd.tsv.gz")
@@ -22,6 +24,7 @@ object RequestExamplesUtils {
       val regions: FileValue = FileValue(folder + "regions.tsv.gz")
       val variants: FileValue = FileValue(folder + "variants.tsv.gz")
     }
+
   }
 
   object Regions {
@@ -35,12 +38,14 @@ object RequestExamplesUtils {
   }
 
   object ToolCalls {
+
     object Utils {
       def buildArgs(args: (String, ToolCall.Arg)*)(argOpts: Option[(String, ToolCall.Arg)]*):
       Map[String, ToolCall.Arg] = {
         args.toMap ++ argOpts.flatten.toMap
       }
     }
+
     def indexedObjectReader(file: FileValue,
                             indexOpt: Option[FileValue],
                             idField: StringValue,
@@ -54,11 +59,21 @@ object RequestExamplesUtils {
       )
       ToolCall(IndexedRecordReader, args)
     }
-    def filter(from: String, field: StringValue, stringValue: StringValue): ToolCall = ToolCall(RecordsFilter, Map(
-      RecordsFilter.Params.Keys.from -> RefArg(RecordsFilter.Params.from, from),
-      RecordsFilter.Params.Keys.field -> ValueArg(RecordsFilter.Params.field, field),
-      RecordsFilter.Params.Keys.stringValue -> ValueArg(RecordsFilter.Params.stringValue, stringValue)
-    ))
+
+    def filter(from: String, filter: ExpressionValue): ToolCall = {
+      ToolCall(RecordsFilter, Map(
+        RecordsFilter.Params.Keys.from -> RefArg(RecordsFilter.Params.from, from),
+        RecordsFilter.Params.Keys.filter -> ValueArg(RecordsFilter.Params.filter, filter)
+      ))
+    }
+
+    def simpleFilter(from: String, field: StringValue, stringValue: StringValue): ToolCall =
+      ToolCall(RecordsSimpleFilter, Map(
+        RecordsSimpleFilter.Params.Keys.from -> RefArg(RecordsSimpleFilter.Params.from, from),
+        RecordsSimpleFilter.Params.Keys.field -> ValueArg(RecordsSimpleFilter.Params.field, field),
+        RecordsSimpleFilter.Params.Keys.stringValue -> ValueArg(RecordsSimpleFilter.Params.stringValue, stringValue)
+      ))
+
     def tsvWriter(from: String, file: FileValue): ToolCall = ToolCall(TSVWriter, Map(
       TSVWriter.Params.Keys.from -> RefArg(TSVWriter.Params.from, from),
       TSVWriter.Params.Keys.file -> ValueArg(TSVWriter.Params.file, file)

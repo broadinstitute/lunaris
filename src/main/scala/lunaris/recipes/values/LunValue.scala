@@ -1,5 +1,6 @@
 package lunaris.recipes.values
 
+import lunaris.expressions.LunRecordExpression
 import lunaris.genomics.Locus
 import lunaris.io.{InputId, OutputId}
 import lunaris.utils.{EitherSeqUtils, NumberParser}
@@ -213,6 +214,10 @@ object LunValue {
 
     def castFieldsTo(types: Map[String, LunType]): Either[Snag, RecordValue] =
       castTo(lunType.changeFieldTypesTo(types)).map(_.asInstanceOf[RecordValue])
+  }
+
+  case class ExpressionValue(value: LunRecordExpression) extends LunValue {
+    override def lunType: LunType = LunType.ExpressionType(value.returnType)
   }
 
   case class TypeValue(value: LunType) extends LunValue {

@@ -1,6 +1,8 @@
 package lunaris.recipes.tools
 
+import lunaris.expressions.LunRecordExpression
 import lunaris.io.{InputId, OutputId}
+import lunaris.recipes.parsing.RecordExpressionParser
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -117,4 +119,15 @@ object ToolArgUtils {
     }
   }
 
+  val toExpression: LunValue => Either[Snag, LunRecordExpression] = {
+    case LunValue.ExpressionValue(expression) => Right(expression)
+    case LunValue.PrimitiveValue.StringValue(string) =>
+      RecordExpressionParser.parse(string)
+    case value => Left(Snag(s"Expected expression, but got ${value.asString}."))
+  }
+
+  def asExpression(arg: ToolCall.Arg): Either[Snag, LunRecordExpression] = as[LunRecordExpression](arg)(toExpression)
+
+  def asExpression(name: String, args: Map[String, ToolCall.Arg]): Either[Snag, LunRecordExpression] =
+    as[LunRecordExpression](name, args)(toExpression)
 }

@@ -52,7 +52,7 @@ class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzip
       val request =
         VariantEffectRequestBuilder.buildRequest(
           resultId, formData.variantsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
-          Some(dataFileWithIndex.index.toString), varId
+          formData.filter, Some(dataFileWithIndex.index.toString), varId
         )
       LunCompiler.compile(request)
     }.collect {

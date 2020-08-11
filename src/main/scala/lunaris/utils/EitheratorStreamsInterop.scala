@@ -18,7 +18,7 @@ object EitheratorStreamsInterop {
 
   def streamToEitherator[A, M](source: Source[A, M])(implicit materializer: Materializer): Eitherator[A] = {
     val sink = Sink.queue[A]()
-    val matSink = source.toMat(sink)(Keep.right).run
+    val matSink = source.toMat(sink)(Keep.right).run()
     new SinkQueueEitherator[A](matSink)
   }
 

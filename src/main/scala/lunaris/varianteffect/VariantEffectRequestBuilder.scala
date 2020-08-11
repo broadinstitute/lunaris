@@ -1,10 +1,12 @@
 package lunaris.varianteffect
 
 import better.files.File
+import lunaris.expressions.BooleanRecordExpression
 import lunaris.genomics.Variant
 import lunaris.io.request.Request
 import lunaris.io.request.examples.RequestExamplesUtils.ToolCalls
 import lunaris.recipes.Recipe
+import lunaris.recipes.values.LunValue.ExpressionValue
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.varianteffect.ResultFileManager.ResultId
 
@@ -14,6 +16,7 @@ object VariantEffectRequestBuilder {
                    variantsByChrom: Map[String, Seq[Variant]],
                    outputFile: File,
                    dataFileName: String,
+                   filter: BooleanRecordExpression,
                    indexFileNameOpt: Option[String],
                    varId: String): Request = {
 
@@ -24,10 +27,12 @@ object VariantEffectRequestBuilder {
     val dataFile: FileValue = FileValue(dataFileName)
     val indexFileOpt: Option[FileValue] = indexFileNameOpt.map(FileValue)
     val idField: StringValue = StringValue(varId)
+    val filterValue: ExpressionValue = ExpressionValue(filter)
     val outputFileValue: FileValue = FileValue(outputFile.toString())
 
     object Keys {
       val read: String = "read"
+      val filter: String = "filter"
       val write: String = "write"
     }
 
@@ -35,7 +40,8 @@ object VariantEffectRequestBuilder {
       regions,
       Recipe(Map(
         Keys.read -> ToolCalls.indexedObjectReader(dataFile, indexFileOpt, idField),
-        Keys.write -> ToolCalls.tsvWriter(Keys.read, outputFileValue)
+        Keys.filter -> ToolCalls.filter(Keys.read, filterValue),
+        Keys.write -> ToolCalls.tsvWriter(Keys.filter, outputFileValue)
       ))
     )
   }

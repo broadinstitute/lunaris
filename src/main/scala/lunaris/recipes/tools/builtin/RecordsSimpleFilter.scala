@@ -1,16 +1,15 @@
-package lunaris.recipes.tools.native
+package lunaris.recipes.tools.builtin
 
-import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
-import lunaris.recipes.{eval, tools}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.LunValue.PrimitiveValue.StringValue
 import lunaris.recipes.values.{LunType, RecordStream}
+import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object RecordsFilter extends tools.Tool {
+object RecordsSimpleFilter extends tools.Tool {
   override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
