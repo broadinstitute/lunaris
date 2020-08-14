@@ -149,8 +149,10 @@ object TBIFileReader {
   HeaderAndChunksEter = {
     val chunksForSequenceEter = readChunksForSequence(reader, regionsBySequence)
     val chunksPlusEter = chunksForSequenceEter.flatMap { chunksForSequence =>
-      val chunksWithRegions =
+      println("yo " + chunksForSequence)
+      val chunksWithRegions = {
         TBIChunk.consolidateChunksByRegion(chunksForSequence.chunksByRegion)
+      }
       val chunksWithSequenceAndRegions = chunksWithRegions.map { chunkWithRegions =>
         TBIChunkWithSequenceAndRegions(chunkWithRegions.chunk, chunksForSequence.name,
           chunkWithRegions.regions)

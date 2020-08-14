@@ -60,6 +60,7 @@ object RecordsFilter extends tools.Tool {
         (context: LunRunContext) =>
           fromWorker.getSnagOrStreamDisposable(context).map(_.map { fromStream =>
             val filteredSource = fromStream.source.filter { record =>
+              println("Filter gives " + filter.evaluate(record))
               filter.evaluate(record) match {
                 case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
                 case Left(snag) =>

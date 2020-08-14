@@ -7,13 +7,12 @@ import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import better.files.File
 import lunaris.data.BlockGzippedWithIndex
-import lunaris.io.{InputId, ResourceConfig}
+import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
-import lunaris.recipes.parsing.RecordExpressionParser
-import lunaris.streams.TsvHeader
 import lunaris.utils.{HttpUtils, SnagJson}
-import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
 import lunaris.varianteffect.ResultFileManager.ResultId
+import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
+import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
@@ -41,7 +40,7 @@ object VariantEffectPredictorServerRunner {
         implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
         implicit val materializer: Materializer = Materializer(actorSystem)
         implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-        val route: Route =
+        val route: Route = {
           concat(
             path("lunaris" / "predictor.html") {
               get {
@@ -66,24 +65,29 @@ object VariantEffectPredictorServerRunner {
             },
             path("lunaris" / "predictor" / "upload") {
               post {
-                decodeRequest {
-                  entity(as[Multipart.FormData]) { httpFormData =>
-                    val uploadFut = httpFormData.parts.mapAsync(1) {
-                      VariantEffectFormData.FormField.bodyPartToFieldFut(_)
-                    }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
-                      fieldsByName + (field.name -> field)
-                    }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
-                      resultFileManager.submit(variantEffectFormData)
-                    }
-                    onComplete(uploadFut) {
-                      case Success(submissionResponse) =>
-                        complete(
-                          HttpUtils.ResponseBuilder.fromPlainTextString(submissionResponse.resultId.toString)
-                        )
-                      case Failure(ex) =>
-                        complete(
-                          HttpUtils.ResponseBuilder.fromPlainTextString(ex.getMessage)
-                        )
+                withSizeLimit(1000000000L) {
+                  decodeRequest {
+                    entity(as[Multipart.FormData]) { httpFormData =>
+                      val uploadFut = httpFormData.parts.mapAsync(1) {
+                        VariantEffectFormData.FormField.bodyPartToFieldFut(_)
+                      }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
+                        fieldsByName + (field.name -> field)
+                      }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
+                        resultFileManager.submit(variantEffectFormData)
+                      }
+                      onComplete(uploadFut) {
+                        case Success(submissionResponse) =>
+                          println("Submission response: " + submissionResponse.resultId)
+                          complete(
+                            HttpUtils.ResponseBuilder.fromPlainTextString(submissionResponse.resultId.toString)
+                          )
+                        case Failure(ex) =>
+                          println("Submission failed: " + ex.getMessage)
+                          println(Snag(ex).report)
+                          complete(
+                            HttpUtils.ResponseBuilder.fromPlainTextString(ex.getMessage)
+                          )
+                      }
                     }
                   }
                 }
@@ -133,6 +137,7 @@ object VariantEffectPredictorServerRunner {
               }
             }
           )
+        }
         HttpUtils.runWebServiceWhileWaiting(route, host, port)(StdIn.readLine())
     }
   }
