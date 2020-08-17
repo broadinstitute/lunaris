@@ -18,12 +18,16 @@ setInterval(updatePendingStatuses, 700);
 
 function submit() {
     const inputFile = document.getElementById("inputfile").files[0];
+
+    addTemporaryStatus(inputFile);
+
     const formData = new FormData();
 
     formData.append("filter", extractFilterExpression());
     formData.append("inputFile", inputFile);
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
         .then((response) => {
+            removeTemporaryStatus();
             if (!response.ok) {
                 throw "Could not submit " + inputFile.name + ": " + response.statusText
             }
@@ -35,6 +39,25 @@ function submit() {
             lunarisVariantPredictor.idsPending.push(id);
             getStatus(id);
         }).catch(showCouldNotSubmit);
+}
+
+const tempStatusNodeId = "tempStatusNode";
+
+function addTemporaryStatus(file) {
+    removeTemporaryStatus();
+    const statusNode = document.createElement("p");
+    statusNode.id = tempStatusNodeId;
+    statusNode.innerText = file.name + ": uploading ...";
+    const statusAreaNode = getStatusAreaNode();
+    statusAreaNode.appendChild(statusNode);
+}
+
+function removeTemporaryStatus() {
+    const statusNode = document.getElementById(tempStatusNodeId);
+    if(statusNode) {
+        const statusAreaNode = getStatusAreaNode();
+        statusAreaNode.removeChild(statusNode);
+    }
 }
 
 function temporaryHackToFixDataProblem(colsRaw) {

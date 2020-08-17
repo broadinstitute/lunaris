@@ -24,8 +24,6 @@ object VariantEffectRequestBuilder {
 
     val regions = variantsByChrom.view.mapValues(_.map(_.toLocus.region)).toMap
 
-    println("yo" + regions.head._2.take(10).mkString(", "))
-
     val dataFile: FileValue = FileValue(dataFileName)
     val indexFileOpt: Option[FileValue] = indexFileNameOpt.map(FileValue)
     val idField: StringValue = StringValue(varId)
