@@ -2,25 +2,12 @@ package lunaris.streams
 
 import akka.stream.SourceShape
 import akka.stream.scaladsl.{GraphDSL, MergeSorted, Source}
-import lunaris.genomics.{Locus, LocusOrdering}
-import lunaris.recipes.values.{LunValue, RecordStreamWithMeta}
-import lunaris.streams.utils.StreamTagger
+import lunaris.genomics.Locus
+import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
 import lunaris.streams.utils.StreamTagger.TaggedItem
-import lunaris.utils.SeqBasedOrdering
-import lunaris.streams.utils.RecordStreamTypes.{Record, Meta, RecordSource}
+import lunaris.streams.utils.{StreamTagger, TaggedRecordOrdering}
 
 object RecordStreamMerger {
-
-  private def getTaggedRecordOrdering(chroms: Seq[String]): Ordering[TaggedItem[Record, Int]] = {
-    val chromosomeOrdering = SeqBasedOrdering(chroms)
-    new Ordering[TaggedItem[Record, Int]] {
-      val locusOrdering: LocusOrdering = new LocusOrdering(chromosomeOrdering)
-
-      override def compare(tr1: TaggedItem[Record, Int], tr2: TaggedItem[Record, Int]): Int =
-        locusOrdering.compare(tr1.item.locus, tr2.item.locus)
-    }
-  }
-
   private class TaggedRecordMerger(nStreams: Int) {
     val locusByStream: Array[Option[Locus]] = Array.fill(nStreams)(None)
     var records: Seq[TaggedItem[Record, Int]] = Seq.empty
@@ -73,8 +60,7 @@ object RecordStreamMerger {
           sources.head
         } else {
           val source0 :: source1 :: tail = sources
-          implicit val taggedRecordOrdering: Ordering[TaggedItem[Record, Int]]
-          = getTaggedRecordOrdering(meta.chroms)
+          implicit val taggedRecordOrdering: TaggedRecordOrdering[Int] = TaggedRecordOrdering(meta.chroms)
           var merged = builder.add(new MergeSorted[TaggedItem[Record, Int]]())
           source0.out ~> merged.in0
           source1.out ~> merged.in1
