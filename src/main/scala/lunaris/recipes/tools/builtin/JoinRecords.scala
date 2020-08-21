@@ -4,7 +4,7 @@ import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, RecordStream}
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordStreamMerger
 import lunaris.utils.EitherSeqUtils
@@ -58,12 +58,12 @@ object JoinRecords extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = {
         Some(new RecordStreamWorker {
           override def getSnagOrStreamDisposable(context: LunRunContext):
-          Disposable[Either[Snag, RecordStream]] = {
+          Disposable[Either[Snag, RecordStreamWithMeta]] = {
             val snagOrStreamsDisposables = fromWorkers.map(_.getSnagOrStreamDisposable(context))
             Disposable.sequence(snagOrStreamsDisposables).map(EitherSeqUtils.sequence).map(_.flatMap { streams =>
-              RecordStream.Meta.sequence(streams.map(_.meta)).map { meta =>
+              RecordStreamWithMeta.Meta.sequence(streams.map(_.meta)).map { meta =>
                 val stream = RecordStreamMerger.merge(meta, streams.map(_.source))
-                RecordStream(meta, stream)
+                RecordStreamWithMeta(meta, stream)
               }
             })
           }

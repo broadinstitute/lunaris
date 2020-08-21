@@ -5,7 +5,7 @@ import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
-import lunaris.recipes.values.{LunType, LunValue, RecordStream}
+import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -68,7 +68,7 @@ object RecordsFilter extends tools.Tool {
               }
             }
             val meta = fromStream.meta
-            RecordStream(meta, filteredSource)
+            RecordStreamWithMeta(meta, filteredSource)
           })
       }
 

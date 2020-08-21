@@ -12,7 +12,7 @@ import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
-import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStream}
+import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -67,8 +67,8 @@ object JSONWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      def toLineSource(recordSource: Source[LunValue.RecordValue, RecordStream.Meta], meta: RecordStream.Meta):
-      Source[String, RecordStream.Meta] = {
+      def toLineSource(recordSource: Source[LunValue.RecordValue, RecordStreamWithMeta.Meta], meta: RecordStreamWithMeta.Meta):
+      Source[String, RecordStreamWithMeta.Meta] = {
         Source.single("{\n").concat(recordSource.map(Some(_)).concat(Source(Seq(None))).sliding(2). map { recordOpts =>
           val isLast = recordOpts.size < 2 || recordOpts(1).isEmpty
           val record = recordOpts.head.get
@@ -80,7 +80,7 @@ object JSONWriter extends Tool {
         }).concat(Source.single("}\n")).mapMaterializedValue(_ => meta)
       }
 
-      private def writeRecords(source: Source[LunValue.RecordValue, RecordStream.Meta],
+      private def writeRecords(source: Source[LunValue.RecordValue, RecordStreamWithMeta.Meta],
                                runContext: LunRunContext)(linePrinter: String => Unit): Unit =  {
         val doneFuture = Source.single("{").concat(source.map(Some(_)).concat(Source(Seq(None))).sliding(2). map { recordOpts =>
           val isLast = recordOpts.size < 2 || recordOpts(1).isEmpty
@@ -112,7 +112,7 @@ object JSONWriter extends Tool {
           }
         }
 
-        override def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStream.Meta]]] =
+        override def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] =
           fromWorker.getSnagOrStreamDisposable(context).map(_.map{ recordStream =>
             toLineSource(recordStream.source, recordStream.meta)
           })

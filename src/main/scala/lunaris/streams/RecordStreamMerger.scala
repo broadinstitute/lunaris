@@ -3,42 +3,34 @@ package lunaris.streams
 import akka.stream.SourceShape
 import akka.stream.scaladsl.{GraphDSL, MergeSorted, Source}
 import lunaris.genomics.{Locus, LocusOrdering}
-import lunaris.recipes.values.{LunValue, RecordStream}
+import lunaris.recipes.values.{LunValue, RecordStreamWithMeta}
+import lunaris.streams.utils.StreamTagger
+import lunaris.streams.utils.StreamTagger.TaggedItem
 import lunaris.utils.SeqBasedOrdering
+import lunaris.streams.utils.RecordStreamTypes.{Record, Meta, RecordSource}
 
 object RecordStreamMerger {
 
-  private case class TaggedRecord(record: LunValue.RecordValue, iSource: Int, isLast: Boolean)
-
-  private def getTaggedRecordOrdering(chroms: Seq[String]): Ordering[TaggedRecord] = {
+  private def getTaggedRecordOrdering(chroms: Seq[String]): Ordering[TaggedItem[Record, Int]] = {
     val chromosomeOrdering = SeqBasedOrdering(chroms)
-    new Ordering[TaggedRecord] {
+    new Ordering[TaggedItem[Record, Int]] {
       val locusOrdering: LocusOrdering = new LocusOrdering(chromosomeOrdering)
 
-      override def compare(tr1: TaggedRecord, tr2: TaggedRecord): Int =
-        locusOrdering.compare(tr1.record.locus, tr2.record.locus)
-    }
-  }
-
-  private def taggedStream(source: Source[LunValue.RecordValue, RecordStream.Meta], iSource: Int):
-  Source[TaggedRecord, RecordStream.Meta] = {
-    source.map(Some(_)).concat(Source.single(None)).sliding(2).map { recordOpts =>
-      val isLast = recordOpts.size < 2 || recordOpts(1).isEmpty
-      TaggedRecord(recordOpts.head.get, iSource, isLast)
+      override def compare(tr1: TaggedItem[Record, Int], tr2: TaggedItem[Record, Int]): Int =
+        locusOrdering.compare(tr1.item.locus, tr2.item.locus)
     }
   }
 
   private class TaggedRecordMerger(nStreams: Int) {
     val locusByStream: Array[Option[Locus]] = Array.fill(nStreams)(None)
-    var records: Seq[TaggedRecord] = Seq.empty
+    var records: Seq[TaggedItem[Record, Int]] = Seq.empty
     val streamIsExhausted: Array[Boolean] = Array.fill(nStreams)(false)
 
-    private def enterRecord(record: TaggedRecord): Unit = {
+    private def enterRecord(record: TaggedItem[Record, Int]): Unit = {
       records :+= record
-      val iStream = record.iSource
+      val iStream = record.sourceId
       streamIsExhausted(iStream) = record.isLast
-      val locus = record.record.locus
-      locusByStream(iStream) = Some(record.record.locus)
+      locusByStream(iStream) = Some(record.item.locus)
     }
 
     private def streamHasNoMoreForLocus(iStream: Int, locus: Locus): Boolean = {
@@ -52,28 +44,27 @@ object RecordStreamMerger {
       (1 until nStreams).forall(streamHasNoMoreForLocus(_, locus))
     }
 
-    private def extractJoinedRecord(): LunValue.RecordValue = {
-      val firstRecord = records.head.record
+    private def extractJoinedRecord(): Record = {
+      val firstRecord = records.head.item
       val (sameRecords, otherRecords) =
-        records.partition(record => (record.record.id == firstRecord.id) && (record.record.locus == firstRecord.locus))
+        records.partition(record => (record.item.id == firstRecord.id) && (record.item.locus == firstRecord.locus))
       records = otherRecords
-      sameRecords.sortBy(_.iSource).map(_.record).reduce((o1, o2) => o1.joinWith(o2).toOption.get)
+      sameRecords.sortBy(_.sourceId).map(_.item).reduce((o1, o2) => o1.joinWith(o2).toOption.get)
     }
 
-    def addNext(taggedRecord: TaggedRecord): Seq[LunValue.RecordValue] = {
+    def addNext(taggedRecord: TaggedItem[Record, Int]): Seq[Record] = {
       enterRecord(taggedRecord)
-      val builder = Seq.newBuilder[LunValue.RecordValue]
-      while (records.nonEmpty && noStreamHasMoreForLocus(records.head.record.locus)) {
+      val builder = Seq.newBuilder[Record]
+      while (records.nonEmpty && noStreamHasMoreForLocus(records.head.item.locus)) {
         builder += extractJoinedRecord()
       }
       builder.result()
     }
   }
 
-  def merge(meta: RecordStream.Meta, sources: Seq[Source[LunValue.RecordValue, RecordStream.Meta]]):
-  Source[LunValue.RecordValue, RecordStream.Meta] = {
+  def merge(meta: Meta, sources: Seq[RecordSource]): RecordSource = {
     val taggedSources = sources.zipWithIndex.collect {
-      case (source, iSource) => taggedStream(source, iSource)
+      case (source, iSource) => StreamTagger.tagSource(source, iSource)
     }
     val mergedTaggedSource = Source.fromGraph(GraphDSL.create(taggedSources) { implicit builder =>
       sources =>
@@ -82,12 +73,13 @@ object RecordStreamMerger {
           sources.head
         } else {
           val source0 :: source1 :: tail = sources
-          implicit val taggedRecordOrdering: Ordering[TaggedRecord] = getTaggedRecordOrdering(meta.chroms)
-          var merged = builder.add(new MergeSorted[TaggedRecord]())
+          implicit val taggedRecordOrdering: Ordering[TaggedItem[Record, Int]]
+          = getTaggedRecordOrdering(meta.chroms)
+          var merged = builder.add(new MergeSorted[TaggedItem[Record, Int]]())
           source0.out ~> merged.in0
           source1.out ~> merged.in1
           for (oSource <- tail) {
-            val mergedNew = builder.add(new MergeSorted[TaggedRecord]())
+            val mergedNew = builder.add(new MergeSorted[TaggedItem[Record, Int]]())
             merged.out ~> mergedNew.in0
             oSource ~> mergedNew.in1
             merged = mergedNew

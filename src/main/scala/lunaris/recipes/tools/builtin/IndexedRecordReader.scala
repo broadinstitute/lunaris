@@ -7,7 +7,7 @@ import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.{LunType, LunValue, RecordStream}
+import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
 import lunaris.utils.{Eitherator, EitheratorStreamsInterop}
@@ -80,7 +80,7 @@ object IndexedRecordReader extends tools.Tool {
                   }
                 }
             val meta = headerAndRecordEtor.meta
-            RecordStream(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtorGenerator, meta))
+            RecordStreamWithMeta(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtorGenerator, meta))
           })
         })
 

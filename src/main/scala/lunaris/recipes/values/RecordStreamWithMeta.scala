@@ -2,16 +2,16 @@ package lunaris.recipes.values
 
 import akka.stream.scaladsl.Source
 import lunaris.recipes.values.LunType.RecordType
-import lunaris.recipes.values.RecordStream.Meta
+import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.utils.SeqBasedOrdering
 import org.broadinstitute.yootilz.core.snag.Snag
 
-class RecordStream(val meta: Meta, val source: Source[LunValue.RecordValue, Meta]) {
+class RecordStreamWithMeta(val meta: Meta, val source: Source[LunValue.RecordValue, Meta]) {
 }
 
-object RecordStream {
-  def apply(meta: Meta, source: Source[LunValue.RecordValue, Meta]): RecordStream =
-    new RecordStream(meta, source)
+object RecordStreamWithMeta {
+  def apply(meta: Meta, source: Source[LunValue.RecordValue, Meta]): RecordStreamWithMeta =
+    new RecordStreamWithMeta(meta, source)
 
   case class Meta(objectType: RecordType, chroms: Seq[String])
 
