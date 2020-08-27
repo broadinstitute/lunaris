@@ -1,8 +1,7 @@
 package lunaris.streams
 
 import lunaris.genomics.Locus
-import lunaris.streams.RecordStreamZipperWithFallback.MergedTaggedRecordProcessor.State.RecordStack
-import lunaris.streams.RecordStreamZipperWithFallback.{DataSourceId, DriverSourceId, SourceId}
+import lunaris.streams.RecordStreamZipperWithFallback.MergedTaggedRecordProcessor.State.{GotLastRecords, RecordStack}
 import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
 import lunaris.streams.utils.StreamTagger.TaggedItem
 import lunaris.streams.utils.{StreamTagger, TaggedRecordOrdering}
@@ -10,14 +9,17 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordStreamZipperWithFallback {
 
+  type Joiner = (Record, Record) => Record
+  type Fallback = Record => Either[Snag, Record]
+
   sealed trait SourceId
 
   object DriverSourceId extends SourceId
 
   object DataSourceId extends SourceId
 
-  class MergedTaggedRecordProcessor(fallBack: Record => Either[Snag, Record]) {
-    var state: MergedTaggedRecordProcessor.State = MergedTaggedRecordProcessor.InitialState
+  class MergedTaggedRecordProcessor(joiner: Joiner)(fallback: Fallback) {
+    var state: MergedTaggedRecordProcessor.State = MergedTaggedRecordProcessor.InitialState(joiner)(fallback)
 
     def processNext(taggedRecord: TaggedItem[Record, SourceId]): Seq[Record] = {
       val (stateNew, recordsCombined) = state.withTaggedRecord(taggedRecord)
@@ -42,8 +44,19 @@ object RecordStreamZipperWithFallback {
           }
         }
 
-        def joinMatching(joiner: (Record, Record) => Record): (RecordStack, Seq[Record]) = {
-          ???
+        def joinMatching(joiner: Joiner): (RecordStack, Seq[Record]) = {
+          val joinedRecordsBuilder = Seq.newBuilder[Record]
+          var idsJoined: Set[String] = Set.empty
+          for (driverRecord <- driverRecords) {
+            val id = driverRecord.id
+            dataRecords.find(_.id == id).foreach { dataRecord =>
+              joinedRecordsBuilder += joiner(driverRecord, dataRecord)
+              idsJoined += id
+            }
+          }
+          val driverRecordsUnmatched = driverRecords.filterNot(record => idsJoined.contains(record.id))
+          val dataRecordsUnmatched = dataRecords.filterNot(record => idsJoined.contains(record.id))
+          (RecordStack(driverRecordsUnmatched, dataRecordsUnmatched), joinedRecordsBuilder.result())
         }
       }
 
@@ -58,33 +71,50 @@ object RecordStreamZipperWithFallback {
         }
       }
 
+      case class GotLastRecords(gotLastDriverRecord: Boolean, gotLastDataRecord: Boolean) {
+        def withSource(sourceId: SourceId, gotLast: Boolean): GotLastRecords = {
+          sourceId match {
+            case DriverSourceId => copy(gotLastDriverRecord = gotLast)
+            case DataSourceId => copy(gotLastDataRecord = gotLast)
+          }
+        }
+      }
+
+      object GotLastRecords {
+        def apply(): GotLastRecords = GotLastRecords(gotLastDriverRecord = false, gotLastDataRecord = false)
+      }
+
     }
 
-    object InitialState extends State {
+    class InitialState(val joiner: Joiner)(val fallback: Fallback) extends State {
       override def withTaggedRecord(taggedRecord: TaggedItem[Record, SourceId]): (StateWithLocus, Seq[Record]) = {
         val record = taggedRecord.item
         val sourceId = taggedRecord.sourceId
         val records = RecordStack.single(record, sourceId)
-        val (gotLastDriver, gotLastData) = sourceId match {
-          case DriverSourceId => (taggedRecord.isLast, false)
-          case DataSourceId => (false, taggedRecord.isLast)
-        }
-        (StateWithLocus(record.locus, records, gotLastDriver, gotLastData), Seq())
+        val gotLastRecords = GotLastRecords().withSource(sourceId, taggedRecord.isLast)
+        (StateWithLocus(record.locus, records, gotLastRecords)(joiner)(fallback), Seq())
       }
+    }
+
+    object InitialState {
+      def apply(joiner: Joiner)(fallback: Fallback): InitialState = new InitialState(joiner)(fallback)
     }
 
     case class StateWithLocus(locus: Locus,
                               records: RecordStack,
-                              gotLastDriverRecord: Boolean,
-                              gotLastDataRecord: Boolean) extends State {
+                             gotLastRecords: GotLastRecords,
+                             )(joiner: Joiner)(fallback: Fallback) extends State {
       override def withTaggedRecord(taggedRecord: TaggedItem[Record, SourceId]): (StateWithLocus, Seq[Record]) = {
         val record = taggedRecord.item
         val sourceId = taggedRecord.sourceId
+        val gotLastRecordsNew = gotLastRecords.withSource(sourceId, taggedRecord.isLast)
         if (record.locus == locus) {
-          val recordsWithRecord = records.withRecord(record, sourceId)
-
-
-          ???
+          val (recordsNew, recordsJoined) =  records.withRecord(record, sourceId).joinMatching(joiner)
+          if(gotLastRecordsNew.gotLastDriverRecord) {
+            ???
+          } else {
+            (StateWithLocus(locus, recordsNew, gotLastRecordsNew)(joiner)(fallback), recordsJoined)
+          }
         } else {
           ???
         }
@@ -93,16 +123,18 @@ object RecordStreamZipperWithFallback {
 
   }
 
-  def zipWithFallback(meta: Meta,
-                      driverSource: RecordSource,
-                      dataSource: RecordSource)(
-                       fallBack: Record => Either[Snag, Record]
-                     ): RecordSource = {
+  def joinWithFallback(meta: Meta,
+                       driverSource: RecordSource,
+                       dataSource: RecordSource)(
+                        joiner: (Record, Record) => Record
+                      )(
+                        fallBack: Record => Either[Snag, Record]
+                      ): RecordSource = {
     val driverSourceTagged = StreamTagger.tagSource[Record, Meta, SourceId](driverSource, DriverSourceId)
     val dataSourceTagged = StreamTagger.tagSource[Record, Meta, SourceId](dataSource, DataSourceId)
     implicit val taggedRecordOrdering: TaggedRecordOrdering[SourceId] = TaggedRecordOrdering(meta.chroms)
     val mergedTaggedSource = driverSourceTagged.mergeSorted(dataSourceTagged)
-    val mergedTaggedRecordProcessor = new MergedTaggedRecordProcessor(fallBack)
+    val mergedTaggedRecordProcessor = new MergedTaggedRecordProcessor(joiner)(fallBack)
     mergedTaggedSource.statefulMapConcat(() => mergedTaggedRecordProcessor.processNext).mapMaterializedValue(_ => meta)
   }
 
