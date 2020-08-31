@@ -15,4 +15,12 @@ object ToolInstanceUtils {
     }
   }
 
+  def newWorkerMakerTwoRefs(
+                             refKey1: String, refKey2: String, workers: Map[String, LunWorker]
+                           )(
+                             workerGen: (RecordStreamWorker, RecordStreamWorker) => WorkerMaker
+                           ): Either[Snag, WorkerMaker] = {
+    ???
+  }
+
 }

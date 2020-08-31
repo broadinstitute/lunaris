@@ -24,6 +24,8 @@ object JoinRecords extends tools.Tool {
 
   override def params: Seq[Tool.Param] = Seq(Params.from)
 
+  override def isFinal: Boolean = false
+
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
       from <- ToolArgUtils.asRefs(Params.Keys.from, args)
@@ -48,8 +50,6 @@ object JoinRecords extends tools.Tool {
       }.map(new WorkerMaker(_))
     }
   }
-
-  override def isFinal: Boolean = false
 
   class WorkerMaker(fromWorkers: Seq[RecordStreamWorker])
     extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
