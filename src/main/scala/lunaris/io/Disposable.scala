@@ -81,4 +81,10 @@ object Disposable {
 
   }
 
+  def fold2[A, B, C](aDisposable: Disposable[A], bDisposable: Disposable[B])(fun2: (A, B) => C): Disposable[C] = {
+    for {
+      a <- aDisposable
+      b <- bDisposable
+    } yield fun2(a, b)
+  }
 }

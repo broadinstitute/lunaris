@@ -8,7 +8,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordStreamJoinerWithFallback {
 
-  type Joiner = (Record, Record) => Record
+  type Joiner = (Record, Record) => Either[Snag, Record]
   type Fallback = Record => Either[Snag, Record]
   type SnagLogger = Snag => Unit
 
@@ -41,28 +41,6 @@ object RecordStreamJoinerWithFallback {
           }
         }
 
-        def withRecordOld(record: Record, sourceId: SourceId): RecordStack = {
-          sourceId match {
-            case DriverSourceId => copy(driverRecords = driverRecords :+ record)
-            case DataSourceId => copy(dataRecords = dataRecords :+ record)
-          }
-        }
-
-        def joinMatching(): RecordStack.Result = {
-          val joinedRecordsBuilder = Seq.newBuilder[Record]
-          var idsJoined: Set[String] = Set.empty
-          for (driverRecord <- driverRecords) {
-            val id = driverRecord.id
-            dataRecords.find(_.id == id).foreach { dataRecord =>
-              joinedRecordsBuilder += joiner(driverRecord, dataRecord)
-              idsJoined += id
-            }
-          }
-          val driverRecordsUnmatched = driverRecords.filterNot(record => idsJoined.contains(record.id))
-          val dataRecordsUnmatched = dataRecords.filterNot(record => idsJoined.contains(record.id))
-          RecordStack.Result(RecordStack(driverRecordsUnmatched, dataRecordsUnmatched), joinedRecordsBuilder.result())
-        }
-
         def drainDriverRecords(): RecordStack.Result = {
           val generatedRecordsBuilder = Seq.newBuilder[Record]
           for(driverRecord <- driverRecords) {
@@ -75,14 +53,24 @@ object RecordStreamJoinerWithFallback {
           RecordStack.Result(RecordStack(Seq(), dataRecords), generatedRecords)
         }
 
+        def joinRecordsOrLog(driverRecord: Record, dataRecord: Record): Seq[Record] = {
+          joiner(driverRecord, dataRecord) match {
+            case Left(snag) =>
+              snagLogger(snag)
+              Seq()
+            case Right(joinedRecord) =>
+              Seq(joinedRecord)
+          }
+        }
+
         def withDriverRecord(driverRecord: Record): RecordStack.Result = {
           val id = driverRecord.id
           dataRecords.find(_.id == id) match {
             case Some(dataRecord) =>
-              val joinedRecord = joiner(driverRecord, dataRecord)
+              val joinedRecordsSeq = joinRecordsOrLog(driverRecord, dataRecord)
               val dataRecordsNew = dataRecords.filterNot(_.id == id)
               val stackNew = RecordStack(driverRecords, dataRecordsNew)
-              RecordStack.Result(stackNew, Seq(joinedRecord))
+              RecordStack.Result(stackNew, joinedRecordsSeq)
             case None =>
               val stackNew = RecordStack(driverRecords :+ driverRecord, dataRecords)
               RecordStack.Result(stackNew, Seq())
@@ -93,10 +81,10 @@ object RecordStreamJoinerWithFallback {
           val id = dataRecord.id
           driverRecords.find(_.id == id) match {
             case Some(driverRecord) =>
-              val joinedRecord = joiner(driverRecord, dataRecord)
+              val joinedRecordsSeq = joinRecordsOrLog(driverRecord, dataRecord)
               val driverRecordsNew = driverRecords.filterNot(_.id == id)
               val stackNew = RecordStack(driverRecordsNew, dataRecords)
-              RecordStack.Result(stackNew, Seq(joinedRecord))
+              RecordStack.Result(stackNew, joinedRecordsSeq)
             case None =>
               val stackNew = RecordStack(driverRecords, dataRecords :+ dataRecord)
               RecordStack.Result(stackNew, Seq())
@@ -176,7 +164,7 @@ object RecordStreamJoinerWithFallback {
   def joinWithFallback(meta: Meta,
                        driverSource: RecordSource,
                        dataSource: RecordSource)(
-                        joiner: (Record, Record) => Record
+                        joiner: (Record, Record) => Either[Snag, Record]
                       )(
                         fallBack: Record => Either[Snag, Record]
                       )(

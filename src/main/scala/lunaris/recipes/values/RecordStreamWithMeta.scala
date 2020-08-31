@@ -16,6 +16,13 @@ object RecordStreamWithMeta {
   case class Meta(objectType: RecordType, chroms: Seq[String])
 
   object Meta {
+    def combine(meta1: Meta, meta2: Meta): Either[Snag, Meta] = {
+      val objectTypeCombined = meta1.objectType.joinWith(meta2.objectType)
+      for {
+        chromsCombined <- SeqBasedOrdering.combinedSeq(Seq(meta1.chroms, meta2.chroms))
+      } yield Meta(objectTypeCombined, chromsCombined)
+    }
+
     def sequence(metas: Seq[Meta]): Either[Snag, Meta] = {
       if(metas.isEmpty) {
         Left(Snag("Need at least one meta information."))

@@ -47,7 +47,7 @@ object RecordsFilter extends tools.Tool {
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
-      ToolInstanceUtils.newWorkerMakerSingleRef(Params.Keys.from, workers) { fromWorker =>
+      ToolInstanceUtils.newWorkerMaker1(Params.Keys.from, workers) { fromWorker =>
         new WorkerMaker(fromWorker, filter)
       }
     }
@@ -56,21 +56,22 @@ object RecordsFilter extends tools.Tool {
   class WorkerMaker(fromWorker: RecordStreamWorker, filter: BooleanRecordExpression)
     extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
-      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = Some[RecordStreamWorker] {
-        (context: LunRunContext) =>
-          fromWorker.getSnagOrStreamDisposable(context).map(_.map { fromStream =>
-            val filteredSource = fromStream.source.filter { record =>
-              filter.evaluate(record) match {
-                case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
-                case Left(snag) =>
-                  println(snag.message)
-                  false
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =
+        Some[RecordStreamWorker] {
+          (context: LunRunContext) =>
+            fromWorker.getSnagOrStreamDisposable(context).map(_.map { fromStream =>
+              val filteredSource = fromStream.source.filter { record =>
+                filter.evaluate(record) match {
+                  case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
+                  case Left(snag) =>
+                    println(snag.message)
+                    false
+                }
               }
-            }
-            val meta = fromStream.meta
-            RecordStreamWithMeta(meta, filteredSource)
-          })
-      }
+              val meta = fromStream.meta
+              RecordStreamWithMeta(meta, filteredSource)
+            })
+        }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }

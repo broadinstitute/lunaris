@@ -40,7 +40,7 @@ object RecordsSimpleFilter extends tools.Tool {
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
-      ToolInstanceUtils.newWorkerMakerSingleRef(Params.Keys.from, workers) { fromWorker =>
+      ToolInstanceUtils.newWorkerMaker1(Params.Keys.from, workers) { fromWorker =>
         new WorkerMaker(fromWorker, field, value)
       }
     }

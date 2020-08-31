@@ -1,10 +1,15 @@
 package lunaris.recipes.tools.builtin
 
+import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
-import lunaris.recipes.eval.{LunCompileContext, LunWorker, WorkerMaker}
-import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstance}
-import lunaris.recipes.values.LunType
+import lunaris.recipes.eval.WorkerMaker.WorkerBox
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
+import lunaris.recipes.values.RecordStreamWithMeta.Meta
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
+import lunaris.streams.RecordStreamJoinerWithFallback
+import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object JoinRecordsWithFallback extends tools.Tool {
@@ -23,8 +28,13 @@ object JoinRecordsWithFallback extends tools.Tool {
     val fallback: Tool.RefParam = Tool.RefParam(Keys.fallback, LunType.StringType, isRequired = true)
   }
 
-  sealed trait FallbackGenerator
-  object VepFallbackGenerator extends FallbackGenerator
+  sealed trait FallbackGenerator {
+    def createFallback(): Record => Either[Snag, Record]
+  }
+
+  object VepFallbackGenerator extends FallbackGenerator {
+    override def createFallback(): Record => Either[Snag, Record] = (record: Record) => Right(record)  //  TODO
+  }
 
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
     fallbackString match {
@@ -54,14 +64,45 @@ object JoinRecordsWithFallback extends tools.Tool {
     }
 
     override def newWorkerMaker(context: LunCompileContext,
-                                workers: Map[String, LunWorker]): Either[Snag, WorkerMaker] = {
-      ???
+                                workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
+      ToolInstanceUtils.newWorkerMaker2(Params.Keys.driver, Params.Keys.data, workers) {
+        (driverWorker, dataWorker) => new WorkerMaker(driverWorker, dataWorker, fallbackGenerator)
+      }
     }
   }
 
   class WorkerMaker(driverWorker: RecordStreamWorker,
                     dataWorker: RecordStreamWorker,
                     fallbackGenerator: FallbackGenerator) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
-    override def finalizeAndShip(): WorkerMaker.WorkerBox = ???
+    override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
+        Some { (context: LunRunContext) =>
+          for {
+            snagOrDriverStream <- driverWorker.getSnagOrStreamDisposable(context)
+            snagOrDataStream <- dataWorker.getSnagOrStreamDisposable(context)
+          } yield {
+            for {
+              driverStream <- snagOrDriverStream
+              dataStream <- snagOrDataStream
+              metaJoined <- Meta.combine(driverStream.meta, dataStream.meta)
+            } yield {
+              val fallback = fallbackGenerator.createFallback()
+              val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
+                driverStream.source, dataStream.source) {
+                _.joinWith(_)
+              } {
+                fallback
+              } {
+                (snag: Snag) => context.observer.logSnag(snag)
+              }
+              RecordStreamWithMeta(metaJoined, sourceJoined)
+            }
+          }
+        }
+      }
+
+      override def pickupRunnableOpt(): Option[LunRunnable] = None
+    }
   }
+
 }
