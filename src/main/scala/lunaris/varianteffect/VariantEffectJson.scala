@@ -1,7 +1,7 @@
 package lunaris.varianteffect
 
 import io.circe.{Encoder, Json}
-import lunaris.varianteffect.ResultFileManager.ResultStatus
+import lunaris.varianteffect.VepFileManager.ResultStatus
 
 object VariantEffectJson {
 

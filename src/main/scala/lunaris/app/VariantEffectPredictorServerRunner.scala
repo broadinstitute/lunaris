@@ -10,8 +10,8 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
-import lunaris.varianteffect.ResultFileManager.ResultId
-import lunaris.varianteffect.{ResultFileManager, VariantEffectFormData, VariantEffectJson}
+import lunaris.varianteffect.VepFileManager.ResultId
+import lunaris.varianteffect.{VepFileManager, VariantEffectFormData, VariantEffectJson}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -25,15 +25,15 @@ object VariantEffectPredictorServerRunner {
     val port: Int = 8080
   }
 
-  def run(hostOpt: Option[String], portOpt: Option[Int], resultsFolder: File,
+  def run(hostOpt: Option[String], portOpt: Option[Int], inputFolder: File, resultsFolder: File,
           dataFileWithIndex: BlockGzippedWithIndex, varId: String): Unit = {
     val host = hostOpt.getOrElse(Defaults.host)
     val port = portOpt.getOrElse(Defaults.port)
     val resourceConfig = ResourceConfig.empty
-    val resultFileManager = new ResultFileManager(resultsFolder, dataFileWithIndex, varId, resourceConfig)
-    resultFileManager.resultsFolderOrSnag() match {
+    val vepFileManager = new VepFileManager(inputFolder, resultsFolder, dataFileWithIndex, varId, resourceConfig)
+    vepFileManager.foldersExistOrSnag() match {
       case Left(snag) =>
-        println("Unable to establish storage for result file")
+        println("Unable to establish storage for inputs and results.")
         println(snag.message)
         println("Exiting.")
       case Right(_) =>
@@ -69,11 +69,11 @@ object VariantEffectPredictorServerRunner {
                   decodeRequest {
                     entity(as[Multipart.FormData]) { httpFormData =>
                       val uploadFut = httpFormData.parts.mapAsync(1) {
-                        VariantEffectFormData.FormField.bodyPartToFieldFut(_)
+                        VariantEffectFormData.FormField.bodyPartToFieldFut(_, vepFileManager)
                       }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
                         fieldsByName + (field.name -> field)
                       }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
-                        resultFileManager.submit(variantEffectFormData)
+                        vepFileManager.submit(variantEffectFormData)
                       }
                       onComplete(uploadFut) {
                         case Success(submissionResponse) =>
@@ -96,8 +96,8 @@ object VariantEffectPredictorServerRunner {
             path("lunaris" / "predictor" / "status" / Remaining) { resultIdString =>
               get {
                 val status = ResultId.fromString(resultIdString) match {
-                  case Left(snag) => ResultFileManager.ResultStatus.createInvalid(snag.message)
-                  case Right(resultId) => resultFileManager.getStatus(resultId)
+                  case Left(snag) => VepFileManager.ResultStatus.createInvalid(snag.message)
+                  case Right(resultId) => vepFileManager.getStatus(resultId)
                 }
                 complete(
                   HttpUtils.ResponseBuilder.fromJson(VariantEffectJson.resultStatusToJson(status))
@@ -108,7 +108,7 @@ object VariantEffectPredictorServerRunner {
               get {
                 val snagOrSource = for {
                   resultId <- ResultId.fromString(resultIdString)
-                  source <- resultFileManager.streamResults(resultId)
+                  source <- vepFileManager.streamResults(resultId)
                 } yield source
                 snagOrSource match {
                   case Left(snag) =>

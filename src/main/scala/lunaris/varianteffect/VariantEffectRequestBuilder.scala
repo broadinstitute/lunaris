@@ -8,7 +8,7 @@ import lunaris.io.request.examples.RequestExamplesUtils.ToolCalls
 import lunaris.recipes.Recipe
 import lunaris.recipes.values.LunValue.ExpressionValue
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
-import lunaris.varianteffect.ResultFileManager.ResultId
+import lunaris.varianteffect.VepFileManager.ResultId
 
 object VariantEffectRequestBuilder {
 

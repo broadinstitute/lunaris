@@ -25,6 +25,7 @@ object Lunaris {
         VariantEffectPredictorServerRunner.run(
           conf.variantEffectPredictor.host.toOption,
           conf.variantEffectPredictor.port.toOption,
+          conf.variantEffectPredictor.inputsFolder.map(File(_))(),
           conf.variantEffectPredictor.resultsFolder.map(File(_))(),
           dataFileWithIndex,
           conf.variantEffectPredictor.varId()

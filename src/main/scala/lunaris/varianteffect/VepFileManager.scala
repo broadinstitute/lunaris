@@ -10,15 +10,16 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
 import lunaris.utils.NumberParser
-import lunaris.varianteffect.ResultFileManager.{ResultId, ResultStatus}
+import lunaris.varianteffect.VepFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzippedWithIndex, val varId: String,
-                        resourceConfig: ResourceConfig) {
+class VepFileManager(val inputsFolder: File, val resultsFolder: File,
+                     val dataFileWithIndex: BlockGzippedWithIndex, val varId: String,
+                     resourceConfig: ResourceConfig) {
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
 
@@ -26,24 +27,41 @@ class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzip
     statusById = statusById + (resultId -> resultStatus)
   }
 
-  def resultsFolderOrSnag(): Either[Snag, File] = {
-    if (resultFolder.exists && !resultFolder.isDirectory) {
-      Left(Snag(s"$resultFolder should be folder, but is not."))
-    } else if (!resultFolder.exists) {
-      resultFolder.createDirectory()
-      if (resultFolder.exists) {
-        Right(resultFolder)
+  def folderOrSnag(folder: File, folderNick: String): Either[Snag, File] = {
+    if (folder.exists && !folder.isDirectory) {
+      Left(Snag(s"$folder should be folder, but is not."))
+    } else if (!folder.exists) {
+      folder.createDirectories()
+      if (folder.exists) {
+        Right(folder)
       } else {
-        Left(Snag(s"Failed to create $resultFolder"))
+        Left(Snag(s"Failed to create $folderNick $folder"))
       }
     } else {
-      Right(resultFolder)
+      Right(resultsFolder)
     }
   }
 
+  def resultsFolderOrSnag(): Either[Snag, File] = folderOrSnag(resultsFolder, "results folder")
+
+  def inputsFolderOrSnag(): Either[Snag, File] = folderOrSnag(inputsFolder, "inputs folder")
+
+  def foldersExistOrSnag(): Either[Snag, Unit] = {
+    for {
+      _ <- inputsFolderOrSnag()
+      _ <- resultsFolderOrSnag()
+    } yield ()
+  }
+
+  def createNewIdFor(inputFileName: String): ResultId = ResultId.createNew(inputFileName)
+
+  def inputFileNameForId(resultId: ResultId): String = "input_" + resultId.toString
+
+  def inputFilePathForId(resultId: ResultId): File = inputsFolder / inputFileNameForId(resultId)
+
   def outputFileNameForId(resultId: ResultId): String = resultId.toString
 
-  def outputFilePathForId(resultId: ResultId): File = resultFolder / outputFileNameForId(resultId)
+  def outputFilePathForId(resultId: ResultId): File = resultsFolder / outputFileNameForId(resultId)
 
   def newQueryFuture(resultId: ResultId,
                      formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Unit] = {
@@ -69,7 +87,7 @@ class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzip
   }
 
   def newUploadAndQueryFutureFuture(resultId: ResultId, formData: VariantEffectFormData)(
-                                     implicit actorSystem: ActorSystem): Future[Unit] = {
+    implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     newQueryFuture(resultId, formData)
   }
@@ -78,7 +96,7 @@ class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzip
 
   def submit(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    val resultId = ResultId.createNew(formData.fileName)
+    val resultId = formData.resultId
     updateStatus(resultId, ResultStatus.createSubmitted())
     val fut = newUploadAndQueryFutureFuture(resultId, formData)
     new SubmissionResponse(resultId, fut)
@@ -98,7 +116,7 @@ class ResultFileManager(val resultFolder: File, val dataFileWithIndex: BlockGzip
   }
 }
 
-object ResultFileManager {
+object VepFileManager {
 
   case class ResultId(inputFileName: String, randomPart: Long, timestamp: Long) {
     override def toString: String = inputFileName + "_" + randomPart + "_" + timestamp
