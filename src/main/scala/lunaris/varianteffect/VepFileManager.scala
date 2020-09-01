@@ -2,8 +2,8 @@ package lunaris.varianteffect
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import akka.stream.{IOResult, Materializer}
+import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import better.files.File
 import lunaris.data.BlockGzippedWithIndex
@@ -63,13 +63,19 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
 
   def outputFilePathForId(resultId: ResultId): File = resultsFolder / outputFileNameForId(resultId)
 
-  def newQueryFuture(resultId: ResultId,
-                     formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Unit] = {
+  def uploadFile(stream: Source[ByteString, Any], inputFile: File)(
+    implicit actorSystem: ActorSystem
+  ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
+
+  def newQueryFuture(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    val queryFuture = Future {
+    val resultId = formData.resultId
+    val inputFile = inputFilePathForId(resultId)
+    val variantsByChromFut = VcfStreamVariantsReader.readVariantsByChrom(inputFile)
+    val queryFuture = variantsByChromFut.map {variantsByChrom =>
       val request =
         VariantEffectRequestBuilder.buildRequest(
-          resultId, formData.variantsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
+          resultId, variantsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
           formData.filter, Some(dataFileWithIndex.index.toString), varId
         )
       LunCompiler.compile(request)
@@ -89,7 +95,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
   def newUploadAndQueryFutureFuture(resultId: ResultId, formData: VariantEffectFormData)(
     implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    newQueryFuture(resultId, formData)
+    newQueryFuture(formData)
   }
 
   class SubmissionResponse(val resultId: ResultId, val fut: Future[Unit])

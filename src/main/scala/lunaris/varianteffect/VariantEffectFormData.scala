@@ -4,7 +4,6 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Multipart
 import akka.util.ByteString
 import lunaris.expressions.BooleanRecordExpression
-import lunaris.genomics.Variant
 import lunaris.recipes.parsing.RecordExpressionParser
 import lunaris.varianteffect.VepFileManager.ResultId
 import org.broadinstitute.yootilz.core.snag.SnagUtils
@@ -13,7 +12,6 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 case class VariantEffectFormData(fileName: String,
                                  resultId: ResultId,
-                                 variantsByChrom: Map[String, Seq[Variant]],
                                  filter: BooleanRecordExpression)
 
 object VariantEffectFormData {
@@ -21,10 +19,9 @@ object VariantEffectFormData {
     val inputFileField = fields(FormField.Keys.inputFile).asInstanceOf[InputFileField]
     val fileName = inputFileField.fileName
     val resultId = inputFileField.resultId
-    val variantsByChrom = inputFileField.variantsByChrom
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(RecordExpressionParser.parse(filterString))
-    VariantEffectFormData(fileName, resultId, variantsByChrom, filter)
+    VariantEffectFormData(fileName, resultId, filter)
   }
 
   sealed trait FormField {
@@ -36,8 +33,7 @@ object VariantEffectFormData {
   }
 
   case class InputFileField(fileName: String,
-                            resultId: VepFileManager.ResultId,
-                            variantsByChrom: Map[String, Seq[Variant]]) extends FormField {
+                            resultId: VepFileManager.ResultId) extends FormField {
     override def name: String = FormField.Keys.inputFile
   }
 
@@ -59,8 +55,8 @@ object VariantEffectFormData {
         case Keys.inputFile =>
           val resultId = vepFileManager.createNewIdFor(bodyPart.filename.get)
           val inputFile = vepFileManager.inputFilePathForId(resultId)
-          VcfStreamVariantsReader.newVariantsByChromFuture(bodyPart.entity.dataBytes, inputFile).map { variantsByChrom =>
-            InputFileField(bodyPart.filename.get, resultId, variantsByChrom)
+          vepFileManager.uploadFile(bodyPart.entity.dataBytes, inputFile).map { _ =>
+            InputFileField(bodyPart.filename.get, resultId)
           }
         case unknownName: String =>
           bodyPart.entity.dataBytes.runFold(())((_, _) => ()).map(_ => IgnoredField(unknownName))
