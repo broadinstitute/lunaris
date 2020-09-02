@@ -71,11 +71,11 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val inputFile = inputFilePathForId(resultId)
-    val variantsByChromFut = VcfStreamVariantsReader.readVariantsByChrom(inputFile)
-    val queryFuture = variantsByChromFut.map {variantsByChrom =>
+    val regionsByChromFut = VcfStreamVariantsReader.readConsolidatedRegionsByChrom(inputFile)
+    val queryFuture = regionsByChromFut.map { regionsByChrom =>
       val request =
         VariantEffectRequestBuilder.buildRequest(
-          resultId, variantsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
+          resultId, regionsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
           formData.filter, Some(dataFileWithIndex.index.toString), varId
         )
       LunCompiler.compile(request)
@@ -92,7 +92,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     queryFuture
   }
 
-  def newUploadAndQueryFutureFuture(resultId: ResultId, formData: VariantEffectFormData)(
+  def newUploadAndQueryFutureFuture(formData: VariantEffectFormData)(
     implicit actorSystem: ActorSystem): Future[Unit] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     newQueryFuture(formData)
@@ -104,7 +104,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     updateStatus(resultId, ResultStatus.createSubmitted())
-    val fut = newUploadAndQueryFutureFuture(resultId, formData)
+    val fut = newUploadAndQueryFutureFuture(formData)
     new SubmissionResponse(resultId, fut)
   }
 

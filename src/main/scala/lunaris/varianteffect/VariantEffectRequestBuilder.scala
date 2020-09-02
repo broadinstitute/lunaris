@@ -2,7 +2,7 @@ package lunaris.varianteffect
 
 import better.files.File
 import lunaris.expressions.BooleanRecordExpression
-import lunaris.genomics.Variant
+import lunaris.genomics.{Region, Variant}
 import lunaris.io.request.Request
 import lunaris.io.request.examples.RequestExamplesUtils.ToolCalls
 import lunaris.recipes.Recipe
@@ -13,7 +13,7 @@ import lunaris.varianteffect.VepFileManager.ResultId
 object VariantEffectRequestBuilder {
 
   def buildRequest(resultId: ResultId,
-                   variantsByChrom: Map[String, Seq[Variant]],
+                   regions: Map[String, Seq[Region]],
                    outputFile: File,
                    dataFileName: String,
                    filter: BooleanRecordExpression,
@@ -21,8 +21,6 @@ object VariantEffectRequestBuilder {
                    varId: String): Request = {
 
     val requestId = "variant_effect_predictor_" + resultId.toString
-
-    val regions = variantsByChrom.view.mapValues(_.map(_.toLocus.region)).toMap
 
     val dataFile: FileValue = FileValue(dataFileName)
     val indexFileOpt: Option[FileValue] = indexFileNameOpt.map(FileValue)
