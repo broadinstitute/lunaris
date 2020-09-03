@@ -24,7 +24,7 @@ object JoinRecordsWithFallback extends tools.Tool {
 
     val driver: Tool.RefParam = Tool.RefParam(Keys.driver, LunType.RecordStreamType, isRequired = true)
     val data: Tool.RefParam = Tool.RefParam(Keys.data, LunType.RecordStreamType, isRequired = true)
-    val fallback: Tool.RefParam = Tool.RefParam(Keys.fallback, LunType.StringType, isRequired = true)
+    val fallback: Tool.ValueParam = Tool.ValueParam(Keys.fallback, LunType.StringType, isRequired = true)
   }
 
   sealed trait FallbackGenerator {

@@ -77,8 +77,8 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
       val regionsByChrom = chromsAndRegions.regions
       val request =
         VariantEffectRequestBuilder.buildRequest(
-          resultId, chroms, regionsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
-          formData.filter, Some(dataFileWithIndex.index.toString), varId
+          resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
+          outputFilePathForId(resultId), formData.filter, Some(dataFileWithIndex.index.toString), varId
         )
       LunCompiler.compile(request)
     }.collect {

@@ -3,8 +3,8 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.builtin.{IndexedRecordReader, JSONWriter, RecordsFilter, RecordsSimpleFilter, TSVWriter}
-import lunaris.recipes.values.LunValue.{ExpressionValue, MapValue}
+import lunaris.recipes.tools.builtin.{IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
 object RequestExamplesUtils {
@@ -58,6 +58,21 @@ object RequestExamplesUtils {
         typesOpt.map(IndexedRecordReader.Params.Keys.types -> ValueArg(IndexedRecordReader.Params.types, _)),
       )
       ToolCall(IndexedRecordReader, args)
+    }
+
+    def vcfRecordsReader(file: FileValue, chroms: ArrayValue): ToolCall = {
+      ToolCall(VcfRecordsReader, Map(
+        VcfRecordsReader.Params.Keys.file -> ValueArg(VcfRecordsReader.Params.file, file),
+        VcfRecordsReader.Params.Keys.chroms -> ValueArg(VcfRecordsReader.Params.chroms, chroms)
+      ))
+    }
+
+    def joinRecordsWithFallback(driver: String, data: String, fallback: StringValue): ToolCall = {
+      ToolCall(JoinRecordsWithFallback, Map(
+        JoinRecordsWithFallback.Params.Keys.driver -> RefArg(JoinRecordsWithFallback.Params.driver, driver),
+        JoinRecordsWithFallback.Params.Keys.data -> RefArg(JoinRecordsWithFallback.Params.data, data),
+        JoinRecordsWithFallback.Params.Keys.fallback -> ValueArg(JoinRecordsWithFallback.Params.fallback, fallback),
+      ))
     }
 
     def filter(from: String, filter: ExpressionValue): ToolCall = {
