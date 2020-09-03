@@ -5,11 +5,9 @@ import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.tools.builtin.IndexedRecordReader.{Params, ToolInstance, WorkerMaker}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
-import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.RecordProcessor
 import lunaris.varianteffect.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.Snag
 

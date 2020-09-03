@@ -78,6 +78,14 @@ object VcfStreamVariantsReader {
     readVcfRecords(FileIO.fromPath(inputFile.path))
   }
 
+  def getValueOrEmptyString(fields: Array[String], i: Int): String = {
+    if(i < fields.length) {
+      fields(i)
+    } else {
+      ""
+    }
+  }
+
   def readVcfRecords(source: Source[ByteString, Future[IOResult]]):
   Source[VcfCoreRecord, Future[IOResult]] = {
     source.via(Framing.delimiter(ByteString("\n"), Int.MaxValue))
@@ -93,10 +101,10 @@ object VcfStreamVariantsReader {
               val id = fields(ICols.id)
               val ref = fields(ICols.ref)
               val alt = fields(ICols.alt)
-              val qual = fields(ICols.qual)
-              val filter = fields(ICols.filter)
-              val info = fields(ICols.info)
-              val format = fields(ICols.format)
+              val qual = getValueOrEmptyString(fields, ICols.qual)
+              val filter = getValueOrEmptyString(fields, ICols.filter)
+              val info = getValueOrEmptyString(fields, ICols.info)
+              val format = getValueOrEmptyString(fields, ICols.format)
               Seq(VcfCoreRecord(chrom, pos, id, ref, alt, qual, filter, info, format))
           }
         } else {
