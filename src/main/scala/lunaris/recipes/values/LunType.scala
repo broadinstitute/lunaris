@@ -144,6 +144,9 @@ object LunType {
       RecordType(specialFields, fieldsNew, elementTypesNew)
     }
 
+    def addField(field: String, lunType: LunType): RecordType =
+      copy(fields = fields :+ field, elementTypes = elementTypes + (field -> lunType))
+
     def changeFieldTypesTo(types: Map[String, LunType]): RecordType = {
       val eternalTypes =
         Map(

@@ -1,12 +1,16 @@
 package lunaris.recipes.tools.builtin
 
-import lunaris.io.InputId
-import lunaris.recipes.eval.{LunCompileContext, LunWorker, WorkerMaker}
+import lunaris.io.{Disposable, InputId}
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
+import lunaris.recipes.eval.WorkerMaker.WorkerBox
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.tools.builtin.IndexedRecordReader.{Params, ToolInstance, WorkerMaker}
-import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.recipes.values.RecordStreamWithMeta.Meta
+import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
+import lunaris.varianteffect.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object VcfRecordsReader extends tools.Tool {
@@ -16,9 +20,12 @@ object VcfRecordsReader extends tools.Tool {
 
     object Keys {
       val file = "file"
+      val chroms = "chroms"
     }
 
     val file: Tool.ValueParam = Tool.ValueParam(Keys.file, LunType.FileType, isRequired = true)
+    val chroms: Tool.ValueParam =
+      Tool.ValueParam(Keys.chroms, LunType.ArrayType(LunType.StringType), isRequired = true)
   }
 
   override def params: Seq[Tool.Param] = Seq(Params.file)
@@ -28,22 +35,36 @@ object VcfRecordsReader extends tools.Tool {
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
       file <- ToolArgUtils.asInputId(Params.Keys.file, args)
-    } yield ToolInstance(file)
+      chroms <- ToolArgUtils.asStrings(Params.Keys.chroms, args)
+    } yield ToolInstance(file, chroms)
   }
 
-  case class ToolInstance(file: InputId) extends tools.ToolInstance {
+  case class ToolInstance(file: InputId, chroms: Seq[String]) extends tools.ToolInstance {
     override def refs: Map[String, String] = Map.empty
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
-      Right(new WorkerMaker(file, RecordProcessor.ignoreFaultyRecords, context))
+      Right(new WorkerMaker(file, chroms, context))
 
   }
 
   class WorkerMaker(file: InputId,
-                    recordProcessor: RecordProcessor[LunValue.RecordValue],
+                    chroms: Seq[String],
                     compileContext: LunCompileContext) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
-    override def finalizeAndShip(): WorkerMaker.WorkerBox = ???
+    override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
+        Some[RecordStreamWorker] {
+          (context: LunRunContext) => {
+            val recordType = VcfStreamVariantsReader.vcfRecordType
+            val meta = Meta(recordType, chroms)
+            val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
+              .map(_.toRecord).mapMaterializedValue(_ => meta)
+            Disposable(Right(RecordStreamWithMeta(meta, source)))(Disposable.Disposer.Noop)
+          }
+        }
+
+      override def pickupRunnableOpt(): Option[LunRunnable] = None
+    }
   }
 
 }

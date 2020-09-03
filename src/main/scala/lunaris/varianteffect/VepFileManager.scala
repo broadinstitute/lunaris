@@ -71,11 +71,13 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val inputFile = inputFilePathForId(resultId)
-    val regionsByChromFut = VcfStreamVariantsReader.readConsolidatedRegionsByChrom(inputFile)
-    val queryFuture = regionsByChromFut.map { regionsByChrom =>
+    val chromsAndRegionsFut = VcfStreamVariantsReader.readChromsAndRegions(inputFile)
+    val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
+      val chroms = chromsAndRegions.chroms
+      val regionsByChrom = chromsAndRegions.regions
       val request =
         VariantEffectRequestBuilder.buildRequest(
-          resultId, regionsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
+          resultId, chroms, regionsByChrom, outputFilePathForId(resultId), dataFileWithIndex.data.toString,
           formData.filter, Some(dataFileWithIndex.index.toString), varId
         )
       LunCompiler.compile(request)

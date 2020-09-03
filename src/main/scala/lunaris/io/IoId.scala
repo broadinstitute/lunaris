@@ -3,6 +3,9 @@ package lunaris.io
 import java.io.RandomAccessFile
 import java.nio.channels.{Channels, FileChannel, ReadableByteChannel, WritableByteChannel}
 
+import akka.stream.IOResult
+import akka.stream.scaladsl.{FileIO, Source, StreamConverters}
+import akka.util.ByteString
 import better.files.File
 import com.google.auth.oauth2.{GoogleCredentials, ServiceAccountCredentials}
 import com.google.cloud.storage.BlobId
@@ -10,6 +13,7 @@ import com.google.cloud.{ReadChannel, WriteChannel}
 import lunaris.io.Disposable.Disposer
 import org.broadinstitute.yootilz.gcp.storage.GoogleStorageUtils
 
+import scala.concurrent.Future
 import scala.util.Try
 
 trait IoId {
@@ -18,6 +22,7 @@ trait IoId {
   override def toString: String = asString
 
   def +(suffix: String): IoId
+
   def /(suffix: String): IoId
 }
 
@@ -28,7 +33,10 @@ trait InputId extends IoId {
                                      resourceConfig: ResourceConfig = ResourceConfig.empty):
   Disposable[ReadableByteChannel]
 
+  def newStream(resourceConfig: ResourceConfig): Source[ByteString, Future[IOResult]]
+
   def +(suffix: String): InputId
+
   def /(suffix: String): InputId
 }
 
@@ -43,6 +51,7 @@ trait OutputId extends IoId {
   Disposable[WritableByteChannel]
 
   def +(suffix: String): OutputId
+
   def /(suffix: String): OutputId
 }
 
@@ -77,7 +86,12 @@ case class FileInputId(file: File) extends InputId with FileIoId {
     newFileChannelDisposable("r", pos)
   }
 
+  override def newStream(resourceConfig: ResourceConfig): Source[ByteString, Future[IOResult]] = {
+    FileIO.fromPath(file.path)
+  }
+
   override def +(suffix: String): FileInputId = FileInputId(File(file.toString + suffix))
+
   override def /(suffix: String): FileInputId = FileInputId(File(file.toString + "/" + suffix))
 }
 
@@ -90,6 +104,7 @@ case class FileOutputId(file: File) extends OutputId with FileIoId {
   }
 
   override def +(suffix: String): FileOutputId = FileOutputId(File(file.toString + suffix))
+
   override def /(suffix: String): FileOutputId = FileOutputId(File(file.toString + "/" + suffix))
 }
 
@@ -149,7 +164,12 @@ case class GcpBlobInputId(blobId: BlobId) extends GcpBlobId with InputId {
     Disposable(readChannel)(Disposer.ForCloseable(readChannel))
   }
 
+  override def newStream(resourceConfig: ResourceConfig): Source[ByteString, Future[IOResult]] = {
+    StreamConverters.fromInputStream(() => Channels.newInputStream(newReadChannel(resourceConfig)))
+  }
+
   override def +(suffix: String): GcpBlobInputId = GcpBlobInputId(GcpBlobId.addSuffix(blobId, suffix))
+
   override def /(suffix: String): GcpBlobInputId = GcpBlobInputId(GcpBlobId.addSuffix(blobId, "/" + suffix))
 }
 
@@ -164,6 +184,7 @@ case class GcpBlobOutputId(blobId: BlobId) extends GcpBlobId with OutputId {
   }
 
   override def +(suffix: String): GcpBlobOutputId = GcpBlobOutputId(GcpBlobId.addSuffix(blobId, suffix))
+
   override def /(suffix: String): GcpBlobOutputId = GcpBlobOutputId(GcpBlobId.addSuffix(blobId, "/" + suffix))
 }
 

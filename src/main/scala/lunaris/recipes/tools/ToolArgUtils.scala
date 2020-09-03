@@ -55,6 +55,18 @@ object ToolArgUtils {
 
   def asString(arg: ToolCall.Arg): Either[Snag, String] = as(arg)(_.asString)
 
+  def stringsExtractor(paramName: String): PartialFunction[LunValue, Either[Snag, Seq[String]]] = {
+    case LunValue.ArrayValue(elements, LunType.StringType) =>
+      EitherSeqUtils.sequence(elements.map(_.asString))
+    case _ =>
+      Left(Snag(s"Argument '$paramName' should be an array of strings, but it is not.'"))
+  }
+
+  def asStrings(arg: ToolCall.Arg): Either[Snag, Seq[String]] = as(arg)(stringsExtractor(arg.param.name))
+
+  def asStrings(argName: String, args: Map[String, ToolCall.Arg]): Either[Snag, Seq[String]] =
+    as(argName, args)(stringsExtractor(argName))
+
   def asInputId(name: String, args: Map[String, ToolCall.Arg]): Either[Snag, InputId] = as(name, args)(_.asInputId)
 
   def asInputIdOpt(name: String, args: Map[String, ToolCall.Arg]): Either[Snag, Option[InputId]] =

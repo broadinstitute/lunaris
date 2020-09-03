@@ -13,6 +13,7 @@ import lunaris.varianteffect.VepFileManager.ResultId
 object VariantEffectRequestBuilder {
 
   def buildRequest(resultId: ResultId,
+                   chroms: Seq[String],
                    regions: Map[String, Seq[Region]],
                    outputFile: File,
                    dataFileName: String,
