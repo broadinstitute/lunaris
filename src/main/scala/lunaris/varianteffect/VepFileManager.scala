@@ -83,13 +83,14 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
       LunCompiler.compile(request)
     }.collect {
       case Right(runnable) =>
-        val context =
+        val context = {
           LunRunContext(Materializer(actorSystem), resourceConfig, LunRunContext.Observer.forLogger(println))
+        }
         runnable.execute(context)
     }
     queryFuture.onComplete {
       case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileNameForId(resultId)))
-      case Failure(exception) => updateStatus(resultId, ResultStatus.createFailed(exception.getMessage))
+      case Failure(exception) => updateStatus(resultId, ResultStatus.createFailed(Snag(exception).message))
     }
     queryFuture
   }

@@ -20,9 +20,12 @@ object SeqBasedOrdering {
     var snagOpt: Option[Snag] = None
     val slidingIter = as.sliding(2)
     while(snagOpt.isEmpty && slidingIter.hasNext) {
-      val Seq(a1, a2) = slidingIter.next()
-      if(ordering.compareOpt(a1, a2).getOrElse(0) > 0) {
-        snagOpt = Some(Snag(s"Inconsistent order for $a1 and $a2."))
+      val nextItems = slidingIter.next()
+      if(nextItems.size > 1) {
+        val Seq(a1, a2) = nextItems
+        if(ordering.compareOpt(a1, a2).getOrElse(0) > 0) {
+          snagOpt = Some(Snag(s"Inconsistent order for $a1 and $a2."))
+        }
       }
     }
     snagOpt
