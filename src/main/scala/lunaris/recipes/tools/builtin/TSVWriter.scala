@@ -5,7 +5,7 @@ import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import lunaris.io.{Disposable, OutputId}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
@@ -18,7 +18,7 @@ import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamWith
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.concurrent.duration.FiniteDuration
 
 object TSVWriter extends Tool {
@@ -82,16 +82,30 @@ object TSVWriter extends Tool {
           .map(_.getOrElse("")).mkString("\t")
       }
 
-      private def writeStreamAsTsv(stream: RecordStreamWithMeta, context: LunRunContext)(writer: String => Unit): Unit = {
-        writer(headerLine(stream.meta.objectType))
-        val doneFuture = stream.source.map(dataLine).runWith(Sink.foreach(writer))(context.materializer)
-        Await.result(doneFuture, FiniteDuration(100, TimeUnit.SECONDS))
+      private def getLineStream(recordStream: RecordStreamWithMeta): Source[String, RecordStreamWithMeta.Meta] = {
+        val meta = recordStream.meta
+        Source.single(headerLine(meta.objectType)).concatMat(recordStream.source.map(dataLine))(Keep.right)
+          .map(_ + "\n")
+      }
+
+      private def writeStreamAsTsv(stream: RecordStreamWithMeta,
+                                   context: LunRunContext)(writer: String => Unit): Future[Done] = {
+        getLineStream(stream).runWith(Sink.foreach(writer))(context.materializer)
       }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable](new LunRunnable {
         override def execute(context: LunRunContext): Unit = {
+          Await.result(executeAsync(context), FiniteDuration(100, TimeUnit.SECONDS))
+        }
+
+        override def executeAsync(context: LunRunContext): Future[Done] = {
           fromWorker.getSnagOrStreamDisposable(context).useUp {
-            case Left(snag) => context.observer.logSnag(snag)
+            case Left(snag) =>
+              implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
+              Future {
+                context.observer.logSnag(snag)
+                Done
+              }
             case Right(headerAndRecordEtor) =>
               fileOpt match {
                 case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
@@ -104,12 +118,10 @@ object TSVWriter extends Tool {
           }
         }
 
-        override def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] =
+        override def getStream(context: LunRunContext):
+        Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] =
           fromWorker.getSnagOrStreamDisposable(context).map(_.map { recordStream =>
-            val meta = recordStream.meta
-            Source.single(headerLine(meta.objectType)).concat(recordStream.source.map(dataLine))
-              .map(_ + "\n")
-              .mapMaterializedValue(_ => meta)
+            getLineStream(recordStream)
           })
       })
     }

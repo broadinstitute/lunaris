@@ -1,5 +1,6 @@
 package lunaris.recipes.eval
 
+import scala.collection.immutable.Map
 import lunaris.io.request.Request
 import lunaris.recipes.eval.WorkerMaker.{Receipt, WorkerBox}
 import lunaris.recipes.tools.ToolInstance
@@ -81,7 +82,7 @@ object LunCompiler {
     }
     snagOpt match {
       case Some(snag) => Left(snag)
-      case None => Right(LunRunnable.combine(boxes.values.flatMap(_.pickupRunnableOpt())))
+      case None => Right(LunRunnable.combine(boxes.values.toSeq.flatMap(_.pickupRunnableOpt())))
     }
   }
 }

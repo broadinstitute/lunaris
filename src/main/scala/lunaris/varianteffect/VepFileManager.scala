@@ -90,7 +90,10 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     }
     queryFuture.onComplete {
       case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileNameForId(resultId)))
-      case Failure(exception) => updateStatus(resultId, ResultStatus.createFailed(Snag(exception).message))
+      case Failure(exception) =>
+        val snag = Snag(exception)
+        println(snag.report)
+        updateStatus(resultId, ResultStatus.createFailed(snag.message))
     }
     queryFuture
   }
