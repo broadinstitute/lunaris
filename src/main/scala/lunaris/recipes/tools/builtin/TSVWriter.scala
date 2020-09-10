@@ -99,7 +99,7 @@ object TSVWriter extends Tool {
         }
 
         override def executeAsync(context: LunRunContext): Future[Done] = {
-          fromWorker.getSnagOrStreamDisposable(context).useUp {
+          fromWorker.getStreamBox(context).snagOrStreamDisposable.useUp {
             case Left(snag) =>
               implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
               Future {
@@ -120,7 +120,7 @@ object TSVWriter extends Tool {
 
         override def getStream(context: LunRunContext):
         Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] =
-          fromWorker.getSnagOrStreamDisposable(context).map(_.map { recordStream =>
+          fromWorker.getStreamBox(context).snagOrStreamDisposable.map(_.map { recordStream =>
             getLineStream(recordStream)
           })
       })

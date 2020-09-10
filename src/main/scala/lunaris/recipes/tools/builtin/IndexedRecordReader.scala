@@ -1,7 +1,7 @@
 package lunaris.recipes.tools.builtin
 
 import lunaris.data.BlockGzippedWithIndex
-import lunaris.io.InputId
+import lunaris.io.{Disposable, InputId}
 import lunaris.io.query.RecordExtractor
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
@@ -63,27 +63,29 @@ object IndexedRecordReader extends tools.Tool {
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
-        Some[RecordStreamWorker]((runContext: LunRunContext) => {
-          RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
-            RecordProcessor.printSnagsDropFaultyRecords, runContext.resourceConfig).map(_.map{ headerAndRecordEtor =>
-            def objectEtorGenerator(): Eitherator[LunValue.RecordValue] =
-              headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toLunRecord(idField)))
-                .map { objectValue =>
-                  typesOpt match {
-                    case Some(types) =>
-                      objectValue.castFieldsTo(types) match {
-                        case Left(_) => objectValue
-                        case Right(objectValueNew) =>
-                          objectValueNew
-                      }
-                    case None => objectValue
+        Some[RecordStreamWorker]( new RecordStreamWorker {
+          override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
+            val snagOrStreamDisposable = RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
+              RecordProcessor.printSnagsDropFaultyRecords, context.resourceConfig).map(_.map { headerAndRecordEtor =>
+              def objectEtorGenerator(): Eitherator[LunValue.RecordValue] =
+                headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toLunRecord(idField)))
+                  .map { objectValue =>
+                    typesOpt match {
+                      case Some(types) =>
+                        objectValue.castFieldsTo(types) match {
+                          case Left(_) => objectValue
+                          case Right(objectValueNew) =>
+                            objectValueNew
+                        }
+                      case None => objectValue
+                    }
                   }
-                }
-            val meta = headerAndRecordEtor.meta
-            RecordStreamWithMeta(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtorGenerator, meta))
-          })
+              val meta = headerAndRecordEtor.meta
+              RecordStreamWithMeta(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtorGenerator, meta))
+            })
+            LunWorker.StreamBox(snagOrStreamDisposable)
+          }
         })
-
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }

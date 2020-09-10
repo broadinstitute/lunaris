@@ -1,6 +1,7 @@
 package lunaris.recipes.tools.builtin
 
 import lunaris.expressions.BooleanRecordExpression
+import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -58,19 +59,24 @@ object RecordsFilter extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =
         Some[RecordStreamWorker] {
-          (context: LunRunContext) =>
-            fromWorker.getSnagOrStreamDisposable(context).map(_.map { fromStream =>
-              val filteredSource = fromStream.source.filter { record =>
-                filter.evaluate(record) match {
-                  case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
-                  case Left(snag) =>
-                    println(snag.message)
-                    false
+          new RecordStreamWorker {
+            override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
+              val snagOrStreamDisposable =
+                fromWorker.getStreamBox(context).snagOrStreamDisposable.map(_.map { fromStream =>
+                val filteredSource = fromStream.source.filter { record =>
+                  filter.evaluate(record) match {
+                    case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
+                    case Left(snag) =>
+                      println(snag.message)
+                      false
+                  }
                 }
-              }
-              val meta = fromStream.meta
-              RecordStreamWithMeta(meta, filteredSource)
-            })
+                val meta = fromStream.meta
+                RecordStreamWithMeta(meta, filteredSource)
+              })
+              LunWorker.StreamBox(snagOrStreamDisposable)
+            }
+          }
         }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None

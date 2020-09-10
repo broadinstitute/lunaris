@@ -1,5 +1,6 @@
 package lunaris.recipes.tools.builtin
 
+import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -13,11 +14,13 @@ object RecordsSimpleFilter extends tools.Tool {
   override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
+
     object Keys {
       val from = "from"
       val field = "field"
       val stringValue = "stringValue"
     }
+
     val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.RecordStreamType, isRequired = true)
     val field: Tool.ValueParam = Tool.ValueParam(Keys.field, LunType.StringType, isRequired = true)
     val stringValue: Tool.ValueParam = Tool.ValueParam(Keys.stringValue, LunType.StringType, isRequired = true)
@@ -49,20 +52,28 @@ object RecordsSimpleFilter extends tools.Tool {
   class WorkerMaker(fromWorker: RecordStreamWorker, field: String, stringValue: String)
     extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
-      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = Some[RecordStreamWorker] {
-        (context: LunRunContext) => fromWorker.getSnagOrStreamDisposable(context).map(_.map{ fromStream =>
-          val filteredSource = fromStream.source.filter { record =>
-            record.values.get(field) match {
-              case Some(StringValue(valueAsString)) => valueAsString == stringValue
-              case _ => false
+      override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] =
+        Some[RecordStreamWorker] {
+          new RecordStreamWorker {
+            override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
+              val snagOrStreamDisposable =
+                fromWorker.getStreamBox(context).snagOrStreamDisposable.map(_.map { fromStream =>
+                  val filteredSource = fromStream.source.filter { record =>
+                    record.values.get(field) match {
+                      case Some(StringValue(valueAsString)) => valueAsString == stringValue
+                      case _ => false
+                    }
+                  }
+                  val meta = fromStream.meta
+                  RecordStreamWithMeta(meta, filteredSource)
+                })
+              LunWorker.StreamBox(snagOrStreamDisposable)
             }
           }
-          val meta = fromStream.meta
-          RecordStreamWithMeta(meta, filteredSource)
-        })
-      }
+        }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }
   }
+
 }
