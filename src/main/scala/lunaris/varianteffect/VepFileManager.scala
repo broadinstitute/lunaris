@@ -1,6 +1,6 @@
 package lunaris.varianteffect
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{FileIO, Source}
@@ -67,7 +67,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     implicit actorSystem: ActorSystem
   ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
 
-  def newQueryFuture(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Unit] = {
+  def newQueryFuture(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Done] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val inputFile = inputFilePathForId(resultId)
@@ -86,8 +86,8 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
         val context = {
           LunRunContext(Materializer(actorSystem), resourceConfig, LunRunContext.Observer.forLogger(println))
         }
-        runnable.execute(context)
-    }
+        runnable.executeAsync(context)
+    }.flatten
     queryFuture.onComplete {
       case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileNameForId(resultId)))
       case Failure(exception) =>
@@ -99,12 +99,12 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
   }
 
   def newUploadAndQueryFutureFuture(formData: VariantEffectFormData)(
-    implicit actorSystem: ActorSystem): Future[Unit] = {
+    implicit actorSystem: ActorSystem): Future[Done] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     newQueryFuture(formData)
   }
 
-  class SubmissionResponse(val resultId: ResultId, val fut: Future[Unit])
+  class SubmissionResponse(val resultId: ResultId, val fut: Future[Done])
 
   def submit(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher

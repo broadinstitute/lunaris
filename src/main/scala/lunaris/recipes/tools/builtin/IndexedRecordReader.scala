@@ -1,8 +1,9 @@
 package lunaris.recipes.tools.builtin
 
+import akka.stream.scaladsl.Source
 import lunaris.data.BlockGzippedWithIndex
-import lunaris.io.{Disposable, InputId}
 import lunaris.io.query.RecordExtractor
+import lunaris.io.{Disposable, InputId}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -10,8 +11,9 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordProcessor
-import lunaris.utils.{Eitherator, EitheratorStreamsInterop}
-import org.broadinstitute.yootilz.core.snag.Snag
+import lunaris.streams.utils.RecordStreamTypes.Record
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
+
 
 object IndexedRecordReader extends tools.Tool {
   override def resultType: LunType = LunType.RecordStreamType
@@ -63,12 +65,17 @@ object IndexedRecordReader extends tools.Tool {
 
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
-        Some[RecordStreamWorker]( new RecordStreamWorker {
-          override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
-            val snagOrStreamDisposable = RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
-              RecordProcessor.printSnagsDropFaultyRecords, context.resourceConfig).map(_.map { headerAndRecordEtor =>
-              def objectEtorGenerator(): Eitherator[LunValue.RecordValue] =
-                headerAndRecordEtor.recordEtor.process(record => recordProcessor(record.toLunRecord(idField)))
+        Some[RecordStreamWorker](new RecordStreamWorker {
+
+          private def getSnagOrDataDisposable(context: LunRunContext):
+          Disposable[Either[Snag, RecordExtractor.HeaderAndRecordEtor]] =
+            RecordExtractor.extractRecords(dataWithIndex, compileContext.regions, idField,
+              RecordProcessor.printSnagsDropFaultyRecords, context.resourceConfig)
+
+          class RecordEmitter(val context: LunRunContext) {
+            private val snagOrRecordEtorDisp =
+              getSnagOrDataDisposable(context).map(_.map(_.recordEtor).map { tsvRecordEtor =>
+                tsvRecordEtor.process(record => recordProcessor(record.toLunRecord(idField)))
                   .map { objectValue =>
                     typesOpt match {
                       case Some(types) =>
@@ -80,10 +87,35 @@ object IndexedRecordReader extends tools.Tool {
                       case None => objectValue
                     }
                   }
-              val meta = headerAndRecordEtor.meta
-              RecordStreamWithMeta(meta, EitheratorStreamsInterop.eitheratorToStream(objectEtorGenerator, meta))
-            })
-            LunWorker.StreamBox(snagOrStreamDisposable)
+              })
+            private val snagOrRecordEtor = snagOrRecordEtorDisp.a
+            private val recordEtor = snagOrRecordEtor match {
+              case Left(snag) =>
+                throw new SnagException(snag)
+              case Right(recordEtor) => recordEtor
+            }
+
+            def nextRecord(): Option[Record] = {
+              recordEtor.next() match {
+                case Left(snag) =>
+                  throw new SnagException(snag)
+                case Right(recordOpt) =>
+                  recordOpt
+              }
+            }
+
+            def close(): Unit = snagOrRecordEtorDisp.dispose()
+          }
+
+          override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
+            val snagOrStream =
+              for {
+                meta <- getSnagOrDataDisposable(context).useUp(_.map(_.meta))
+                source = Source.unfoldResource[Record, RecordEmitter](
+                  () => new RecordEmitter(context), _.nextRecord(), _.close()).mapMaterializedValue(_ => meta)
+              } yield RecordStreamWithMeta(meta, source)
+
+            LunWorker.StreamBox(snagOrStream)
           }
         })
 

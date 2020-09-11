@@ -26,8 +26,8 @@ object BatchRunner {
         val actorSystem = ActorSystem("Lunaris")
         val materializer = Materializer(actorSystem)
         val context = LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
-        runnable.execute(context)
-        actorSystem.terminate()
+        val doneFut = runnable.executeAsync(context)
+        doneFut.onComplete(_ => actorSystem.terminate())(context.materializer.executionContext)
     }
   }
 }

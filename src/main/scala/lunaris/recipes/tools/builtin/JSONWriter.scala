@@ -93,10 +93,6 @@ object JSONWriter extends Tool {
       }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable](new LunRunnable {
-        override def execute(context: LunRunContext): Unit = {
-          Await.result(executeAsync(context), FiniteDuration(100, TimeUnit.SECONDS))
-        }
-
         override def executeAsync(context: LunRunContext): Future[Done] = {
           fromWorker.getStreamBox(context).snagOrStreamDisposable.useUp {
             case Left(snag) =>
@@ -107,12 +103,14 @@ object JSONWriter extends Tool {
               }
             case Right(recordStream) =>
               fileOpt match {
-                case Some(file) => file.newWriteChannelDisposable(context.resourceConfig).useUp { channel =>
-                  Disposable.forCloseable(new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))).useUp {
-                    writer =>
-                      writeRecords(recordStream.source, context)(writer.println)
-                  }
-                }
+                case Some(file) =>
+                  val writeChannelDisp = file.newWriteChannelDisposable(context.resourceConfig)
+                  val channel = writeChannelDisp.a
+                  val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
+                  val doneFut = writeRecords(recordStream.source, context)(writer.println)
+                  implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
+                  doneFut.onComplete(_ => writeChannelDisp.dispose())
+                  doneFut
                 case None =>
                   writeRecords(recordStream.source, context)(println)
               }

@@ -10,8 +10,6 @@ import scala.collection.immutable.Iterable
 import scala.concurrent.Future
 
 trait LunRunnable {
-  def execute(context: LunRunContext): Unit
-
   def executeAsync(context: LunRunContext): Future[Done]
 
   def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]]
@@ -28,8 +26,6 @@ object LunRunnable {
   }
 
   object NoOpRunnable extends LunRunnable {
-    override def execute(context: LunRunContext): Unit = ()
-
     override def executeAsync(context: LunRunContext): Future[Done] =
       Future(Done)(context.materializer.executionContext)
 
@@ -38,8 +34,6 @@ object LunRunnable {
   }
 
   case class CompositeRunnable(runnables: Iterable[LunRunnable]) extends LunRunnable {
-    override def execute(context: LunRunContext): Unit = runnables.foreach(_.execute(context))
-
     override def executeAsync(context: LunRunContext): Future[Done] = {
       val unitFuts = runnables.map(_.executeAsync(context))
       Future.foldLeft[Done, Done](unitFuts)(Done)((_, _) => Done)(context.materializer.executionContext)
