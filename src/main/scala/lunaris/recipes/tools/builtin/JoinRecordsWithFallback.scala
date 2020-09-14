@@ -10,6 +10,7 @@ import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordStreamJoinerWithFallback
 import lunaris.streams.utils.RecordStreamTypes.Record
+import lunaris.vep.VepRunner
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object JoinRecordsWithFallback extends tools.Tool {
@@ -33,7 +34,8 @@ object JoinRecordsWithFallback extends tools.Tool {
   }
 
   object VepFallbackGenerator extends FallbackGenerator {
-    override def createFallback(): Record => Either[Snag, Record] = (record: Record) => Right(record) //  TODO
+    override def createFallback(): Record => Either[Snag, Record] =
+      (record: Record) => VepRunner.default.processRecord(record)
   }
 
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
@@ -77,31 +79,29 @@ object JoinRecordsWithFallback extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
         Some {
-          new RecordStreamWorker {
-            override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
-              val snagOrStreamDisposable = for {
-                snagOrDriverStream <- driverWorker.getStreamBox(context).snagOrStreamDisposable
-                snagOrDataStream <- dataWorker.getStreamBox(context).snagOrStreamDisposable
+          (context: LunRunContext) => {
+            val snagOrStreamDisposable = for {
+              snagOrDriverStream <- driverWorker.getStreamBox(context).snagOrStreamDisposable
+              snagOrDataStream <- dataWorker.getStreamBox(context).snagOrStreamDisposable
+            } yield {
+              for {
+                driverStream <- snagOrDriverStream
+                dataStream <- snagOrDataStream
+                metaJoined <- Meta.combine(driverStream.meta, dataStream.meta)
               } yield {
-                for {
-                  driverStream <- snagOrDriverStream
-                  dataStream <- snagOrDataStream
-                  metaJoined <- Meta.combine(driverStream.meta, dataStream.meta)
-                } yield {
-                  val fallback = fallbackGenerator.createFallback()
-                  val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
-                    driverStream.source, dataStream.source) {
-                    _.joinWith(_)
-                  } {
-                    fallback
-                  } {
-                    (snag: Snag) => context.observer.logSnag(snag)
-                  }
-                  RecordStreamWithMeta(metaJoined, sourceJoined)
+                val fallback = fallbackGenerator.createFallback()
+                val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
+                  driverStream.source, dataStream.source) {
+                  _.joinWith(_)
+                } {
+                  fallback
+                } {
+                  (snag: Snag) => context.observer.logSnag(snag)
                 }
+                RecordStreamWithMeta(metaJoined, sourceJoined)
               }
-              LunWorker.StreamBox(snagOrStreamDisposable)
             }
+            LunWorker.StreamBox(snagOrStreamDisposable)
           }
         }
       }
