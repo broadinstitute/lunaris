@@ -1,27 +1,27 @@
-package lunaris.varianteffect
+package lunaris.vep
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Multipart
 import akka.util.ByteString
 import lunaris.expressions.BooleanRecordExpression
 import lunaris.recipes.parsing.RecordExpressionParser
-import lunaris.varianteffect.VepFileManager.ResultId
+import lunaris.vep.VepFileManager.ResultId
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
-case class VariantEffectFormData(fileName: String,
-                                 resultId: ResultId,
-                                 filter: BooleanRecordExpression)
+case class VepFormData(fileName: String,
+                       resultId: ResultId,
+                       filter: BooleanRecordExpression)
 
-object VariantEffectFormData {
-  def fromFields(fields: Map[String, FormField]): VariantEffectFormData = {
+object VepFormData {
+  def fromFields(fields: Map[String, FormField]): VepFormData = {
     val inputFileField = fields(FormField.Keys.inputFile).asInstanceOf[InputFileField]
     val fileName = inputFileField.fileName
     val resultId = inputFileField.resultId
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(RecordExpressionParser.parse(filterString))
-    VariantEffectFormData(fileName, resultId, filter)
+    VepFormData(fileName, resultId, filter)
   }
 
   sealed trait FormField {

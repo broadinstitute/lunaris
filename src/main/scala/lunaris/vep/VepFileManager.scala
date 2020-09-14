@@ -1,4 +1,4 @@
-package lunaris.varianteffect
+package lunaris.vep
 
 import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
@@ -10,7 +10,7 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
 import lunaris.utils.NumberParser
-import lunaris.varianteffect.VepFileManager.{ResultId, ResultStatus}
+import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -67,7 +67,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     implicit actorSystem: ActorSystem
   ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
 
-  def newQueryFuture(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): Future[Done] = {
+  def newQueryFuture(formData: VepFormData)(implicit actorSystem: ActorSystem): Future[Done] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val inputFile = inputFilePathForId(resultId)
@@ -76,7 +76,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
       val request =
-        VariantEffectRequestBuilder.buildRequest(
+        VepRequestBuilder.buildRequest(
           resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
           outputFilePathForId(resultId), formData.filter, Some(dataFileWithIndex.index.toString), varId
         )
@@ -98,7 +98,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
     queryFuture
   }
 
-  def newUploadAndQueryFutureFuture(formData: VariantEffectFormData)(
+  def newUploadAndQueryFutureFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem): Future[Done] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     newQueryFuture(formData)
@@ -106,7 +106,7 @@ class VepFileManager(val inputsFolder: File, val resultsFolder: File,
 
   class SubmissionResponse(val resultId: ResultId, val fut: Future[Done])
 
-  def submit(formData: VariantEffectFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
+  def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     updateStatus(resultId, ResultStatus.createSubmitted())

@@ -10,8 +10,8 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
-import lunaris.varianteffect.VepFileManager.ResultId
-import lunaris.varianteffect.{VepFileManager, VariantEffectFormData, VariantEffectJson}
+import lunaris.vep.VepFileManager.ResultId
+import lunaris.vep.{VepFileManager, VepFormData, VepJson}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -69,10 +69,10 @@ object VariantEffectPredictorServerRunner {
                   decodeRequest {
                     entity(as[Multipart.FormData]) { httpFormData =>
                       val uploadFut = httpFormData.parts.mapAsync(1) {
-                        VariantEffectFormData.FormField.bodyPartToFieldFut(_, vepFileManager)
-                      }.runFold(Map.empty[String, VariantEffectFormData.FormField]) { (fieldsByName, field) =>
+                        VepFormData.FormField.bodyPartToFieldFut(_, vepFileManager)
+                      }.runFold(Map.empty[String, VepFormData.FormField]) { (fieldsByName, field) =>
                         fieldsByName + (field.name -> field)
-                      }.map(VariantEffectFormData.fromFields).map { variantEffectFormData =>
+                      }.map(VepFormData.fromFields).map { variantEffectFormData =>
                         vepFileManager.submit(variantEffectFormData)
                       }
                       onComplete(uploadFut) {
@@ -100,7 +100,7 @@ object VariantEffectPredictorServerRunner {
                   case Right(resultId) => vepFileManager.getStatus(resultId)
                 }
                 complete(
-                  HttpUtils.ResponseBuilder.fromJson(VariantEffectJson.resultStatusToJson(status))
+                  HttpUtils.ResponseBuilder.fromJson(VepJson.resultStatusToJson(status))
                 )
               }
             },

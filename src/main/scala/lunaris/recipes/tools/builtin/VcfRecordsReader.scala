@@ -8,7 +8,7 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.varianteffect.VcfStreamVariantsReader
+import lunaris.vep.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object VcfRecordsReader extends tools.Tool {
@@ -52,17 +52,15 @@ object VcfRecordsReader extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker] {
-          new RecordStreamWorker {
-            override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
-              val recordType = VcfStreamVariantsReader.vcfRecordType
-              val meta = Meta(recordType, chroms)
-              val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
-                .map(_.toRecord).mapMaterializedValue(_ => meta)
-              val snagOrStreamDisposable = {
-                Disposable(Right(RecordStreamWithMeta(meta, source)))(Disposable.Disposer.Noop)
-              }
-              LunWorker.StreamBox(snagOrStreamDisposable)
+          (context: LunRunContext) => {
+            val recordType = VcfStreamVariantsReader.vcfRecordType
+            val meta = Meta(recordType, chroms)
+            val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
+              .map(_.toRecord).mapMaterializedValue(_ => meta)
+            val snagOrStreamDisposable = {
+              Disposable(Right(RecordStreamWithMeta(meta, source)))(Disposable.Disposer.Noop)
             }
+            LunWorker.StreamBox(snagOrStreamDisposable)
           }
         }
 

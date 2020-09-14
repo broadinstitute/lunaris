@@ -1,4 +1,4 @@
-package lunaris.varianteffect
+package lunaris.vep
 
 import better.files.File
 import lunaris.expressions.BooleanRecordExpression
@@ -11,9 +11,9 @@ import lunaris.recipes.tools.builtin.JoinRecordsWithFallback
 import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
-import lunaris.varianteffect.VepFileManager.ResultId
+import lunaris.vep.VepFileManager.ResultId
 
-object VariantEffectRequestBuilder {
+object VepRequestBuilder {
 
   def buildRequest(resultId: ResultId,
                    chroms: Seq[String],

@@ -1,4 +1,4 @@
-package lunaris.varianteffect
+package lunaris.vep
 
 import akka.actor.ActorSystem
 import akka.stream.IOResult
@@ -10,7 +10,7 @@ import lunaris.genomics.{Locus, Region, Variant}
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.NumberParser
-import lunaris.varianteffect.VcfStreamVariantsReader.ColNames
+import lunaris.vep.VcfStreamVariantsReader.ColNames
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContextExecutor, Future}

@@ -1,9 +1,9 @@
-package lunaris.varianteffect
+package lunaris.vep
 
 import io.circe.{Encoder, Json}
-import lunaris.varianteffect.VepFileManager.ResultStatus
+import lunaris.vep.VepFileManager.ResultStatus
 
-object VariantEffectJson {
+object VepJson {
 
   implicit val resultStatusEncoder: Encoder[ResultStatus] = (status: ResultStatus) => Json.obj(
     "statusCode" -> Json.fromInt(status.statusCode),
