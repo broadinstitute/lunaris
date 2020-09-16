@@ -3,17 +3,29 @@ package lunaris.vep
 import java.io.PrintWriter
 import java.nio.charset.StandardCharsets
 
-import better.files.File
+import better.files.{File, Resource}
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.utils.RecordStreamTypes.Record
+import lunaris.utils.IOUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.sys.process._
 import scala.util.Random
 
-class VepRunner(val vepRunPath: File, val vepWorkDir: File) {
+class VepRunner(val vepExecutablePath: File, val vepWorkDir: File) {
 
-  vepWorkDir.createDirectoryIfNotExists()
+  val vepScriptResourceShortName: String = "vepScript.sh"
+  val vepScriptResourceFullName: String = "lunaris/vep/" + vepScriptResourceShortName
+
+  val vepScriptFile: File = vepWorkDir / vepScriptResourceShortName
+  val vepRunDir: File = vepWorkDir / "run"
+
+  {
+    vepWorkDir.createDirectoryIfNotExists(createParents = true)
+    vepRunDir.createDirectoryIfNotExists(createParents = true)
+    val vepScriptFileOut = vepScriptFile.newOutputStream
+    IOUtils.writeAllYouCanRead(Resource.getAsStream(vepScriptResourceFullName), vepScriptFileOut)
+  }
 
   private def optToSnagOrValue[T](itemOpt: Option[T])(snagMessage: => String): Either[Snag, T] = {
     itemOpt match {
@@ -46,28 +58,35 @@ class VepRunner(val vepRunPath: File, val vepWorkDir: File) {
     } yield result
   }
 
+  def runVep(scriptFile: File, inputFile: File, outputFile: File): Int = {
+    val cpus = 1
+    val fastaFile = File("")
+    val commandLine = s"$scriptFile $inputFile $cpus $fastaFile"
+    commandLine.!
+  }
+
   def calculateValues(id: String, chrom: String, pos: Int, ref: String, alt: String, qual: String, filter: String,
                       info: String, format: String):
   Either[Snag, (Array[String], Array[String])] = {
-    val subWorkDir = vepWorkDir / Random.nextLong(Long.MaxValue).toHexString
-    subWorkDir.createDirectory()
-    val inputFile = subWorkDir / "input.vcf"
+    val subRunDir = vepRunDir / Random.nextLong(Long.MaxValue).toHexString
+    subRunDir.createDirectory()
+    val inputFile = subRunDir / "input.vcf"
     inputFile.bufferedWriter(StandardCharsets.UTF_8).map(new PrintWriter(_)).foreach { printWriter =>
       printWriter.println("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
       printWriter.println(s"$chrom\t$pos\t$id\t$ref\t$alt\t$qual\t$filter\t$info\t$format")
     }
-    val outputFile = subWorkDir / "output.tsv"
-    val returnValue = s"$vepRunPath --cache -i $inputFile -o $outputFile".!
-    if(returnValue == 0) {
+    val outputFile = subRunDir / "output.tsv"
+    val returnValue = s"$vepExecutablePath --cache -i $inputFile -o $outputFile".!
+    if (returnValue == 0) {
       val lineIter = outputFile.lineIterator.dropWhile(_.startsWith("##"))
-      if(lineIter.hasNext) {
+      if (lineIter.hasNext) {
         val headerLineRaw = lineIter.next()
-        val headerLine = if(headerLineRaw.startsWith("#")) {
+        val headerLine = if (headerLineRaw.startsWith("#")) {
           headerLineRaw.substring(1)
         } else {
           headerLineRaw
         }
-        if(lineIter.hasNext) {
+        if (lineIter.hasNext) {
           val dataLine = lineIter.next()
           val headers = headerLine.split("\t")
           val values = dataLine.split("\t")
@@ -105,7 +124,7 @@ class VepRunner(val vepRunPath: File, val vepWorkDir: File) {
 object VepRunner {
   def default: VepRunner = {
     val vepRunPath = File("/home/BROAD.MIT.EDU/oliverr/git/ensembl-vep/vep")
-    val vepWorkDir = File("/home/BROAD.MIT.EDU/oliverr/lunaris/vep/run")
+    val vepWorkDir = File("/home/BROAD.MIT.EDU/oliverr/lunaris/vep/work")
     new VepRunner(vepRunPath, vepWorkDir)
   }
 }

@@ -1,5 +1,6 @@
 package lunaris.utils
 
+import java.io.{BufferedInputStream, BufferedOutputStream, InputStream, OutputStream}
 import java.nio.ByteBuffer
 import java.nio.channels.{ReadableByteChannel, WritableByteChannel}
 import java.nio.charset.StandardCharsets
@@ -35,6 +36,26 @@ object IOUtils {
       case Some(snag) => Left(snag)
       case None => Right(new String(builder.result()))
     }
+  }
+
+  def writeAllYouCanRead(is: InputStream, os: OutputStream, bufferSize: Int = 1024): Long = {
+    val bis = new BufferedInputStream(is)
+    val bos = new BufferedOutputStream(os)
+    val buffer = new Array[Byte](bufferSize)
+    var reachedEndOfInput: Boolean = false
+    var bytesReadN: Long = 0
+    while(!reachedEndOfInput) {
+      val bytesReadNewN = bis.read(buffer)
+      println(bytesReadNewN)
+      if(bytesReadNewN > 0) {
+        bos.write(buffer, 0, bytesReadNewN)
+        bos.flush()
+        bytesReadN += bytesReadNewN
+      } else {
+        reachedEndOfInput = true
+      }
+    }
+    bytesReadN
   }
 
 }
