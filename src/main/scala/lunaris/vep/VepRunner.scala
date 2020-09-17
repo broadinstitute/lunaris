@@ -72,6 +72,8 @@ class VepRunner(val vepInstallation: VepInstallation) {
     commandLine.!
   }
 
+  val colNamePick: String = "PICK"
+
   def calculateValues(id: String, chrom: String, pos: Int, ref: String, alt: String, qual: String, filter: String,
                       info: String, format: String):
   Either[Snag, (Array[String], Array[String])] = {
@@ -94,11 +96,22 @@ class VepRunner(val vepInstallation: VepInstallation) {
         } else {
           headerLineRaw
         }
-        if (lineIter.hasNext) {
-          val dataLine = lineIter.next()
-          val headers = headerLine.split("\t")
-          val values = dataLine.split("\t")
-          Right((headers, values))
+        val headers = headerLine.split("\t")
+        var valuesOpt: Option[Array[String]] = None
+        val iPick = headers.indexOf(colNamePick)
+        if (iPick >= 0) {
+          val requiredPickValue = "1"
+          while (lineIter.hasNext && valuesOpt.isEmpty) {
+            val dataLine = lineIter.next()
+            val values = dataLine.split("\t")
+            if (values.length > iPick && values(iPick) == requiredPickValue) {
+              valuesOpt = Some(values)
+            }
+          }
+          valuesOpt match {
+            case None => Left(Snag(s"vep produced no row with value $requiredPickValue for $colNamePick."))
+            case Some(values) => Right((headers, values))
+          }
         } else {
           Left(Snag(s"vep produced no data line for variant $id"))
         }
