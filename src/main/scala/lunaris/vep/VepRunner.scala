@@ -12,19 +12,20 @@ import org.broadinstitute.yootilz.core.snag.Snag
 import scala.sys.process._
 import scala.util.Random
 
-class VepRunner(val vepExecutablePath: File, val vepWorkDir: File) {
+class VepRunner(val vepInstallation: VepInstallation) {
 
-  val vepScriptResourceShortName: String = "vepScript.sh"
-  val vepScriptResourceFullName: String = "lunaris/vep/" + vepScriptResourceShortName
+  val vepWrapperScriptResourceShortName: String = "vepWrapper.sh"
+  val vepWrapperScriptResourceFullName: String = "lunaris/vep/" + vepWrapperScriptResourceShortName
 
-  val vepScriptFile: File = vepWorkDir / vepScriptResourceShortName
+  val vepWorkDir: File = vepInstallation.workDir
+  val vepWrapperScriptFile: File = vepWorkDir / vepWrapperScriptResourceShortName
   val vepRunDir: File = vepWorkDir / "run"
 
   {
     vepWorkDir.createDirectoryIfNotExists(createParents = true)
     vepRunDir.createDirectoryIfNotExists(createParents = true)
-    val vepScriptFileOut = vepScriptFile.newOutputStream
-    IOUtils.writeAllYouCanRead(Resource.getAsStream(vepScriptResourceFullName), vepScriptFileOut)
+    val vepScriptFileOut = vepWrapperScriptFile.newOutputStream
+    IOUtils.writeAllYouCanRead(Resource.getAsStream(vepWrapperScriptResourceFullName), vepScriptFileOut)
   }
 
   private def optToSnagOrValue[T](itemOpt: Option[T])(snagMessage: => String): Either[Snag, T] = {
@@ -58,10 +59,16 @@ class VepRunner(val vepExecutablePath: File, val vepWorkDir: File) {
     } yield result
   }
 
-  def runVep(scriptFile: File, inputFile: File, outputFile: File): Int = {
+  def runVep(inputFile: File, outputFile: File, warningsFile: File): Int = {
+    val vepScriptFile = vepInstallation.vepScriptFile
     val cpus = 1
-    val fastaFile = File("")
-    val commandLine = s"$scriptFile $inputFile $cpus $fastaFile"
+    val fastaFile = vepInstallation.fastaFile
+    val pluginsDir = vepInstallation.pluginsDir
+    val dbNsfp = vepInstallation.dbNSFP
+    // TODO remaining arguments
+    val commandLine =
+      s"bash $vepWrapperScriptFile $vepScriptFile $inputFile $cpus $fastaFile $pluginsDir $dbNsfp " +
+        s"$outputFile $warningsFile"
     commandLine.!
   }
 
@@ -76,7 +83,8 @@ class VepRunner(val vepExecutablePath: File, val vepWorkDir: File) {
       printWriter.println(s"$chrom\t$pos\t$id\t$ref\t$alt\t$qual\t$filter\t$info\t$format")
     }
     val outputFile = subRunDir / "output.tsv"
-    val returnValue = s"$vepExecutablePath --cache -i $inputFile -o $outputFile".!
+    val warningsFile = subRunDir / "warnings"
+    val returnValue = runVep(inputFile, outputFile, warningsFile)
     if (returnValue == 0) {
       val lineIter = outputFile.lineIterator.dropWhile(_.startsWith("##"))
       if (lineIter.hasNext) {
@@ -122,9 +130,5 @@ class VepRunner(val vepExecutablePath: File, val vepWorkDir: File) {
 }
 
 object VepRunner {
-  def default: VepRunner = {
-    val vepRunPath = File("/home/BROAD.MIT.EDU/oliverr/git/ensembl-vep/vep")
-    val vepWorkDir = File("/home/BROAD.MIT.EDU/oliverr/lunaris/vep/work")
-    new VepRunner(vepRunPath, vepWorkDir)
-  }
+  def default: VepRunner = new VepRunner(VepInstallation.autoPick)
 }

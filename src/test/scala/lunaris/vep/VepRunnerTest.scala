@@ -8,7 +8,7 @@ class VepRunnerTest extends AnyFunSuite {
   test("Writing input file") {
     val vepRunPath = File("/home/BROAD.MIT.EDU/oliverr/git/ensembl-vep/vep")
     val vepWorkDir = File("/home/BROAD.MIT.EDU/oliverr/lunaris/vep/run")
-    val vepRunner = new VepRunner(vepRunPath, vepWorkDir)
+    val vepRunner = new VepRunner(VepInstallation.autoPick)
     val id = "1:69088:T:G"
     val chrom = "1"
     val pos = 69088

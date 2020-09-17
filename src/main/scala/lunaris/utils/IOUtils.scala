@@ -46,7 +46,6 @@ object IOUtils {
     var bytesReadN: Long = 0
     while(!reachedEndOfInput) {
       val bytesReadNewN = bis.read(buffer)
-      println(bytesReadNewN)
       if(bytesReadNewN > 0) {
         bos.write(buffer, 0, bytesReadNewN)
         bos.flush()
