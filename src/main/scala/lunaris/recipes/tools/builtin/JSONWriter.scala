@@ -94,7 +94,7 @@ object JSONWriter extends Tool {
 
       override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable](new LunRunnable {
         override def executeAsync(context: LunRunContext): Future[Done] = {
-          fromWorker.getStreamBox(context).snagOrStreamDisposable.useUp {
+          fromWorker.getStreamBox(context).snagOrStream match {
             case Left(snag) =>
               implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
               Future {
@@ -117,11 +117,10 @@ object JSONWriter extends Tool {
           }
         }
 
-        override def getStream(context: LunRunContext):
-        Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] =
-          fromWorker.getStreamBox(context).snagOrStreamDisposable.map(_.map { recordStream =>
+        override def getStream(context: LunRunContext): Either[Snag, Source[String, RecordStreamWithMeta.Meta]] =
+          fromWorker.getStreamBox(context).snagOrStream.map { recordStream =>
             toLineSource(recordStream.source)
-          })
+          }
       })
     }
   }

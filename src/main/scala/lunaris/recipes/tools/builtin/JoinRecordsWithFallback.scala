@@ -1,6 +1,5 @@
 package lunaris.recipes.tools.builtin
 
-import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -80,13 +79,10 @@ object JoinRecordsWithFallback extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
         Some {
           (context: LunRunContext) => {
-            val snagOrStreamDisposable = for {
-              snagOrDriverStream <- driverWorker.getStreamBox(context).snagOrStreamDisposable
-              snagOrDataStream <- dataWorker.getStreamBox(context).snagOrStreamDisposable
-            } yield {
+            val snagOrStream =
               for {
-                driverStream <- snagOrDriverStream
-                dataStream <- snagOrDataStream
+                driverStream <- driverWorker.getStreamBox(context).snagOrStream
+                dataStream <- dataWorker.getStreamBox(context).snagOrStream
                 metaJoined <- Meta.combine(driverStream.meta, dataStream.meta)
               } yield {
                 val fallback = fallbackGenerator.createFallback()
@@ -100,8 +96,7 @@ object JoinRecordsWithFallback extends tools.Tool {
                 }
                 RecordStreamWithMeta(metaJoined, sourceJoined)
               }
-            }
-            LunWorker.StreamBox(snagOrStreamDisposable)
+            LunWorker.StreamBox(snagOrStream)
           }
         }
       }

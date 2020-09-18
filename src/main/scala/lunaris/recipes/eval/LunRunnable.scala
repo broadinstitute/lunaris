@@ -12,7 +12,7 @@ import scala.concurrent.Future
 trait LunRunnable {
   def executeAsync(context: LunRunContext): Future[Done]
 
-  def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]]
+  def getStream(context: LunRunContext): Either[Snag, Source[String, RecordStreamWithMeta.Meta]]
 }
 
 object LunRunnable {
@@ -29,8 +29,8 @@ object LunRunnable {
     override def executeAsync(context: LunRunContext): Future[Done] =
       Future(Done)(context.materializer.executionContext)
 
-    override def getStream(context: LunRunContext): Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] =
-      Disposable(Left(Snag("Nothing to do")))(Disposable.Disposer.Noop)
+    override def getStream(context: LunRunContext): Either[Snag, Source[String, RecordStreamWithMeta.Meta]] =
+      Left(Snag("Nothing to do"))
   }
 
   case class CompositeRunnable(runnables: Iterable[LunRunnable]) extends LunRunnable {
@@ -39,14 +39,13 @@ object LunRunnable {
       Future.foldLeft[Done, Done](unitFuts)(Done)((_, _) => Done)(context.materializer.executionContext)
     }
 
-    override def getStream(context: LunRunContext):
-    Disposable[Either[Snag, Source[String, RecordStreamWithMeta.Meta]]] = {
+    override def getStream(context: LunRunContext): Either[Snag, Source[String, RecordStreamWithMeta.Meta]] = {
       if (runnables.isEmpty) {
-        Disposable(Left(Snag("Nothing to do")))(Disposable.Disposer.Noop)
+        Left(Snag("No streams available"))
       } else if (runnables.size == 1) {
         runnables.head.getStream(context)
       } else {
-        Disposable(Left(Snag("Don't know how to combine multiple output streams.")))(Disposable.Disposer.Noop)
+        Left(Snag("Don't know how to combine multiple output streams."))
       }
     }
   }
