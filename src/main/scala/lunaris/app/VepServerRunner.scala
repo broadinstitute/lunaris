@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 import scala.util.{Failure, Success}
 
-object VariantEffectPredictorServerRunner {
+object VepServerRunner {
 
   object Defaults {
     val host: String = "localhost"
@@ -42,10 +42,10 @@ object VariantEffectPredictorServerRunner {
         implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
         val route: Route = {
           concat(
-            path("lunaris" / "predictor.html") {
+            path("lunaris" / "vep.html") {
               get {
                 complete(
-                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/predictor.html")
+                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/vep.html")
                 )
               }
             },

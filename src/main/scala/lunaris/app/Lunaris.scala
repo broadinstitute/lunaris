@@ -16,19 +16,19 @@ object Lunaris {
         BatchRunner.run(input)
       case List(conf.server) =>
         ServerRunner.run(conf.server.host.toOption, conf.server.port.toOption)
-      case List(conf.variantEffectPredictor) =>
+      case List(conf.vep) =>
         val dataFileWithIndex =
           BlockGzippedWithIndex(
-            conf.variantEffectPredictor.dataFile(),
-            conf.variantEffectPredictor.indexFile.toOption
+            conf.vep.dataFile(),
+            conf.vep.indexFile.toOption
           )
-        VariantEffectPredictorServerRunner.run(
-          conf.variantEffectPredictor.host.toOption,
-          conf.variantEffectPredictor.port.toOption,
-          conf.variantEffectPredictor.inputsFolder.map(File(_))(),
-          conf.variantEffectPredictor.resultsFolder.map(File(_))(),
+        VepServerRunner.run(
+          conf.vep.host.toOption,
+          conf.vep.port.toOption,
+          conf.vep.inputsFolder.map(File(_))(),
+          conf.vep.resultsFolder.map(File(_))(),
           dataFileWithIndex,
-          conf.variantEffectPredictor.varId()
+          conf.vep.varId()
         )
     }
   }
