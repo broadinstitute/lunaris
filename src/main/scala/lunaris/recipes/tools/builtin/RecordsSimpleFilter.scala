@@ -1,6 +1,5 @@
 package lunaris.recipes.tools.builtin
 
-import lunaris.io.Disposable
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -54,21 +53,19 @@ object RecordsSimpleFilter extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] =
         Some[RecordStreamWorker] {
-          new RecordStreamWorker {
-            override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
-              val snagOrStreamDisposable =
-                fromWorker.getStreamBox(context).snagOrStreamDisposable.map(_.map { fromStream =>
-                  val filteredSource = fromStream.source.filter { record =>
-                    record.values.get(field) match {
-                      case Some(StringValue(valueAsString)) => valueAsString == stringValue
-                      case _ => false
-                    }
+          (context: LunRunContext) => {
+            val snagOrStream =
+              fromWorker.getStreamBox(context).snagOrStream.map { fromStream =>
+                val filteredSource = fromStream.source.filter { record =>
+                  record.values.get(field) match {
+                    case Some(StringValue(valueAsString)) => valueAsString == stringValue
+                    case _ => false
                   }
-                  val meta = fromStream.meta
-                  RecordStreamWithMeta(meta, filteredSource)
-                })
-              LunWorker.StreamBox(snagOrStreamDisposable)
-            }
+                }
+                val meta = fromStream.meta
+                RecordStreamWithMeta(meta, filteredSource)
+              }
+            LunWorker.StreamBox(snagOrStream)
           }
         }
 

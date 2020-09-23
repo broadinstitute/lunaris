@@ -1,6 +1,6 @@
 package lunaris.recipes.tools.builtin
 
-import lunaris.io.{Disposable, InputId}
+import lunaris.io.InputId
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -57,10 +57,8 @@ object VcfRecordsReader extends tools.Tool {
             val meta = Meta(recordType, chroms)
             val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
               .map(_.toRecord).mapMaterializedValue(_ => meta)
-            val snagOrStreamDisposable = {
-              Disposable(Right(RecordStreamWithMeta(meta, source)))(Disposable.Disposer.Noop)
-            }
-            LunWorker.StreamBox(snagOrStreamDisposable)
+            val stream = RecordStreamWithMeta(meta, source)
+            LunWorker.StreamBox(stream)
           }
         }
 
