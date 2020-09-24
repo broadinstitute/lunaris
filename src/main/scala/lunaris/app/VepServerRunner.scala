@@ -25,8 +25,8 @@ object VepServerRunner {
     val port: Int = 8080
   }
 
-  def run(hostOpt: Option[String], portOpt: Option[Int], inputFolder: File, resultsFolder: File,
-          dataFileWithIndex: BlockGzippedWithIndex, varId: String): Unit = {
+  def run(settings: VepSettings, hostOpt: Option[String], portOpt: Option[Int], inputFolder: File,
+          resultsFolder: File, dataFileWithIndex: BlockGzippedWithIndex, varId: String): Unit = {
     val host = hostOpt.getOrElse(Defaults.host)
     val port = portOpt.getOrElse(Defaults.port)
     val resourceConfig = ResourceConfig.empty

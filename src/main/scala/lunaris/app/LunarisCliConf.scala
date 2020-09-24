@@ -2,7 +2,7 @@ package lunaris.app
 
 import org.rogach.scallop.{ScallopConf, Subcommand}
 
-class LunarisConf(arguments: Seq[String]) extends ScallopConf(arguments) {
+class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   version(LunarisInfo.versionLong)
   banner(
     """Usage: lunaris batch|server ...

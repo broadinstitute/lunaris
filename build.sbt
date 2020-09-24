@@ -11,6 +11,7 @@ val scallopV = "3.4.0"
 val akkaHttpV = "10.1.12"
 val akkaStreamV = "2.6.5"
 val fastParseV = "2.2.2"
+val configV = "1.4.0"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
@@ -23,7 +24,8 @@ lazy val mainDeps = Seq(
   "org.rogach" %% "scallop" % scallopV,
   "com.typesafe.akka" %% "akka-http"   % akkaHttpV,
   "com.typesafe.akka" %% "akka-stream" % akkaStreamV,
-  "com.lihaoyi" %% "fastparse" % fastParseV
+  "com.lihaoyi" %% "fastparse" % fastParseV,
+  "com.typesafe" % "config" % configV
 )
 
 lazy val testDeps = Set(

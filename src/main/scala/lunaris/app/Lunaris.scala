@@ -9,7 +9,7 @@ import lunaris.io.InputId
 object Lunaris {
   def main(args: Array[String]): Unit = {
     println(s"This is ${LunarisInfo.versionLong}")
-    val conf = new LunarisConf(args)
+    val conf = new LunarisCliConf(args)
     conf.subcommands match {
       case List(conf.batch) =>
         val input = InputId(conf.batch.requestFile())
@@ -17,12 +17,15 @@ object Lunaris {
       case List(conf.server) =>
         ServerRunner.run(conf.server.host.toOption, conf.server.port.toOption)
       case List(conf.vep) =>
-        val dataFileWithIndex =
+        val dataFileWithIndex = {
           BlockGzippedWithIndex(
             conf.vep.dataFile(),
             conf.vep.indexFile.toOption
           )
+        }
+        val vepSettings = new VepSettings()
         VepServerRunner.run(
+          vepSettings,
           conf.vep.host.toOption,
           conf.vep.port.toOption,
           conf.vep.inputsFolder.map(File(_))(),
