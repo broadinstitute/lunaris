@@ -11,7 +11,7 @@ object Lunaris {
     println(s"This is ${LunarisInfo.versionLong}")
     val lunarisCliConf = new LunarisCliConf(args)
     val cliConfigBox = lunarisCliConf.toConfigBox
-    val defaultConfigBox = LunarisConfigBox.default
+    val defaultConfigBox = LunarisConfigKit.default
     val configBox = cliConfigBox.withFallback(defaultConfigBox)
     cliConfigBox.mode.get match {
       case Right(mode) =>
@@ -28,24 +28,13 @@ object Lunaris {
                 ServerRunner.run(serverSettings)
             }
           case LunarisMode.Vep =>
-            val dataFileWithIndex = {
-              BlockGzippedWithIndex(
-                lunarisCliConf.vep.dataFile(),
-                lunarisCliConf.vep.indexFile.toOption
-              )
-            }
             configBox.toVepServerSettings match {
               case Left(snag) =>
                 println("Cannot start Lunaris VEP Mask Server")
                 println(snag.message)
                 println("Exit")
               case Right(vepServerSettings) =>
-                VepServerRunner.run(
-                  vepServerSettings,
-                  lunarisCliConf.vep.resultsFolder.map(File(_))(),
-                  dataFileWithIndex,
-                  lunarisCliConf.vep.varId()
-                )
+                VepServerRunner.run(vepServerSettings)
             }
         }
       case Left(snag) =>

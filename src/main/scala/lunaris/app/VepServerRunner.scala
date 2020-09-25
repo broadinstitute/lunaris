@@ -5,8 +5,6 @@ import akka.http.scaladsl.model.{ContentTypes, Multipart}
 import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
-import better.files.File
-import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
@@ -19,14 +17,13 @@ import scala.io.StdIn
 import scala.util.{Failure, Success}
 
 object VepServerRunner {
-  def run(vepServerSettings: VepServerSettings, resultsFolder: File, dataFileWithIndex: BlockGzippedWithIndex,
-          varId: String): Unit = {
+  def run(vepServerSettings: VepServerSettings): Unit = {
     val serverSettings = vepServerSettings.serverSettings
     val host = serverSettings.host
     val port = serverSettings.port
     val vepSettings = vepServerSettings.vepSettings
     val resourceConfig = ResourceConfig.empty
-    val vepFileManager = new VepFileManager(vepSettings, dataFileWithIndex, varId, resourceConfig)
+    val vepFileManager = new VepFileManager(vepSettings, resourceConfig)
     vepFileManager.foldersExistOrSnag() match {
       case Left(snag) =>
         println("Unable to establish storage for inputs and results.")
@@ -120,7 +117,7 @@ object VepServerRunner {
             },
             path("lunaris" / "predictor" / "schema") {
               get {
-                HeaderExtractor.extractHeader(dataFileWithIndex, resourceConfig).useUp {
+                HeaderExtractor.extractHeader(vepSettings.dataFileWithIndex, resourceConfig).useUp {
                   case Left(snag) =>
                     complete(
                       HttpUtils.ResponseBuilder.fromJson(SnagJson.snagEncoder(snag))

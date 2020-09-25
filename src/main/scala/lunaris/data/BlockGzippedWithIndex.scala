@@ -9,6 +9,10 @@ object BlockGzippedWithIndex {
     BlockGzippedWithIndex(InputId(data), InputId(index))
 
   def apply(data: String, indexOpt: Option[String]): BlockGzippedWithIndex = {
+    BlockGzippedWithIndex(InputId(data), indexOpt.map(InputId(_)))
+  }
+
+  def apply(data: InputId, indexOpt: Option[InputId]): BlockGzippedWithIndex = {
     indexOpt match {
       case Some(index) => apply(data, index)
       case None => apply(data)

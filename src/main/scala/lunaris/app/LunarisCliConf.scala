@@ -1,6 +1,8 @@
 package lunaris.app
 
 import better.files.File
+import lunaris.io.InputId
+import lunaris.utils.BuilderBox
 import org.rogach.scallop.{ScallopConf, Subcommand}
 
 class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
@@ -33,40 +35,36 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     banner("Ensembl VEP.")
     val inputsFolder = opt[String](descr = "Folder to store inputs.")
     val resultsFolder = opt[String](descr = "Folder to store results.")
-    val dataFile = opt[String](descr = "File with variant data", required = true)
+    val dataFile = opt[String](descr = "File with variant data")
     val indexFile =
-      opt[String](descr = "Index file for variant data (if absent, it will be data file plus .tbi", required = false)
-    val varId = opt[String](descr = "Name of column with variant id", required = true)
+      opt[String](descr = "Index file for variant data (if absent, it will be data file plus .tbi")
+    val varId = opt[String](descr = "Name of column with variant id")
   }
   addSubcommand(vep)
   requireSubcommand()
   verify()
 
-  private def withServerOptions(configBox: LunarisConfigBox, webService: WebService): LunarisConfigBox = {
-    var configBoxTemp = configBox
-    webService.host.toOption.foreach(host => configBoxTemp = configBoxTemp.host.set(host))
-    webService.port.toOption.foreach(port => configBoxTemp = configBoxTemp.port.set(port))
-    configBoxTemp
+  private def withServerOptions(configKitBox: BuilderBox[LunarisConfigKit], webService: WebService): Unit = {
+    configKitBox.modifyForeach(webService.host.toOption)(_.host.set(_))
+    configKitBox.modifyForeach(webService.port.toOption)(_.port.set(_))
   }
 
-  def toConfigBox: LunarisConfigBox = {
-    var configBox: LunarisConfigBox = LunarisConfigBox.empty
+  def toConfigBox: LunarisConfigKit = {
+    var configKitBox: BuilderBox[LunarisConfigKit] = BuilderBox(LunarisConfigKit.empty)
     subcommands match {
       case List(this.batch) =>
-        configBox = configBox.mode.set(LunarisMode.Batch)
+        configKitBox.modify(_.mode.set(LunarisMode.Batch))
       case List(this.server) =>
-        configBox = configBox.mode.set(LunarisMode.Server)
-        configBox = withServerOptions(configBox, this.server)
+        configKitBox.modify(_.mode.set(LunarisMode.Server))
+        withServerOptions(configKitBox, this.server)
       case List(this.vep) =>
-        configBox = configBox.mode.set(LunarisMode.Vep)
-        configBox = withServerOptions(configBox, this.vep)
-        this.vep.inputsFolder.map(File(_)).toOption.foreach { inputsFolder =>
-          configBox = configBox.inputsFolder.set(inputsFolder)
-        }
-        this.vep.resultsFolder.map(File(_)).toOption.foreach { resultsFolder =>
-          configBox = configBox.resultsFolder.set(resultsFolder)
-        }
+        configKitBox.modify(_.mode.set(LunarisMode.Vep))
+        withServerOptions(configKitBox, this.vep)
+        configKitBox.modifyForeach(this.vep.inputsFolder.map(File(_)).toOption)(_.inputsFolder.set(_))
+        configKitBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
+        configKitBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
+        configKitBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
     }
-    configBox
+    configKitBox.value
   }
 }

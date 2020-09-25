@@ -18,11 +18,12 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-class VepFileManager(val vepSettings: VepSettings, val dataFileWithIndex: BlockGzippedWithIndex, val varId: String,
-                     resourceConfig: ResourceConfig) {
+class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfig) {
 
   val inputsFolder: File = vepSettings.inputsFolder
   val resultsFolder: File = vepSettings.resultsFolder
+  val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
+  val varId: String = vepSettings.varId
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
 
