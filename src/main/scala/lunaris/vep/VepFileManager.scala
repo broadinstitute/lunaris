@@ -6,6 +6,7 @@ import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import better.files.File
+import lunaris.app.VepSettings
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
@@ -17,9 +18,11 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-class VepFileManager(val inputsFolder: File, val resultsFolder: File,
-                     val dataFileWithIndex: BlockGzippedWithIndex, val varId: String,
+class VepFileManager(val vepSettings: VepSettings, val dataFileWithIndex: BlockGzippedWithIndex, val varId: String,
                      resourceConfig: ResourceConfig) {
+
+  val inputsFolder: File = vepSettings.inputsFolder
+  val resultsFolder: File = vepSettings.resultsFolder
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
 

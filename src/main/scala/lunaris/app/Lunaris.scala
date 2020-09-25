@@ -11,6 +11,8 @@ object Lunaris {
     println(s"This is ${LunarisInfo.versionLong}")
     val lunarisCliConf = new LunarisCliConf(args)
     val cliConfigBox = lunarisCliConf.toConfigBox
+    val defaultConfigBox = LunarisConfigBox.default
+    val configBox = cliConfigBox.withFallback(defaultConfigBox)
     cliConfigBox.mode.get match {
       case Right(mode) =>
         mode match {
@@ -18,7 +20,13 @@ object Lunaris {
             val input = InputId(lunarisCliConf.batch.requestFile())
             BatchRunner.run(input)
           case LunarisMode.Server =>
-            ServerRunner.run(lunarisCliConf.server.host.toOption, lunarisCliConf.server.port.toOption)
+            configBox.toServerSettings match {
+              case Left(snag) =>
+                println("Cannot start Lunaris web server")
+                println(snag.message)
+              case Right(serverSettings) =>
+                ServerRunner.run(serverSettings)
+            }
           case LunarisMode.Vep =>
             val dataFileWithIndex = {
               BlockGzippedWithIndex(
@@ -26,20 +34,14 @@ object Lunaris {
                 lunarisCliConf.vep.indexFile.toOption
               )
             }
-            var cliConfigBoxTemp: LunarisConfigBox = LunarisConfigBox.empty
-            lunarisCliConf.vep.host.toOption.foreach { host => cliConfigBoxTemp = cliConfigBoxTemp.host.set(host) }
-            val defaultConfigBox = LunarisConfigBox.default
-            val configBox = cliConfigBoxTemp.withFallback(defaultConfigBox)
             configBox.toVepServerSettings match {
               case Left(snag) =>
-                println("Cannot start VEP Mask Server")
+                println("Cannot start Lunaris VEP Mask Server")
                 println(snag.message)
                 println("Exit")
               case Right(vepServerSettings) =>
                 VepServerRunner.run(
                   vepServerSettings,
-                  lunarisCliConf.vep.port.toOption,
-                  lunarisCliConf.vep.inputsFolder.map(File(_))(),
                   lunarisCliConf.vep.resultsFolder.map(File(_))(),
                   dataFileWithIndex,
                   lunarisCliConf.vep.varId()

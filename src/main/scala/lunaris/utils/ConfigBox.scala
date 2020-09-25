@@ -1,8 +1,12 @@
 package lunaris.utils
 
+import better.files.File
 import com.typesafe.config.{Config, ConfigValue, ConfigValueFactory, ConfigValueType}
 import lunaris.app.{Lunaris, LunarisMode}
+import lunaris.io.InputId
 import org.broadinstitute.yootilz.core.snag.Snag
+
+import scala.util.{Failure, Success, Try}
 
 trait ConfigBox[B <: ConfigBox[B]] {
   def map(mapper: Config => Config): B
@@ -75,6 +79,38 @@ object ConfigBox {
       Right(configValue.unwrapped().asInstanceOf[String])
 
     override def wrapValue(string: String): ConfigValue = ConfigValueFactory.fromAnyRef(string)
+  }
+
+  case class IntField[B <: ConfigBox[B]](configBox: B, path: String) extends PrimitiveValueField[B, Int] {
+    override def configValueType: ConfigValueType = ConfigValueType.NUMBER
+
+    override def unwrapValue(configValue: ConfigValue): Either[Snag, Int] =
+      Right(configValue.unwrapped().asInstanceOf[Int])
+
+    override def wrapValue(integer: Int): ConfigValue = ConfigValueFactory.fromAnyRef(integer)
+  }
+
+  case class FileField[B <: ConfigBox[B]](configBox: B, path: String) extends PrimitiveValueField[B, File] {
+    override def configValueType: ConfigValueType = ConfigValueType.STRING
+
+    override def unwrapValue(configValue: ConfigValue): Either[Snag, File] = {
+      Try(File(configValue.unwrapped().asInstanceOf[String])) match {
+        case Failure(exception) => Left(Snag(exception))
+        case Success(file) => Right(file)
+      }
+    }
+
+    override def wrapValue(file: File): ConfigValue = ConfigValueFactory.fromAnyRef(file.toString())
+  }
+
+  case class InputIdField[B <: ConfigBox[B]](configBox: B, path: String) extends PrimitiveValueField[B, InputId] {
+    override def configValueType: ConfigValueType = ConfigValueType.STRING
+
+    override def unwrapValue(configValue: ConfigValue): Either[Snag, InputId] = {
+      Right(InputId(configValue.unwrapped().asInstanceOf[String]))
+    }
+
+    override def wrapValue(inputId: InputId): ConfigValue = ConfigValueFactory.fromAnyRef(inputId.toString())
   }
 
   case class LunarisModeField[B <: ConfigBox[B]](configBox: B, path: String)

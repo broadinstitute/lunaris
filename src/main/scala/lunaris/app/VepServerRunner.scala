@@ -19,19 +19,14 @@ import scala.io.StdIn
 import scala.util.{Failure, Success}
 
 object VepServerRunner {
-
-  object Defaults {
-    val host: String = "localhost"
-    val port: Int = 8080
-  }
-
-  def run(vepServerSettings: VepServerSettings, portOpt: Option[Int], inputFolder: File, resultsFolder: File,
-          dataFileWithIndex: BlockGzippedWithIndex, varId: String): Unit = {
+  def run(vepServerSettings: VepServerSettings, resultsFolder: File, dataFileWithIndex: BlockGzippedWithIndex,
+          varId: String): Unit = {
     val serverSettings = vepServerSettings.serverSettings
     val host = serverSettings.host
-    val port = portOpt.getOrElse(Defaults.port)
+    val port = serverSettings.port
+    val vepSettings = vepServerSettings.vepSettings
     val resourceConfig = ResourceConfig.empty
-    val vepFileManager = new VepFileManager(inputFolder, resultsFolder, dataFileWithIndex, varId, resourceConfig)
+    val vepFileManager = new VepFileManager(vepSettings, dataFileWithIndex, varId, resourceConfig)
     vepFileManager.foldersExistOrSnag() match {
       case Left(snag) =>
         println("Unable to establish storage for inputs and results.")

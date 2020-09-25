@@ -17,15 +17,9 @@ import org.broadinstitute.yootilz.core.snag.Snag
 import scala.io.StdIn
 
 object ServerRunner {
-
-  object Defaults {
-    val host: String = "localhost"
-    val port: Int = 8080
-  }
-
-  def run(hostOpt: Option[String], portOpt: Option[Int]): Unit = {
-    val host = hostOpt.getOrElse(Defaults.host)
-    val port = portOpt.getOrElse(Defaults.port)
+  def run(serverSettings: ServerSettings): Unit = {
+    val host = serverSettings.host
+    val port = serverSettings.port
     implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
     implicit val materializer: Materializer = Materializer(actorSystem)
     val route: Route =
