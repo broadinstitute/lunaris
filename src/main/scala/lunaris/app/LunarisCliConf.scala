@@ -37,4 +37,17 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   addSubcommand(vep)
   requireSubcommand()
   verify()
+
+  def toConfigBox: LunarisConfigBox = {
+    var configBox: LunarisConfigBox = LunarisConfigBox.empty
+    subcommands match {
+      case List(this.batch) =>
+        configBox = configBox.mode.set(LunarisMode.Batch)
+      case List(this.server) =>
+        configBox = configBox.mode.set(LunarisMode.Server)
+      case List(this.vep) =>
+        configBox = configBox.mode.set(LunarisMode.Vep)
+    }
+    configBox
+  }
 }
