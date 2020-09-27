@@ -16,14 +16,14 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   footer("For more or more updated information, check https://github.com/broadinstitute/lunaris")
   val batch = new Subcommand("batch") {
     banner("Loads a request from file or Google Cloud Storage object and executes it.")
-    val requestFile = opt[String](descr = "Location of file containing request in JSON.", required = true)
+    val requestFile = opt[String](descr = "Location of file containing request in JSON.")
   }
   addSubcommand(batch)
 
   trait WebService {
     _: ScallopConf =>
-    val host = opt[String](descr = "Host to bind to, e.g. localhost, 0.0.0.0", required = false)
-    val port = opt[Int](descr = "Port to bind to, e.g. 80, 8080", required = false)
+    val webInterface = opt[String](descr = "Web interface to bind to, e.g. localhost, 0.0.0.0")
+    val port = opt[Int](descr = "Port to bind to, e.g. 80, 8080")
   }
 
   val server = new Subcommand("server") with WebService {
@@ -44,27 +44,28 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   requireSubcommand()
   verify()
 
-  private def withServerOptions(configKitBox: BuilderBox[LunarisConfigKit], webService: WebService): Unit = {
-    configKitBox.modifyForeach(webService.host.toOption)(_.host.set(_))
+  private def copyServerOptions(configKitBox: BuilderBox[LunarisConfigProps], webService: WebService): Unit = {
+    configKitBox.modifyForeach(webService.webInterface.toOption)(_.webInterface.set(_))
     configKitBox.modifyForeach(webService.port.toOption)(_.port.set(_))
   }
 
-  def toConfigBox: LunarisConfigKit = {
-    var configKitBox: BuilderBox[LunarisConfigKit] = BuilderBox(LunarisConfigKit.empty)
+  def toConfigProps: LunarisConfigProps = {
+    val configPropsBox: BuilderBox[LunarisConfigProps] = BuilderBox(LunarisConfigProps.empty)
     subcommands match {
       case List(this.batch) =>
-        configKitBox.modify(_.mode.set(LunarisMode.Batch))
+        configPropsBox.modify(_.mode.set(LunarisMode.Batch))
+        configPropsBox.modifyForeach(this.batch.requestFile.map(InputId(_)).toOption)(_.requestFile.set(_))
       case List(this.server) =>
-        configKitBox.modify(_.mode.set(LunarisMode.Server))
-        withServerOptions(configKitBox, this.server)
+        configPropsBox.modify(_.mode.set(LunarisMode.Server))
+        copyServerOptions(configPropsBox, this.server)
       case List(this.vep) =>
-        configKitBox.modify(_.mode.set(LunarisMode.Vep))
-        withServerOptions(configKitBox, this.vep)
-        configKitBox.modifyForeach(this.vep.inputsFolder.map(File(_)).toOption)(_.inputsFolder.set(_))
-        configKitBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
-        configKitBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
-        configKitBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
+        configPropsBox.modify(_.mode.set(LunarisMode.Vep))
+        copyServerOptions(configPropsBox, this.vep)
+        configPropsBox.modifyForeach(this.vep.inputsFolder.map(File(_)).toOption)(_.inputsFolder.set(_))
+        configPropsBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
+        configPropsBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
+        configPropsBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
     }
-    configKitBox.value
+    configPropsBox.value
   }
 }

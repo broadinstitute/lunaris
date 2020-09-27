@@ -19,7 +19,7 @@ import scala.util.{Failure, Success}
 object VepServerRunner {
   def run(vepServerSettings: VepServerSettings): Unit = {
     val serverSettings = vepServerSettings.serverSettings
-    val host = serverSettings.host
+    val host = serverSettings.webInterface
     val port = serverSettings.port
     val vepSettings = vepServerSettings.vepSettings
     val resourceConfig = ResourceConfig.empty

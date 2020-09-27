@@ -18,7 +18,7 @@ import scala.io.StdIn
 
 object ServerRunner {
   def run(serverSettings: ServerSettings): Unit = {
-    val host = serverSettings.host
+    val webInterface = serverSettings.webInterface
     val port = serverSettings.port
     implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
     implicit val materializer: Materializer = Materializer(actorSystem)
@@ -87,6 +87,6 @@ object ServerRunner {
           }
         }
       )
-    HttpUtils.runWebServiceWhileWaiting(route, host, port)(StdIn.readLine())
+    HttpUtils.runWebServiceWhileWaiting(route, webInterface, port)(StdIn.readLine())
   }
 }

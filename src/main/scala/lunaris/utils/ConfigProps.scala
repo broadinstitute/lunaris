@@ -2,13 +2,13 @@ package lunaris.utils
 
 import better.files.File
 import com.typesafe.config.{Config, ConfigValue, ConfigValueFactory, ConfigValueType}
-import lunaris.app.{Lunaris, LunarisMode}
+import lunaris.app.LunarisMode
 import lunaris.io.InputId
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.util.{Failure, Success, Try}
 
-trait ConfigKit[B <: ConfigKit[B]] {
+trait ConfigProps[B <: ConfigProps[B]] {
   def map(mapper: Config => Config): B
 
   def withFallback(oConfigKit: B): B = map(_.withFallback(oConfigKit.config))
@@ -16,15 +16,15 @@ trait ConfigKit[B <: ConfigKit[B]] {
   def config: Config
 }
 
-object ConfigKit {
+object ConfigProps {
 
-  trait Field[B <: ConfigKit[B], V] {
-    def configKit: B
+  trait Field[B <: ConfigProps[B], V] {
+    def configProps: B
 
     def path: String
 
     def getValueOpt: Either[Snag, Option[ConfigValue]] = {
-      val config = configKit.config
+      val config = configProps.config
       if (config.hasPath(path)) {
         Right(Some(config.getValue(path)))
       } else {
@@ -77,7 +77,7 @@ object ConfigKit {
     def set(value: V): B
   }
 
-  trait PrimitiveValueField[B <: ConfigKit[B], T] extends Field[B, T] {
+  trait PrimitiveValueField[B <: ConfigProps[B], T] extends Field[B, T] {
     def configValueType: ConfigValueType
 
     def unwrapValue(configValue: ConfigValue): Either[Snag, T]
@@ -99,13 +99,13 @@ object ConfigKit {
     }
 
     override def set(value: T): B = {
-      configKit.map { config =>
+      configProps.map { config =>
         config.withValue(path, wrapValue(value))
       }
     }
   }
 
-  case class StringField[B <: ConfigKit[B]](configKit: B, path: String) extends PrimitiveValueField[B, String] {
+  case class StringField[B <: ConfigProps[B]](configProps: B, path: String) extends PrimitiveValueField[B, String] {
     override def configValueType: ConfigValueType = ConfigValueType.STRING
 
     override def unwrapValue(configValue: ConfigValue): Either[Snag, String] =
@@ -114,7 +114,7 @@ object ConfigKit {
     override def wrapValue(string: String): ConfigValue = ConfigValueFactory.fromAnyRef(string)
   }
 
-  case class IntField[B <: ConfigKit[B]](configKit: B, path: String) extends PrimitiveValueField[B, Int] {
+  case class IntField[B <: ConfigProps[B]](configProps: B, path: String) extends PrimitiveValueField[B, Int] {
     override def configValueType: ConfigValueType = ConfigValueType.NUMBER
 
     override def unwrapValue(configValue: ConfigValue): Either[Snag, Int] =
@@ -123,7 +123,7 @@ object ConfigKit {
     override def wrapValue(integer: Int): ConfigValue = ConfigValueFactory.fromAnyRef(integer)
   }
 
-  case class FileField[B <: ConfigKit[B]](configKit: B, path: String) extends PrimitiveValueField[B, File] {
+  case class FileField[B <: ConfigProps[B]](configProps: B, path: String) extends PrimitiveValueField[B, File] {
     override def configValueType: ConfigValueType = ConfigValueType.STRING
 
     override def unwrapValue(configValue: ConfigValue): Either[Snag, File] = {
@@ -136,7 +136,7 @@ object ConfigKit {
     override def wrapValue(file: File): ConfigValue = ConfigValueFactory.fromAnyRef(file.toString())
   }
 
-  case class InputIdField[B <: ConfigKit[B]](configKit: B, path: String) extends PrimitiveValueField[B, InputId] {
+  case class InputIdField[B <: ConfigProps[B]](configProps: B, path: String) extends PrimitiveValueField[B, InputId] {
     override def configValueType: ConfigValueType = ConfigValueType.STRING
 
     override def unwrapValue(configValue: ConfigValue): Either[Snag, InputId] = {
@@ -146,7 +146,7 @@ object ConfigKit {
     override def wrapValue(inputId: InputId): ConfigValue = ConfigValueFactory.fromAnyRef(inputId.toString())
   }
 
-  case class LunarisModeField[B <: ConfigKit[B]](configKit: B, path: String)
+  case class LunarisModeField[B <: ConfigProps[B]](configProps: B, path: String)
     extends PrimitiveValueField[B, LunarisMode] {
     override def configValueType: ConfigValueType = ConfigValueType.STRING
 

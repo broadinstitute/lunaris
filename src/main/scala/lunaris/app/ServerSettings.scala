@@ -1,3 +1,3 @@
 package lunaris.app
 
-case class ServerSettings(host: String, port: Int)
+case class ServerSettings(webInterface: String, port: Int)

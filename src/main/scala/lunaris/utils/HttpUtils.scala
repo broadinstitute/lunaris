@@ -64,11 +64,11 @@ object HttpUtils {
   }
 
   def runWebServiceWhileWaiting(route: Route,
-                                host: String,
+                                webInterface: String,
                                 port: Int)(waiter: => Unit)(implicit actorSystem: ActorSystem): Unit = {
-    println(s"Starting web service at http://$host:$port")
-    val bindingFuture = Http().bindAndHandle(route, host, port)(Materializer(actorSystem))
-    println(s"Web service is now running at http://$host:$port/.")
+    println(s"Starting web service at port $port, interface $webInterface.")
+    val bindingFuture = Http().bindAndHandle(route, webInterface, port)(Materializer(actorSystem))
+    println(s"Web service is now running at port $port, interface $webInterface.")
     println("Press RETURN to stop...")
     waiter
     bindingFuture.flatMap { binding =>
