@@ -1,8 +1,11 @@
 package lunaris.app
 
+import java.nio.channels.Channels
+import java.nio.charset.StandardCharsets
+
 import com.typesafe.config.{Config, ConfigFactory}
 import lunaris.data.BlockGzippedWithIndex
-import lunaris.io.InputId
+import lunaris.io.{InputId, ResourceConfig}
 import lunaris.utils.{ConfigProps, SnagUtils}
 import lunaris.utils.ConfigProps.{FileField, InputIdField, IntField, LunarisModeField, StringField}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -11,6 +14,7 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   override def map(mapper: Config => Config): LunarisConfigProps = LunarisConfigProps(mapper(config))
 
   val mode: LunarisModeField[LunarisConfigProps] = LunarisModeField(this, "lunaris.mode")
+  val configFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.configFile")
   val requestFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.batch.requestFile")
   val webInterface: StringField[LunarisConfigProps] = StringField(this, "lunaris.server.webInterface")
   val port: IntField[LunarisConfigProps] = IntField(this, "lunaris.server.port")
@@ -48,7 +52,7 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
 
 object LunarisConfigProps {
   object FallbackValues {
-    val host: String = "0.0.0.0"
+    val webInterface: String = "0.0.0.0"
     val port: Int = 8080
   }
   def empty: LunarisConfigProps = LunarisConfigProps(ConfigFactory.empty())
@@ -56,14 +60,22 @@ object LunarisConfigProps {
   def cliProps(args: Array[String]): Either[Snag, LunarisConfigProps] =
     SnagUtils.tryOrSnag(new LunarisCliConf(args).toConfigProps)
 
-  def inputIdProps(in: InputId): Either[Snag, LunarisConfigProps] = ???  //  TODO
+  def inputIdProps(in: InputId, resourceConfig: ResourceConfig): Either[Snag, LunarisConfigProps] = {
+    in.newReadChannelDisposable(resourceConfig).useUp { readChannel =>
+      SnagUtils.tryOrSnag {
+        val reader = Channels.newReader(readChannel, StandardCharsets.UTF_8)
+        val config = ConfigFactory.parseReader(reader)
+        LunarisConfigProps(config)
+      }
+    }
+  }
 
   def defaultSourcesProps(): Either[Snag, LunarisConfigProps] =
     SnagUtils.tryOrSnag(LunarisConfigProps(ConfigFactory.load))
 
   def fallbackProps: LunarisConfigProps = {
     empty
-      .webInterface.set(FallbackValues.host)
+      .webInterface.set(FallbackValues.webInterface)
       .port.set(FallbackValues.port)
   }
 
@@ -71,7 +83,9 @@ object LunarisConfigProps {
     for {
       cliProps <- cliProps(args)
       defaultSourcesProps <- defaultSourcesProps()
+      preliminaryAllProps = cliProps.withFallback(defaultSourcesProps).withFallback(fallbackProps)
     } yield cliProps.withFallback(defaultSourcesProps).withFallback(fallbackProps)
+    //  TODO
   }
 
 }

@@ -1,5 +1,7 @@
 package lunaris.app
 
+import scala.language.reflectiveCalls
+
 import better.files.File
 import lunaris.io.InputId
 import lunaris.utils.BuilderBox
@@ -14,7 +16,13 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
       |Files can be local, or on Google Cloud Storage, including on Terra.
       |""".stripMargin)
   footer("For more or more updated information, check https://github.com/broadinstitute/lunaris")
-  val batch = new Subcommand("batch") {
+
+  trait RequestFile {
+    _: ScallopConf =>
+    val configFile = opt[String](descr = "Configuration file")
+  }
+
+  val batch = new Subcommand("batch") with RequestFile {
     banner("Loads a request from file or Google Cloud Storage object and executes it.")
     val requestFile = opt[String](descr = "Location of file containing request in JSON.")
   }
@@ -26,12 +34,12 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val port = opt[Int](descr = "Port to bind to, e.g. 80, 8080")
   }
 
-  val server = new Subcommand("server") with WebService {
+  val server = new Subcommand("server") with RequestFile with WebService {
     banner("Web service: accepts HTML POST requests at http://<host>/lunaris/query \n" +
       "and offers a WebUI at http://<host>/lunaris.lunaris.html")
   }
   addSubcommand(server)
-  val vep = new Subcommand("vep") with WebService {
+  val vep = new Subcommand("vep") with RequestFile with WebService {
     banner("Ensembl VEP.")
     val inputsFolder = opt[String](descr = "Folder to store inputs.")
     val resultsFolder = opt[String](descr = "Folder to store results.")
