@@ -1,5 +1,6 @@
 package lunaris.recipes.tools.builtin
 
+import lunaris.app.VepRunSettings
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
@@ -9,7 +10,7 @@ import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordStreamJoinerWithFallback
 import lunaris.streams.utils.RecordStreamTypes.Record
-import lunaris.vep.VepRunner
+import lunaris.vep.{VepRunSettingsBox, VepRunner}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object JoinRecordsWithFallback extends tools.Tool {
@@ -32,14 +33,15 @@ object JoinRecordsWithFallback extends tools.Tool {
     def createFallback(): Record => Either[Snag, Record]
   }
 
-  object VepFallbackGenerator extends FallbackGenerator {
+  class VepFallbackGenerator(vepRunSettings: VepRunSettings) extends FallbackGenerator {
+    private val vepRunner = VepRunner.createNewVepRunner(vepRunSettings)
     override def createFallback(): Record => Either[Snag, Record] =
-      (record: Record) => VepRunner.default.processRecord(record)
+      (record: Record) => vepRunner.processRecord(record)
   }
 
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
     fallbackString match {
-      case "vep" => Right(VepFallbackGenerator)
+      case "vep" => VepRunSettingsBox.getVepRunSettings.map(new VepFallbackGenerator(_))
       case _ => Left(Snag(s"Unknown fallback '$fallbackString'"))
     }
   }

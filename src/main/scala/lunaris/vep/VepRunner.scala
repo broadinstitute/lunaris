@@ -4,6 +4,7 @@ import java.io.PrintWriter
 import java.nio.charset.StandardCharsets
 
 import better.files.{File, Resource}
+import lunaris.app.VepRunSettings
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.IOUtils
@@ -12,12 +13,12 @@ import org.broadinstitute.yootilz.core.snag.Snag
 import scala.sys.process._
 import scala.util.Random
 
-class VepRunner(val vepInstallation: VepInstallation) {
+class VepRunner(val runSettings: VepRunSettings, val vepInstallation: VepInstallation) {
 
   val vepWrapperScriptResourceShortName: String = "vepWrapper.sh"
   val vepWrapperScriptResourceFullName: String = "lunaris/vep/" + vepWrapperScriptResourceShortName
 
-  val vepWorkDir: File = vepInstallation.workDir
+  val vepWorkDir: File = runSettings.workDir
   val vepWrapperScriptFile: File = vepWorkDir / vepWrapperScriptResourceShortName
   val vepRunDir: File = vepWorkDir / "run"
 
@@ -60,7 +61,7 @@ class VepRunner(val vepInstallation: VepInstallation) {
   }
 
   def runVep(inputFile: File, outputFile: File, warningsFile: File): Int = {
-    val vepScriptFile = vepInstallation.vepScriptFile
+    val vepScriptFile = runSettings.vepScriptFile
     val cpus = 1
     val fastaFile = vepInstallation.fastaFile
     val pluginsDir = vepInstallation.pluginsDir
@@ -143,5 +144,6 @@ class VepRunner(val vepInstallation: VepInstallation) {
 }
 
 object VepRunner {
-  def default: VepRunner = new VepRunner(VepInstallation.autoPick)
+  def createNewVepRunner(runSettings: VepRunSettings): VepRunner =
+    new VepRunner(runSettings, VepInstallation.autoPick)
 }

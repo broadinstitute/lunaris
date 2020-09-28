@@ -9,7 +9,7 @@ import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
 import lunaris.vep.VepFileManager.ResultId
-import lunaris.vep.{VepFileManager, VepFormData, VepJson}
+import lunaris.vep.{VepFileManager, VepFormData, VepJson, VepRunSettingsBox}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -22,6 +22,7 @@ object VepServerRunner {
     val host = serverSettings.webInterface
     val port = serverSettings.port
     val vepSettings = vepServerSettings.vepSettings
+    VepRunSettingsBox.setVepRunSettings(vepSettings.runSettings)
     val resourceConfig = ResourceConfig.empty
     val vepFileManager = new VepFileManager(vepSettings, resourceConfig)
     vepFileManager.foldersExistOrSnag() match {

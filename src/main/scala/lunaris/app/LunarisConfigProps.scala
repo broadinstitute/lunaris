@@ -23,6 +23,8 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.dataFile")
   val indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.indexFile")
   val varId: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.varId")
+  val vepScriptFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.vepScriptFile")
+  val vepWorkDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.workDir")
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {
@@ -39,7 +41,10 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       indexFileOpt <- indexFile.getOpt
       dataFileWithIndex = BlockGzippedWithIndex(dataFileVal, indexFileOpt)
       varIdVal <- varId.get
-    } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, varIdVal)
+      vepScriptFile <- vepScriptFile.get
+      workDir <- vepWorkDir.get
+      vepRunSettings = VepRunSettings(vepScriptFile, workDir)
+    } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, varIdVal, vepRunSettings)
   }
 
   def toVepServerSettings: Either[Snag, VepServerSettings] = {
