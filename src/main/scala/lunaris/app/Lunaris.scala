@@ -1,11 +1,13 @@
 package lunaris.app
 
+import lunaris.io.ResourceConfig
+
 import scala.language.reflectiveCalls
 
 object Lunaris {
   def main(args: Array[String]): Unit = {
     println(s"This is ${LunarisInfo.versionLong}")
-    LunarisConfigProps.allProps(args) match {
+    LunarisConfigProps.allProps(args.toIndexedSeq) match {
       case Left(snag) =>
         println("Problem obtaining configuration")
         println(snag.message)

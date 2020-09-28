@@ -52,6 +52,11 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
   requireSubcommand()
   verify()
 
+  private def copyUniversalOptions(configKitBox: BuilderBox[LunarisConfigProps], configFileOwner: RequestFile):
+  Unit = {
+    configKitBox.modifyForeach(configFileOwner.configFile.map(InputId(_)).toOption)(_.configFile.set(_))
+  }
+
   private def copyServerOptions(configKitBox: BuilderBox[LunarisConfigProps], webService: WebService): Unit = {
     configKitBox.modifyForeach(webService.webInterface.toOption)(_.webInterface.set(_))
     configKitBox.modifyForeach(webService.port.toOption)(_.port.set(_))
@@ -62,12 +67,15 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     subcommands match {
       case List(this.batch) =>
         configPropsBox.modify(_.mode.set(LunarisMode.Batch))
+        copyUniversalOptions(configPropsBox, this.batch)
         configPropsBox.modifyForeach(this.batch.requestFile.map(InputId(_)).toOption)(_.requestFile.set(_))
       case List(this.server) =>
         configPropsBox.modify(_.mode.set(LunarisMode.Server))
+        copyUniversalOptions(configPropsBox, this.server)
         copyServerOptions(configPropsBox, this.server)
       case List(this.vep) =>
         configPropsBox.modify(_.mode.set(LunarisMode.Vep))
+        copyUniversalOptions(configPropsBox, this.vep)
         copyServerOptions(configPropsBox, this.vep)
         configPropsBox.modifyForeach(this.vep.inputsFolder.map(File(_)).toOption)(_.inputsFolder.set(_))
         configPropsBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))

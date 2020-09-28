@@ -51,23 +51,29 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
 }
 
 object LunarisConfigProps {
+
   object FallbackValues {
     val webInterface: String = "0.0.0.0"
     val port: Int = 8080
   }
+
   def empty: LunarisConfigProps = LunarisConfigProps(ConfigFactory.empty())
 
-  def cliProps(args: Array[String]): Either[Snag, LunarisConfigProps] =
+  def cliProps(args: Seq[String]): Either[Snag, LunarisConfigProps] =
     SnagUtils.tryOrSnag(new LunarisCliConf(args).toConfigProps)
 
-  def inputIdProps(in: InputId, resourceConfig: ResourceConfig): Either[Snag, LunarisConfigProps] = {
-    in.newReadChannelDisposable(resourceConfig).useUp { readChannel =>
-      SnagUtils.tryOrSnag {
-        val reader = Channels.newReader(readChannel, StandardCharsets.UTF_8)
-        val config = ConfigFactory.parseReader(reader)
-        LunarisConfigProps(config)
+  def inputIdProps(in: InputId, resourceConfig: ResourceConfig = ResourceConfig.empty):
+  Either[Snag, LunarisConfigProps] = {
+    for {
+      readChannelDisposable <- SnagUtils.tryOrSnag(in.newReadChannelDisposable(resourceConfig))
+      configProps <- readChannelDisposable.useUp { readChannel =>
+        SnagUtils.tryOrSnag {
+          val reader = Channels.newReader(readChannel, StandardCharsets.UTF_8)
+          val config = ConfigFactory.parseReader(reader)
+          LunarisConfigProps(config)
+        }
       }
-    }
+    } yield configProps
   }
 
   def defaultSourcesProps(): Either[Snag, LunarisConfigProps] =
@@ -79,13 +85,23 @@ object LunarisConfigProps {
       .port.set(FallbackValues.port)
   }
 
-  def allProps(args: Array[String]): Either[Snag, LunarisConfigProps] = {
+  def allProps(args: Seq[String], resourceConfig: ResourceConfig = ResourceConfig.empty):
+  Either[Snag, LunarisConfigProps] = {
     for {
       cliProps <- cliProps(args)
       defaultSourcesProps <- defaultSourcesProps()
-      preliminaryAllProps = cliProps.withFallback(defaultSourcesProps).withFallback(fallbackProps)
-    } yield cliProps.withFallback(defaultSourcesProps).withFallback(fallbackProps)
-    //  TODO
+      lowPrecedenceProps = defaultSourcesProps.withFallback(fallbackProps)
+      preliminaryAllProps = cliProps.withFallback(lowPrecedenceProps)
+      configFileOpt <- preliminaryAllProps.configFile.getOpt
+      allProps <- configFileOpt match {
+        case None => Right(cliProps.withFallback(lowPrecedenceProps))
+        case Some(configFile) =>
+          println(configFile)
+          for {
+            inputIdProps <- inputIdProps(configFile, resourceConfig)
+          } yield cliProps.withFallback(inputIdProps).withFallback(lowPrecedenceProps)
+      }
+    } yield allProps
   }
 
 }

@@ -95,6 +95,8 @@ object ConfigProps {
             case Left(snag) => Left(snag)
             case Right(value) => Right(Some(value))
           }
+        case Right(None) => Right(None)
+        case Left(snag) => Left(snag)
       }
     }
 
