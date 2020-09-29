@@ -13,7 +13,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 import scala.sys.process._
 import scala.util.Random
 
-class VepRunner(val runSettings: VepRunSettings, val vepInstallation: VepInstallation) {
+class VepRunner(val runSettings: VepRunSettings) {
 
   val vepWrapperScriptResourceShortName: String = "vepWrapper.sh"
   val vepWrapperScriptResourceFullName: String = "lunaris/vep/" + vepWrapperScriptResourceShortName
@@ -63,9 +63,9 @@ class VepRunner(val runSettings: VepRunSettings, val vepInstallation: VepInstall
   def runVep(inputFile: File, outputFile: File, warningsFile: File): Int = {
     val vepScriptFile = runSettings.vepScriptFile
     val cpus = 1
-    val fastaFile = vepInstallation.fastaFile
-    val pluginsDir = vepInstallation.pluginsDir
-    val dbNsfp = vepInstallation.dbNSFP
+    val fastaFile = runSettings.fastaFile
+    val pluginsDir = runSettings.pluginsDir
+    val dbNsfp = runSettings.dbNSFPFile
     // TODO remaining arguments
     val commandLine =
       s"bash $vepWrapperScriptFile $vepScriptFile $inputFile $cpus $fastaFile $pluginsDir $dbNsfp " +
@@ -144,6 +144,5 @@ class VepRunner(val runSettings: VepRunSettings, val vepInstallation: VepInstall
 }
 
 object VepRunner {
-  def createNewVepRunner(runSettings: VepRunSettings): VepRunner =
-    new VepRunner(runSettings, VepInstallation.autoPick)
+  def createNewVepRunner(runSettings: VepRunSettings): VepRunner = new VepRunner(runSettings)
 }

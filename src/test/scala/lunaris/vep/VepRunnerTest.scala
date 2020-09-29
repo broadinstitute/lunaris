@@ -1,14 +1,18 @@
 package lunaris.vep
 
 import better.files.File
+import lunaris.app.LunarisConfigProps
+import lunaris.io.InputId
 import org.scalatest.funsuite.AnyFunSuite
 
 class VepRunnerTest extends AnyFunSuite {
 
   test("Writing input file") {
-    val vepRunPath = File("/home/BROAD.MIT.EDU/oliverr/git/ensembl-vep/vep")
-    val vepWorkDir = File("/home/BROAD.MIT.EDU/oliverr/lunaris/vep/run")
-    val vepRunner = new VepRunner(VepInstallation.autoPick)
+    val configFile = InputId("/home/oliverr/git/lunaris/configs/oliversBroadWindowsLaptop.conf")
+    val snagOrVepSettings = LunarisConfigProps.inputIdProps(configFile).flatMap(props => props.toVepSettings)
+    assert(snagOrVepSettings.isRight)
+    val vepSettings = snagOrVepSettings.toOption.get
+    val vepRunner = new VepRunner(vepSettings.runSettings)
     val id = "1:69088:T:G"
     val chrom = "1"
     val pos = 69088
@@ -19,7 +23,10 @@ class VepRunnerTest extends AnyFunSuite {
     val info = ""
     val format = ""
     val snagOrValues = vepRunner.calculateValues(id, chrom, pos, ref, alt, qual, filter, info, format)
-    println(snagOrValues)
+    assert(snagOrValues.isRight)
+    val Right((headers, values)) = snagOrValues
+    assert(headers.length == values.length)
+    assert(headers.length > 33)
   }
 
 }

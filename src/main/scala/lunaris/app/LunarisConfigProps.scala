@@ -25,6 +25,9 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val varId: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.varId")
   val vepScriptFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.vepScriptFile")
   val vepWorkDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.workDir")
+  val vepFastaFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.fastaFile")
+  val vepPluginsDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.pluginsDir")
+  val vepDbNSFPFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.dbNSFPFile")
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {
@@ -43,7 +46,10 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       varIdVal <- varId.get
       vepScriptFile <- vepScriptFile.get
       workDir <- vepWorkDir.get
-      vepRunSettings = VepRunSettings(vepScriptFile, workDir)
+      fastaFile <- vepFastaFile.get
+      pluginsDir <- vepPluginsDir.get
+      dbNSFPFile <- vepDbNSFPFile.get
+      vepRunSettings = VepRunSettings(vepScriptFile, workDir, fastaFile, pluginsDir, dbNSFPFile)
     } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, varIdVal, vepRunSettings)
   }
 
