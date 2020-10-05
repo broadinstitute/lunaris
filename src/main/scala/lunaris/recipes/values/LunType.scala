@@ -4,12 +4,13 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 trait LunType {
   def isPrimitive: Boolean = false
+
   def canBeAssignedFrom(oType: LunType): Boolean = oType == this
 
   def asString: String
 
   def lub(oType: LunType): LunType = {
-    if(oType == this) {
+    if (oType == this) {
       this
     } else {
       LunType.AnyType
@@ -30,10 +31,10 @@ object LunType {
       case "Type" => Right(TypeType)
       case "Stream[Record]" => Right(RecordStreamType)
       case _ =>
-        if(string.startsWith("Array[") && string.endsWith("]")) {
+        if (string.startsWith("Array[") && string.endsWith("]")) {
           val elementTypeString = string.substring(6, string.length - 1)
           parse(elementTypeString).map(ArrayType(_))
-        } else if(string.startsWith("Map[") && string.endsWith("]")) {
+        } else if (string.startsWith("Map[") && string.endsWith("]")) {
           val elementTypeString = string.substring(4, string.length - 1)
           parse(elementTypeString).map(MapType)
         } else {
@@ -97,11 +98,11 @@ object LunType {
 
   object ArrayType {
     def fromElementTypes(elementTypes: Seq[LunType]): ArrayType = {
-      val elementType = if(elementTypes.isEmpty) {
+      val elementType = if (elementTypes.isEmpty) {
         AnyType
       } else {
         var lub = elementTypes.head
-        for(type2 <- elementTypes.tail) {
+        for (type2 <- elementTypes.tail) {
           lub = lub.lub(type2)
         }
         lub
@@ -114,7 +115,19 @@ object LunType {
     override def asString: String = s"Map[${valueType.asString}]"
   }
 
-  case class RecordSpecialFields(id: String, chrom: String, begin: String, end: String)
+  case class RecordSpecialFields(id: String, chrom: String, begin: String, end: String) {
+    def changeIdFieldTo(idFieldNew: String): Either[Snag, RecordSpecialFields] = {
+      if (idFieldNew.isBlank) {
+        Left(Snag(s"Attempting to set record id field to a blank String, which is illegal."))
+      } else if (idFieldNew == begin) {
+        Left(Snag("Attempting to set record id field to begin field, which is illegal."))
+      } else if (idFieldNew == end) {
+        Left(Snag("Attempting to set record id field to end field, which is illegal."))
+      } else {
+        Right(copy(id = idFieldNew))
+      }
+    }
+  }
 
   case class RecordType(specialFields: RecordSpecialFields,
                         fields: Seq[String], elementTypes: Map[String, LunType]) extends LunType {
@@ -157,6 +170,17 @@ object LunType {
         )
       copy(elementTypes = elementTypes ++ types ++ eternalTypes)
     }
+
+    def changeIdFieldTo(idFieldNameNew: String): Either[Snag, RecordType] = {
+      for {
+        specialFieldsNew <- specialFields.changeIdFieldTo(idFieldNameNew)
+        elementTypesNew <-
+          elementTypes.get(idFieldNameNew).filterNot(StringType.canBeAssignedFrom) match {
+            case Some(lunType) => Left(Snag(s"Id fields needs to be assignable to String, but is $lunType."))
+            case None => Right(elementTypes + (idFieldNameNew -> StringType))
+          }
+      } yield copy(specialFields = specialFieldsNew, elementTypes = elementTypesNew)
+    }
   }
 
   object RecordType {
@@ -179,4 +203,5 @@ object LunType {
   object TypeType extends LunType {
     override def asString: String = "Type"
   }
+
 }

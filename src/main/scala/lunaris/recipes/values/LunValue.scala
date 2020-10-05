@@ -214,6 +214,28 @@ object LunValue {
 
     def castFieldsTo(types: Map[String, LunType]): Either[Snag, RecordValue] =
       castTo(lunType.changeFieldTypesTo(types)).map(_.asInstanceOf[RecordValue])
+
+    def addField(fieldName: String, value: LunValue, fieldType: LunType): Either[Snag, RecordValue] = {
+      if(lunType.fields.contains(fieldName)) {
+        Left(Snag(s"Cannot add field $fieldName, because it already exists."))
+      } else {
+        Right(copy(values = values + (fieldName -> value), lunType = lunType.addField(fieldName, fieldType)))
+      }
+    }
+
+    def changeIdFieldTo(idFieldNew: String): Either[Snag, RecordValue] = {
+      for {
+        lunTypeNew <- lunType.changeIdFieldTo(idFieldNew)
+        idValueNew <-
+          values.get(idFieldNew) match {
+            case None => Left(Snag(s"Record has no value for $idFieldNew."))
+            case Some(valueNew) => Right(valueNew)
+          }
+        idValueNewAsStringValue <- idValueNew.castTo(LunType.StringType)
+        idNew <- idValueNewAsStringValue.asString
+        valuesNew = values + (idFieldNew -> idValueNewAsStringValue)
+      } yield copy(id = idNew, values = valuesNew, lunType = lunTypeNew)
+    }
   }
 
   case class ExpressionValue(value: LunRecordExpression) extends LunValue {
