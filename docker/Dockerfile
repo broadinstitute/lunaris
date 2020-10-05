@@ -8,7 +8,7 @@ WORKDIR /work
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, lunaris 1.4.0
+# SBT, tools related to Debian packaging, lunaris 1.4.1
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -25,7 +25,7 @@ RUN apt -y update && \
     cd lunaris && \
     git checkout v1.4.0 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_1.4.0_all.deb && \
+    apt -y install ./target/lunaris_1.4.1_all.deb && \
     cd /work && \
     rm -r yootilz && \
     rm -r lunaris && \
