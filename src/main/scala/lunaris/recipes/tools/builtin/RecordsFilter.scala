@@ -10,13 +10,13 @@ import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordsFilter extends tools.Tool {
-  override def resultType: LunType = LunType.RecordStreamType
+  override def resultType: LunType.RecordStreamType.type = LunType.RecordStreamType
 
   object Params {
 
     object Keys {
-      val from = "from"
-      val filter = "filter"
+      val from: String = "from"
+      val filter: String = "filter"
     }
 
     val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.RecordStreamType, isRequired = true)
@@ -65,7 +65,7 @@ object RecordsFilter extends tools.Tool {
                   filter.evaluate(record) match {
                     case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
                     case Left(snag) =>
-                      println(snag.message)
+                      context.observer.logSnag(snag)
                       false
                   }
                 }
