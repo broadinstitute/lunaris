@@ -1,23 +1,17 @@
 package lunaris.vep
 
-import better.files.File
-import lunaris.app.LunarisConfigProps
+import lunaris.app.{LunarisConfigProps, VepSettings}
 import lunaris.io.InputId
 import org.scalatest.funsuite.AnyFunSuite
 
 class VepRunnerTest extends AnyFunSuite {
 
-  test("Writing input file") {
-    val configFile = InputId("/home/oliverr/git/lunaris/configs/oliversBroadWindowsLaptop.conf")
-    val snagOrVepSettings = LunarisConfigProps.inputIdProps(configFile).flatMap(props => props.toVepSettings)
-    assert(snagOrVepSettings.isRight)
-    val vepSettings = snagOrVepSettings.toOption.get
+  private val configFile = InputId("/home/oliverr/git/lunaris/configs/oliversBroadWindowsLaptop.conf")
+  private val snagOrVepSettings = LunarisConfigProps.inputIdProps(configFile).flatMap(props => props.toVepSettings)
+
+  private def runVep(vepSettings: VepSettings, chrom: String, pos: Int, ref: String, alt: String): Unit = {
     val vepRunner = new VepRunner(vepSettings.runSettings)
-    val id = "1:69088:T:G"
-    val chrom = "1"
-    val pos = 69088
-    val ref = "T"
-    val alt = "G"
+    val id = s"$chrom:$pos:$ref:$alt"
     val qual = ""
     val filter = ""
     val info = ""
@@ -29,4 +23,15 @@ class VepRunnerTest extends AnyFunSuite {
     assert(headers.length > 33)
   }
 
+  test("Run vep for 1:69088:T:G") {
+    assert(snagOrVepSettings.isRight)
+    val vepSettings = snagOrVepSettings.toOption.get
+    runVep(vepSettings, "1", 69088, "T", "G")
+  }
+
+  test("Run vep for 1:69088:T:GG") {
+    assert(snagOrVepSettings.isRight)
+    val vepSettings = snagOrVepSettings.toOption.get
+    runVep(vepSettings, "1", 69088, "T", "GG")
+  }
 }

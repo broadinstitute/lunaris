@@ -29,7 +29,7 @@ function submit() {
         .then((response) => {
             removeTemporaryStatus();
             if (!response.ok) {
-                throw "Could not submit " + inputFile.name + ": " + response.statusText
+                throw "Could not submit " + inputFile.name + ": " + response.statusText;
             }
             return response.text();
         })
