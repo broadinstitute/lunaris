@@ -6,7 +6,7 @@ import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import better.files.File
-import lunaris.app.VepSettings
+import lunaris.app.{VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
@@ -23,7 +23,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
   val inputsFolder: File = vepSettings.inputsFolder
   val resultsFolder: File = vepSettings.resultsFolder
   val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
-  val varId: String = vepSettings.varId
+  val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
 
@@ -82,7 +82,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
       val request =
         VepRequestBuilder.buildRequest(
           resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
-          outputFilePathForId(resultId), formData.filter, Some(dataFileWithIndex.index.toString), varId
+          outputFilePathForId(resultId), formData.filter, Some(dataFileWithIndex.index.toString), vepDataFields
         )
       LunCompiler.compile(request)
     }.collect {

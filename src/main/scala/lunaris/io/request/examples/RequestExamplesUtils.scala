@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.builtin.{IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.tools.builtin.{IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -98,6 +98,15 @@ object RequestExamplesUtils {
       JSONWriter.Params.Keys.from -> RefArg(JSONWriter.Params.from, from),
       JSONWriter.Params.Keys.file -> ValueArg(JSONWriter.Params.file, file)
     ))
+
+    def idCanonicalizer(from: String, refField: StringValue, altField: StringValue,
+                        idFieldNew: StringValue): ToolCall =
+      ToolCall(IdCanonicalizer, Map(
+        IdCanonicalizer.Params.Keys.from -> RefArg(IdCanonicalizer.Params.from, from),
+        IdCanonicalizer.Params.Keys.refField -> ValueArg(IdCanonicalizer.Params.refField, refField),
+        IdCanonicalizer.Params.Keys.altField -> ValueArg(IdCanonicalizer.Params.altField, altField),
+        IdCanonicalizer.Params.Keys.idFieldNew -> ValueArg(IdCanonicalizer.Params.idFieldNew, idFieldNew)
+      ))
   }
 
 }

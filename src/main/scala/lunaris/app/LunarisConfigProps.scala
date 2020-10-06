@@ -22,7 +22,9 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val resultsFolder: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.resultsFolder")
   val dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.dataFile")
   val indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.indexFile")
-  val varId: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.varId")
+  val varIdField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.varId")
+  val refField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.ref")
+  val altField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.alt")
   val vepScriptFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.vepScriptFile")
   val vepWorkDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.workDir")
   val vepFastaFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.fastaFile")
@@ -43,14 +45,17 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       dataFileVal <- dataFile.get
       indexFileOpt <- indexFile.getOpt
       dataFileWithIndex = BlockGzippedWithIndex(dataFileVal, indexFileOpt)
-      varIdVal <- varId.get
+      varIdFieldVal <- varIdField.get
+      refFieldVal <- refField.get
+      altFieldVal <- altField.get
+      vepDataFields = VepDataFieldsSettings(varIdFieldVal, refFieldVal, altFieldVal)
       vepScriptFile <- vepScriptFile.get
       workDir <- vepWorkDir.get
       fastaFile <- vepFastaFile.get
       pluginsDir <- vepPluginsDir.get
       dbNSFPFile <- vepDbNSFPFile.get
       vepRunSettings = VepRunSettings(vepScriptFile, workDir, fastaFile, pluginsDir, dbNSFPFile)
-    } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, varIdVal, vepRunSettings)
+    } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, vepDataFields, vepRunSettings)
   }
 
   def toVepServerSettings: Either[Snag, VepServerSettings] = {

@@ -4,7 +4,7 @@ import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
 import lunaris.recipes.{eval, tools}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
-import lunaris.recipes.values.{LunType, RecordUtils}
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta, RecordUtils}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object IdCanonicalizer extends tools.Tool {
@@ -16,14 +16,16 @@ object IdCanonicalizer extends tools.Tool {
       val from: String = "from"
       val refField: String = "refField"
       val altField: String = "altField"
+      val idFieldNew: String = "idFieldNew"
     }
 
     val from: Tool.RefParam = Tool.RefParam(Keys.from, LunType.RecordStreamType, isRequired = true)
     val refField: Tool.ValueParam = Tool.ValueParam(Keys.refField, LunType.StringType, isRequired = true)
     val altField: Tool.ValueParam = Tool.ValueParam(Keys.altField, LunType.StringType, isRequired = true)
+    val idFieldNew: Tool.ValueParam = Tool.ValueParam(Keys.idFieldNew, LunType.StringType, isRequired = true)
   }
 
-  override def params: Seq[Tool.Param] = Seq(Params.from)
+  override def params: Seq[Tool.Param] = Seq(Params.from, Params.refField, Params.altField, Params.idFieldNew)
 
   override def isFinal: Boolean = false
 
@@ -32,33 +34,39 @@ object IdCanonicalizer extends tools.Tool {
       from <- ToolArgUtils.asRef(Params.Keys.from, args)
       refField <- ToolArgUtils.asString(Params.Keys.refField, args)
       altField <- ToolArgUtils.asString(Params.Keys.altField, args)
-    } yield ToolInstance(from, refField, altField)
+      idFieldNew <- ToolArgUtils.asString(Params.Keys.idFieldNew, args)
+    } yield ToolInstance(from, refField, altField, idFieldNew)
   }
 
-  case class ToolInstance(from: String, refField: String, altField: String) extends tools.ToolInstance {
+  case class ToolInstance(from: String, refField: String, altField: String, idFieldNew: String)
+    extends tools.ToolInstance {
     override def refs: Map[String, String] = Map(Params.Keys.from -> from)
 
     override def newWorkerMaker(context: LunCompileContext, workers: Map[String, LunWorker]):
     Either[Snag, eval.WorkerMaker] = {
       ToolInstanceUtils.newWorkerMaker1(Params.Keys.from, workers) { fromWorker =>
-        new WorkerMaker(fromWorker, refField, altField)
+        new WorkerMaker(fromWorker, refField, altField, idFieldNew)
       }
     }
   }
 
-  class WorkerMaker(fromWorker: RecordStreamWorker, refField: String, altField: String)
+  class WorkerMaker(fromWorker: RecordStreamWorker, refField: String, altField: String, idFieldNew: String)
     extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerMaker.WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =
       Some[RecordStreamWorker] {
         (context: LunRunContext) => {
-          val snagOrStream =
+          val snagOrStream = {
             fromWorker.getStreamBox(context).snagOrStream.map { fromStream =>
               val mappedSource = fromStream.source.mapConcat { record =>
                 val snagOrRecord = for {
                   ref <- RecordUtils.getString(record, refField)
                   alt <- RecordUtils.getString(record, altField)
-                } yield ???
+                  chrom = record.locus.chrom
+                  pos = record.locus.region.begin
+                  idNew = s"$chrom:${pos}_$ref/$alt"
+                  recordNew <- record.addAsNewId(idFieldNew, idNew)
+                } yield recordNew
                 snagOrRecord match {
                   case Left(snag) =>
                     context.observer.logSnag(snag)
@@ -67,8 +75,12 @@ object IdCanonicalizer extends tools.Tool {
                     Seq(record)
                 }
               }
+              val metaOld = fromStream.meta
+              val meta = metaOld.copy(objectType = metaOld.objectType.addField(idFieldNew, LunType.StringType))
+              RecordStreamWithMeta(meta, mappedSource)
             }
-          ???
+          }
+          LunWorker.StreamBox(snagOrStream)
         }
       }
 

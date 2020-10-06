@@ -236,6 +236,13 @@ object LunValue {
         valuesNew = values + (idFieldNew -> idValueNewAsStringValue)
       } yield copy(id = idNew, values = valuesNew, lunType = lunTypeNew)
     }
+
+    def addAsNewId(idFieldNew: String, idNew: String): Either[Snag, RecordValue] = {
+      for {
+        recordWithNewField <- addField(idFieldNew, LunValue.PrimitiveValue.StringValue(idNew), LunType.StringType)
+        recordNew <- recordWithNewField.changeIdFieldTo(idFieldNew)
+      } yield recordNew
+    }
   }
 
   case class ExpressionValue(value: LunRecordExpression) extends LunValue {
