@@ -50,10 +50,10 @@ object VepServerRunner {
                 )
               }
             },
-            path("lunaris" / "js" / "predictor.js") {
+            path("lunaris" / "js" / "vep.js") {
               get {
                 complete(
-                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/predictor.js")
+                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/vep.js")
                 )
               }
             },
