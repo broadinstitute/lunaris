@@ -299,7 +299,7 @@ function removeFilter(filterNode) {
     }
 }
 
-function addFilterGroup() {
+function addFilterGroup(addInitialFilter = true) {
     const buttonNode = document.getElementById("addFilterGroupButton");
     tightenButton(buttonNode);
     const filterGroupsParent = getFilterGroupsParent();
@@ -312,7 +312,9 @@ function addFilterGroup() {
     openParenNode.innerText = "(";
     openParenNode.classList.add("openParen");
     newFilterGroup.append(openParenNode);
-    addFilter(newFilterGroup);
+    if(addInitialFilter) {
+        addFilter(newFilterGroup);
+    }
     const addFilterButton = document.createElement("button");
     addFilterButton.innerHTML = "&oplus;"
     addFilterButton.classList.add("addFilterButton");
@@ -410,7 +412,7 @@ function resetFilters() {
 
 function createMasks() {
     const map = new Map();
-    map.set("0of5_1pct",
+    map.set("for_testing",
         [[
             new Filter("LoF", "==", "HC"),
             new Filter("Polyphen2_HDIV_pred", "=~", "D")
@@ -420,7 +422,27 @@ function createMasks() {
     return map;
 }
 
+function getMaskSelectNode() {
+    return document.getElementById("masks");
+}
+
 function initMasksSelector() {
-    const selectNode = document.getElementById("masks");
+    const selectNode = getMaskSelectNode();
     setOptionsForSelect(selectNode, Array.from(masks.keys()));
+}
+
+function setPredefinedFilters() {
+    const maskSelectNode = getMaskSelectNode();
+    const maskKey = maskSelectNode.value;
+    const mask = masks.get(maskKey);
+    if(mask) {
+        clearFilters();
+        for(const maskFilterGroup of mask) {
+            const filterGroupNode = addFilterGroup(false);
+            for(const maskFilter of maskFilterGroup) {
+                const filterNode = addFilter(filterGroupNode);
+                maskFilter.applyToNode(filterNode);
+            }
+        }
+    }
 }
