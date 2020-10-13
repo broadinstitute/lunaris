@@ -3,7 +3,9 @@ const lunarisVariantPredictor = {
     "statuses": {},
     "idsPending": [],
     "fieldNames": [],
-    "operators": ["==", "=~", "!=", "!=~"],
+    "stringOperators": ["==", "=~", "!=", "!=~"],
+    "numericalOperators": ["<", "<=", ">", ">="],
+    "operators": ["==", "=~", "!=", "!=~", "<", "<=", ">", ">="],
     "filterGroupCounter": 0,
     "filterCounter": 0,
     "filters": []
@@ -381,7 +383,11 @@ function extractFilterExpression() {
                 }
             });
             if (field && operator && value) {
-                return ["(`" + field + "` " + operator + " \"" + value + "\")"];
+                if(lunarisVariantPredictor.numericalOperators.includes(operator)) {
+                    return ["(`" + field + "` " + operator + " " + value + ")"];
+                } else {
+                    return ["(`" + field + "` " + operator + " \"" + value + "\")"];
+                }
             } else {
                 return [];
             }
