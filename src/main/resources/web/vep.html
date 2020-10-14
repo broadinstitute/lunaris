@@ -4,6 +4,10 @@
     <title>Lunaris Variant Predictor Version 1.4.2</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
+    <script src="codemirror/lib/codemirror.js"></script>
+    <link rel="stylesheet" href="codemirror/lib/codemirror.css">
+    <script src="codemirror/mode/javascript/javascript.js"></script>
+    <link rel="stylesheet" href="codemirror/theme/darcula.css">
 </head>
 
 <body onload="init()">
@@ -16,6 +20,8 @@
 <p>This is the Lunaris Ensembl Variant Effect Predictor Mask Server Version 1.4.2. Submit a VCF file.</p>
 
 <p id="status_area"></p>
+
+<p id="code_mirror_parent"></p>
 
 <p id="filterGroups">
     <span class="openParen">(</span><button id="addFilterGroupButton" onclick="addFilterGroup()">&oplus;</button>

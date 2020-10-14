@@ -57,6 +57,22 @@ object VepServerRunner {
                 )
               }
             },
+            path("lunaris" / "codemirror" / Remaining) { remaining =>
+              get {
+                complete {
+                  val contentType =
+                    if (remaining.endsWith(".js")) {
+                      HttpUtils.ContentTypes.js
+                    } else if (remaining.endsWith(".css")) {
+                      HttpUtils.ContentTypes.css
+                    } else {
+                      HttpUtils.ContentTypes.plain
+                    }
+                  val location = "web/codemirror/" + remaining
+                  HttpUtils.ResponseBuilder.fromResourceOrError(contentType, location)
+                }
+              }
+            },
             path("lunaris" / "predictor" / "upload") {
               post {
                 withSizeLimit(1000000000L) {

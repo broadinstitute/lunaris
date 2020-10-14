@@ -33,9 +33,18 @@ class Filter {
 
 const masks = createMasks();
 
+const codeMirrorConfig = {
+    theme: "darcula",
+    lineNumbers: true
+}
+let codeMirror;
+
 function init() {
     getSchema();
     initMasksSelector();
+    const codeMirrorParent = document.getElementById("code_mirror_parent");
+    codeMirror = CodeMirror(codeMirrorParent, codeMirrorConfig);
+    codeMirror.setSize("95%", 100);
 }
 
 
@@ -48,7 +57,7 @@ function submit() {
 
     const formData = new FormData();
 
-    formData.append("filter", extractFilterExpression());
+    formData.append("filter", codeMirror.getValue());
     formData.append("inputFile", inputFile);
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
         .then((response) => {
