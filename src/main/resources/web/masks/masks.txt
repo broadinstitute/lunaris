@@ -1,0 +1,24 @@
+0of5_1pct
+  LoF == HC |
+  (Polyphen2_HDIV_pred.contains(D) & Polyphen2_HVAR_pred.contains(D) & SIFT_pred.contains(D) & LRT_pred.contains(D) &
+  (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A))) |
+  (IMPACT == MODERATE & MAF <= 0.01)
+1of5_1pct
+  LoF == HC |
+  (Polyphen2_HDIV_pred.contains(D) & Polyphen2_HVAR_pred.contains(D) & SIFT_pred.contains(D) & LRT_pred.contains(D) & (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A))) |
+  (IMPACT == MODERATE & (Polyphen2_HDIV_pred.contains(D) | Polyphen2_HVAR_pred.contains(D) | SIFT_pred.contains(D) | LRT_pred.contains(D) | (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A))) & MAF <= 0.01)
+5of5_LoF_LC_1pct
+  LoF == HC |
+  (Polyphen2_HDIV_pred.contains(D) & Polyphen2_HVAR_pred.contains(D) & SIFT_pred.contains(D) & LRT_pred.contains(D) & (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A))) |
+  (IMPACT == HIGH & LoF == LC & MAF <= 0.01)
+5of5
+  LoF_HC |
+  (Polyphen2_HDIV_pred.contains(D) & Polyphen2_HVAR_pred.contains(D) & SIFT_pred.contains(D) & LRT_pred.contains(D) & (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A)))
+11of11
+  LoF == HC |
+  (FATHMM_pred.contains(D) & FATHMM_MKL_pred.contains(D) & PROVEAN_pred.contains(D) & MetaSVM_pred.contains(D) & MetaLR_pred.contains(D) & M_CAP_score >= 0.025 & Polyphen2_HDIV_pred.contains(D) & Polyphen2_HVAR_pred.contains(D) & SIFT_pred.contains(D) & LRT_pred.contains(D) & (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A)))
+15of15
+  LoF == HC |
+  (VEST3_rankscore >= 0.9 & CADD_raw_rankscore >= 0.9 & DANN_rankscore >= 0.9 & Eigen_PC_raw_rankscore >= 0.9 & FATHMM_pred.contains(D) & FATHMM_MKL_pred.contains(D) & PROVEAN_pred.contains(D) & MetaSVM_pred.contains(D) & MetaLR_pred.contains(D) & M_CAP_score >= 0.025 & Polyphen2_HDIV_pred.contains(D) & Polyphen2_HVAR_pred.contains(D) & SIFT_pred.contains(D) & LRT_pred.contains(D) & (MutationTaster_pred.contains(D) | MutationTaster_pred.contains(A)))
+LoF_HC
+  LoF == HC
