@@ -37,6 +37,7 @@ const codeMirrorConfig = {
     theme: "darcula",
     lineNumbers: true
 }
+
 let codeMirror;
 
 function init() {
@@ -121,7 +122,6 @@ function getSchema() {
                 lunarisVariantPredictor.fieldNames = temporaryHackToFixDataProblem(schema.col_names);
                 const statusTextNode = getStatusAreaNode();
                 statusTextNode.innerText = "Loaded " + lunarisVariantPredictor.fieldNames.length + " field names."
-                addFilterGroup();
             }
         })
 }
@@ -246,194 +246,18 @@ function tightenButton(button) {
     button.style.padding = "0px";
 }
 
-function getFilterGroupsParent() {
-    return document.getElementById("filterGroups");
-}
-
-function addFilter(group) {
-    const filterNode = document.createElement("span");
-    const id = "filter" + lunarisVariantPredictor.filterCounter;
-    lunarisVariantPredictor.filterCounter++;
-    filterNode.id = id;
-    filterNode.classList.add("filter");
-    const openParenNode = document.createElement("span");
-    openParenNode.innerText = "(";
-    openParenNode.classList.add("openParen");
-    filterNode.appendChild(openParenNode);
-    const fieldSelect = createSelectWithOptions(lunarisVariantPredictor.fieldNames);
-    fieldSelect.classList.add("fieldSelect");
-    filterNode.appendChild(fieldSelect);
-    const operatorSelect = createSelectWithOptions(lunarisVariantPredictor.operators);
-    operatorSelect.classList.add("operatorSelect");
-    filterNode.appendChild(operatorSelect);
-    const valueInput = document.createElement("input");
-    valueInput.classList.add("valueInput");
-    valueInput.setAttribute("size", "20");
-    filterNode.appendChild(valueInput);
-    const removeFilterButton = document.createElement("button");
-    removeFilterButton.innerHTML = "&ominus;";
-    tightenButton(removeFilterButton);
-    removeFilterButton.onclick = function () {
-        removeFilter(document.getElementById(id));
-    }
-    filterNode.append(removeFilterButton);
-    const closeParenNode = document.createElement("span");
-    closeParenNode.innerText = ")";
-    closeParenNode.classList.add("closeParen");
-    filterNode.appendChild(closeParenNode);
-    if (countChildrenOfClass(group, "filter") === 0) {
-        const nodeAfter = getLastChildOfClass(group, "addFilterButton");
-        group.insertBefore(filterNode, nodeAfter);
-    } else {
-        const nodeAfter = getLastChildOfClass(group, "filter").nextSibling;
-        const operatorNode = document.createElement("span");
-        operatorNode.innerText = " OR ";
-        operatorNode.classList.add("operator");
-        group.insertBefore(operatorNode, nodeAfter);
-        group.insertBefore(filterNode, nodeAfter);
-    }
-    return filterNode;
-}
-
-function removeFilter(filterNode) {
-    const filterGroupNode = filterNode.parentNode;
-    const previousNode = filterNode.previousSibling;
-    const nextNode = filterNode.nextSibling;
-    filterNode.remove();
-    if (previousNode.classList.contains("openParen") && nextNode.classList.contains("operator")) {
-        nextNode.remove();
-    } else if (previousNode.classList.contains("operator")) {
-        previousNode.remove();
-    }
-    if (countChildrenOfClass(filterGroupNode, "filter") === 0) {
-        removeFilterGroup(filterGroupNode);
-    }
-}
-
-function addFilterGroup(addInitialFilter = true) {
-    const buttonNode = document.getElementById("addFilterGroupButton");
-    tightenButton(buttonNode);
-    const filterGroupsParent = getFilterGroupsParent();
-    const newFilterGroup = document.createElement("span");
-    const id = "filterGroup" + lunarisVariantPredictor.filterGroupCounter;
-    lunarisVariantPredictor.filterGroupCounter++;
-    newFilterGroup.id = id;
-    newFilterGroup.classList.add("filterGroup");
-    const openParenNode = document.createElement("span");
-    openParenNode.innerText = "(";
-    openParenNode.classList.add("openParen");
-    newFilterGroup.append(openParenNode);
-    if(addInitialFilter) {
-        addFilter(newFilterGroup);
-    }
-    const addFilterButton = document.createElement("button");
-    addFilterButton.innerHTML = "&oplus;"
-    addFilterButton.classList.add("addFilterButton");
-    tightenButton(addFilterButton);
-    addFilterButton.onclick = function () {
-        addFilter(document.getElementById(id));
-    }
-    newFilterGroup.appendChild(addFilterButton);
-    const closeParenNode = document.createElement("span");
-    closeParenNode.innerText = ")";
-    closeParenNode.classList.add("closeParen");
-    newFilterGroup.appendChild(closeParenNode);
-    if (countChildrenOfClass(filterGroupsParent, "filterGroup") === 0) {
-        filterGroupsParent.insertBefore(newFilterGroup, buttonNode);
-    } else {
-        const nodeAfter = getLastChildOfClass(filterGroupsParent, "filterGroup").nextSibling;
-        const operatorNode = document.createElement("span");
-        operatorNode.innerHTML = "<br>AND ";
-        operatorNode.classList.add("operator");
-        filterGroupsParent.insertBefore(operatorNode, nodeAfter);
-        filterGroupsParent.insertBefore(newFilterGroup, nodeAfter);
-    }
-    return newFilterGroup;
-}
-
-function removeFilterGroup(filterGroupNode) {
-    const previousNode = filterGroupNode.previousSibling;
-    const nextNode = filterGroupNode.nextSibling;
-    filterGroupNode.remove();
-    if (previousNode.classList.contains("openParen") && nextNode.classList.contains("operator")) {
-        nextNode.remove();
-    } else if (previousNode.classList.contains("operator")) {
-        previousNode.remove();
-    }
-}
-
-function extractFilterExpression() {
-    const filterGroupsParent = getFilterGroupsParent();
-    const filterGroupNodes = [];
-    filterGroupsParent.childNodes.forEach((childNode) => {
-        if (childNode.classList && childNode.classList.contains("filterGroup")) {
-            filterGroupNodes.push(childNode);
-        }
-    })
-    const filterStringsArray = filterGroupNodes.map((filterGroup) => {
-        const filters = getAllChildrenOfClass(filterGroup, "filter");
-        return filters.flatMap((filter) => {
-            let field;
-            let operator;
-            let value;
-            filter.childNodes.forEach((childNode) => {
-                if (childNode.classList.contains("fieldSelect")) {
-                    if (childNode.options) {
-                        field = childNode.options[childNode.selectedIndex].value;
-                    }
-                } else if (childNode.classList.contains("operatorSelect")) {
-                    if (childNode.options) {
-                        operator = childNode.options[childNode.selectedIndex].value;
-                    }
-                } else if (childNode.classList.contains("valueInput")) {
-                    if (childNode.value && childNode.value.length > 0) {
-                        value = childNode.value;
-                    }
-                }
-            });
-            if (field && operator && value) {
-                if(lunarisVariantPredictor.numericalOperators.includes(operator)) {
-                    return ["(`" + field + "` " + operator + " " + value + ")"];
-                } else {
-                    return ["(`" + field + "` " + operator + " \"" + value + "\")"];
-                }
-            } else {
-                return [];
-            }
-        });
-    });
-    return filterStringsArray
-        .filter((filterStrings) => filterStrings.length > 0)
-        .map((filterStrings) => "(" + filterStrings.join(" OR ") + ")")
-        .join(" AND ");
-}
-
-function showFilterExpression() {
-    const pFilterExpression = document.getElementById("filterExpressionOutput");
-    const filterExpression = extractFilterExpression();
-    pFilterExpression.innerText = filterExpression === "" ? "[No filters specified]" : filterExpression;
-}
-
 function clearFilters() {
-    const filterGroupsParent = getFilterGroupsParent();
-    const filterGroups = getAllChildrenOfClass(filterGroupsParent, "filterGroup");
-    filterGroups.forEach((filterGroup) => removeFilterGroup(filterGroup));
+    codeMirror.setValue("");
 }
 
 function resetFilters() {
     clearFilters();
-    addFilterGroup();
 }
 
 function createMasks() {
     const map = new Map();
-    map.set("for_testing",
-        [[
-            new Filter("LoF", "==", "HC"),
-            new Filter("Polyphen2_HDIV_pred", "=~", "D")
-        ]]
-    );
-    map.set("LoF_HC", [[new Filter("LoF", "==", "HC")]]);
+    map.set("for_testing", `Alt == "A" OR Alt == "T"`);
+    map.set("LoF_HC", `LoF == "HC"`);
     return map;
 }
 
@@ -451,13 +275,6 @@ function setPredefinedFilters() {
     const maskKey = maskSelectNode.value;
     const mask = masks.get(maskKey);
     if(mask) {
-        clearFilters();
-        for(const maskFilterGroup of mask) {
-            const filterGroupNode = addFilterGroup(false);
-            for(const maskFilter of maskFilterGroup) {
-                const filterNode = addFilter(filterGroupNode);
-                maskFilter.applyToNode(filterNode);
-            }
-        }
+        codeMirror.setValue(mask);
     }
 }

@@ -23,21 +23,14 @@
 
 <p id="code_mirror_parent"></p>
 
-<p id="filterGroups">
-    <span class="openParen">(</span><button id="addFilterGroupButton" onclick="addFilterGroup()">&oplus;</button>
-    <span class="closeParen">)</span></p>
-
 <p>
     <label for="inputfile">Select a file:</label>
     <input type="file" id="inputfile" name="myfile">
     <button onclick="submit()">Submit</button>
-    <button onclick="showFilterExpression()">Show filter expression</button>
     <button onclick="resetFilters()">Reset filters</button>
     <button onclick="setPredefinedFilters()">Set predefined filters</button>
     <select name="masks" id="masks"></select>
 </p>
-
-<p id="filterExpressionOutput"></p>
 
 </body>
 
