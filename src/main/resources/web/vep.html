@@ -17,7 +17,7 @@
 </h1>
 
 
-<p>This is the Lunaris Ensembl Variant Effect Predictor Mask Server Version 1.4.2. Submit a VCF file.</p>
+<p>This is the Lunaris Ensembl Variant Effect Predictor Mask Server Version 1.5.0. Submit a VCF file.</p>
 
 <p id="status_area"></p>
 
@@ -27,8 +27,8 @@
     <label for="inputfile">Select a file:</label>
     <input type="file" id="inputfile" name="myfile">
     <button onclick="submit()">Submit</button>
-    <button onclick="resetFilters()">Reset filters</button>
-    <button onclick="setPredefinedFilters()">Set predefined filters</button>
+    <button onclick="resetFilters()">Clear mask</button>
+    <button onclick="setMask()">Load predefined mask</button>
     <select name="masks" id="masks"></select>
 </p>
 

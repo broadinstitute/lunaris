@@ -5,11 +5,12 @@ import akka.http.scaladsl.model.{ContentTypes, Multipart}
 import akka.http.scaladsl.server.Directives.{complete, get, path, _}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
+import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
 import lunaris.vep.VepFileManager.ResultId
-import lunaris.vep.{VepFileManager, VepFormData, VepJson, VepRunSettingsBox}
+import lunaris.vep.{VepFileManager, VepFormData, VepJson, VepMasksManager, VepRunSettingsBox}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -143,6 +144,23 @@ object VepServerRunner {
                     complete(
                       HttpUtils.ResponseBuilder.fromJson(HeaderJson.headerEncoder(header))
                     )
+                }
+              }
+            },
+            path("lunaris" / "predictor" / "masks" / "list") {
+              get {
+                val maskNamesJson = Json.fromValues(VepMasksManager.maskNames.map(Json.fromString))
+                complete(
+                  HttpUtils.ResponseBuilder.fromJson(maskNamesJson)
+                )
+              }
+            },
+            path("lunaris" / "predictor" / "masks" / Remaining) { remaining =>
+              get {
+                val maskPath = VepMasksManager.getPathForMask(remaining)
+                println(maskPath)
+                complete {
+                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, maskPath)
                 }
               }
             }

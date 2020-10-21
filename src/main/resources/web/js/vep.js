@@ -1,14 +1,15 @@
 const lunarisVariantPredictor = {
-    "inputFileNames": {},
-    "statuses": {},
-    "idsPending": [],
-    "fieldNames": [],
-    "stringOperators": ["==", "=~", "!=", "!=~"],
-    "numericalOperators": ["<", "<=", ">", ">="],
-    "operators": ["==", "=~", "!=", "!=~", "<", "<=", ">", ">="],
-    "filterGroupCounter": 0,
-    "filterCounter": 0,
-    "filters": []
+    inputFileNames: {},
+    statuses: {},
+    idsPending: [],
+    fieldNames: [],
+    stringOperators: ["==", "=~", "!=", "!=~"],
+    numericalOperators: ["<", "<=", ">", ">="],
+    operators: ["==", "=~", "!=", "!=~", "<", "<=", ">", ">="],
+    filterGroupCounter: 0,
+    filterCounter: 0,
+    filters: [],
+    masksList: []
 }
 
 class Filter {
@@ -30,8 +31,6 @@ class Filter {
         });
     }
 }
-
-const masks = createMasks();
 
 const codeMirrorConfig = {
     theme: "darcula",
@@ -254,27 +253,26 @@ function resetFilters() {
     clearFilters();
 }
 
-function createMasks() {
-    const map = new Map();
-    map.set("for_testing", `Alt == "A" OR Alt == "T"`);
-    map.set("LoF_HC", `LoF == "HC"`);
-    return map;
+function initMasksSelector() {
+    fetch("/lunaris/predictor/masks/list")
+        .then((response) => response.json())
+        .then((masksList) => {
+            lunarisVariantPredictor.masksList = masksList;
+            const selectNode = getMaskSelectNode();
+            setOptionsForSelect(selectNode, lunarisVariantPredictor.masksList);
+        });
 }
 
 function getMaskSelectNode() {
     return document.getElementById("masks");
 }
 
-function initMasksSelector() {
-    const selectNode = getMaskSelectNode();
-    setOptionsForSelect(selectNode, Array.from(masks.keys()));
-}
-
-function setPredefinedFilters() {
+function setMask() {
     const maskSelectNode = getMaskSelectNode();
-    const maskKey = maskSelectNode.value;
-    const mask = masks.get(maskKey);
-    if(mask) {
-        codeMirror.setValue(mask);
-    }
+    const maskName = maskSelectNode.value;
+    fetch("/lunaris/predictor/masks/" + maskName)
+        .then((response) => response.text())
+        .then((mask) => {
+            codeMirror.setValue(mask);
+        });
 }
