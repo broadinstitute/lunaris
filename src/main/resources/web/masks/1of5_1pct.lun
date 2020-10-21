@@ -1,0 +1,5 @@
+LoF == "HC" OR
+(Polyphen2_HDIV_pred =~ "D" AND Polyphen2_HVAR_pred =~ "D" AND SIFT_pred =~ "D" AND LRT_pred =~ "D" AND
+(MutationTaster_pred =~ "D" OR MutationTaster_pred =~ "A")) OR
+(IMPACT == "MODERATE" AND (Polyphen2_HDIV_pred =~ "D" OR Polyphen2_HVAR_pred =~ "D" OR SIFT_pred =~ "D" OR
+LRT_pred =~ "D" OR (MutationTaster_pred =~ "D" OR MutationTaster_pred =~ "A")) AND MAF <= 0.01)

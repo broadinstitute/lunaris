@@ -1,0 +1,4 @@
+LoF == "HC" OR
+(FATHMM_pred =~ "D" AND FATHMM_MKL_pred =~ "D" AND PROVEAN_pred =~ "D" AND MetaSVM_pred =~ "D" AND MetaLR_pred =~ "D"
+AND M_CAP_score >= 0.025 AND Polyphen2_HDIV_pred =~ "D" AND Polyphen2_HVAR_pred =~ "D" AND SIFT_pred =~ "D"
+AND LRT_pred =~ "D" AND (MutationTaster_pred =~ "D" OR MutationTaster_pred =~ "A"))

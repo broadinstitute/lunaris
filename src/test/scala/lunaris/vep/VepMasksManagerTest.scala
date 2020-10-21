@@ -8,22 +8,32 @@ class VepMasksManagerTest extends AnyFunSuite {
   test("List of masks") {
     val masksFolder: File = File("src/main/resources/web/masks")
     assert(masksFolder.exists)
-    println(masksFolder.children.map(_.`extension`).mkString(", "))
-    val maskFiles = masksFolder.children.filter(_.`extension`.contains(".lun")).map(_.name).toSeq
-    val maskFilesFromMasksList = VepMasksManager.maskNames.map(_ + ".lun")
+    val maskFiles = masksFolder.children.filter(_.`extension`.contains(".lun")).map(_.name).toSet
+    val maskFilesFromMasksList = VepMasksManager.maskNames.map(_ + ".lun").toSet
     assert(maskFiles == maskFilesFromMasksList)
   }
 
-  test("Parsing masks") {
-    for(maskName <- VepMasksManager.maskNames) {
+  test("Masks are not just whitespace") {
+    for (maskName <- VepMasksManager.maskNames) {
       val maskPath = VepMasksManager.getPathForMask(maskName)
-      val maskStringOpt =Resource.asString(maskPath)
+      val maskStringOpt = Resource.asString(maskPath)
+      assert(maskStringOpt.nonEmpty, s"Could not load mask $maskName.")
+      val maskString = maskStringOpt.get
+      assert(maskString.trim.nonEmpty, s"$maskName consists of only whitespace")
+    }
+  }
+
+  test("Parsing masks") {
+      for (maskName <- VepMasksManager.maskNames) {
+      val maskPath = VepMasksManager.getPathForMask(maskName)
+      val maskStringOpt = Resource.asString(maskPath)
       assert(maskStringOpt.nonEmpty, s"Could not load mask $maskName.")
       val maskString = maskStringOpt.get
       val snagOrRecordExpression = RecordExpressionParser.parse(maskString)
-      println(snagOrRecordExpression)
       val shouldNeverBeNeeded = ""
-      assert(snagOrRecordExpression.isRight, snagOrRecordExpression.left.toOption.getOrElse(shouldNeverBeNeeded))
+      val parseErrorMessage = snagOrRecordExpression.left.toOption.map(_.report).getOrElse(shouldNeverBeNeeded)
+      val errorMessage = s"$maskName does not parse: " + parseErrorMessage
+      assert(snagOrRecordExpression.isRight, errorMessage)
     }
   }
 }

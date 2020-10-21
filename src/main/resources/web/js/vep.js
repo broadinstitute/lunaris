@@ -44,7 +44,7 @@ function init() {
     initMasksSelector();
     const codeMirrorParent = document.getElementById("code_mirror_parent");
     codeMirror = CodeMirror(codeMirrorParent, codeMirrorConfig);
-    codeMirror.setSize("95%", 100);
+    codeMirror.setSize("95%", "7.5em");
 }
 
 
@@ -82,14 +82,14 @@ function addTemporaryStatus(file) {
     const statusNode = document.createElement("p");
     statusNode.id = tempStatusNodeId;
     statusNode.innerText = file.name + ": uploading ...";
-    const statusAreaNode = getStatusAreaNode();
+    const statusAreaNode = getSubmissionAreaNode();
     statusAreaNode.appendChild(statusNode);
 }
 
 function removeTemporaryStatus() {
     const statusNode = document.getElementById(tempStatusNodeId);
     if (statusNode) {
-        const statusAreaNode = getStatusAreaNode();
+        const statusAreaNode = getSubmissionAreaNode();
         statusAreaNode.removeChild(statusNode);
     }
 }
@@ -129,16 +129,20 @@ function getStatusAreaNode() {
     return document.getElementById("status_area");
 }
 
+function getSubmissionAreaNode() {
+    return document.getElementById("submission_area");
+}
+
 function showCouldNotSubmit(message) {
     const pNode = document.createElement("p");
     pNode.innerText = message;
-    const statusAreaNode = getStatusAreaNode();
+    const statusAreaNode = getSubmissionAreaNode();
     statusAreaNode.append(pNode);
 }
 
 function addStatusEntry(inputFileName, id) {
     const pNode = document.createElement("p");
-    const statusAreaNode = getStatusAreaNode();
+    const statusAreaNode = getSubmissionAreaNode();
     statusAreaNode.append(pNode);
     pNode.setAttribute("id", id)
     showInitialStatus(pNode, inputFileName);

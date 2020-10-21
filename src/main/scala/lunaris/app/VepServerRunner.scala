@@ -158,7 +158,6 @@ object VepServerRunner {
             path("lunaris" / "predictor" / "masks" / Remaining) { remaining =>
               get {
                 val maskPath = VepMasksManager.getPathForMask(remaining)
-                println(maskPath)
                 complete {
                   HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, maskPath)
                 }
