@@ -52,7 +52,7 @@ object RecordExpressionParser {
       P(GreaterOrEqualOperator.string).!.map(_ => GreaterOrEqualOperator)
 
     def numberTestOperator[_: P]: P[NumberFieldOperator[NumberFilter]] =
-      P(lessThanOperator | lessOrEqualOperator | greaterThanOperator | greaterOrEqualOperator)
+      P(lessOrEqualOperator | lessThanOperator | greaterOrEqualOperator | greaterThanOperator)
 
     // Floating point parsing adapted from FastParse JSON example
     def digits[_: P]: P[Unit] = P(CharsWhileIn("0-9"))
