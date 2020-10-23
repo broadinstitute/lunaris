@@ -1,5 +1,7 @@
 package lunaris.vep
 
+import java.util.Date
+
 import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.stream.{IOResult, Materializer}
@@ -26,6 +28,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
   val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
+  var submissionTimes: Map[ResultId, Long] = Map.empty
 
   def updateStatus(resultId: ResultId, resultStatus: ResultStatus): Unit = {
     statusById = statusById + (resultId -> resultStatus)
@@ -93,7 +96,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
         runnable.executeAsync(context)
     }.flatten
     queryFuture.onComplete {
-      case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded(outputFileNameForId(resultId)))
+      case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded())
       case Failure(exception) =>
         val snag = Snag(exception)
         println(snag.report)
@@ -110,10 +113,15 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
 
   class SubmissionResponse(val resultId: ResultId, val fut: Future[Done])
 
+  def recordSubmissionTime(id: ResultId): Unit = {
+  }
+
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
-    updateStatus(resultId, ResultStatus.createSubmitted())
+    val submissionTime = System.currentTimeMillis()
+    submissionTimes += (resultId -> submissionTime)
+    updateStatus(resultId, ResultStatus.createSubmitted(submissionTime))
     val fut = newUploadAndQueryFutureFuture(formData)
     new SubmissionResponse(resultId, fut)
   }
@@ -156,111 +164,51 @@ object VepFileManager {
     }
   }
 
-  sealed trait ResultStatus {
-    def statusCode: Int
-
-    def isSubmitted: Boolean
-
-    def isCompleted: Boolean
-
-    def hasSucceeded: Boolean
-
-    def hasFailed: Boolean
-
-    def timestamp: Long
-
-    def message: String
-
-    def outputFileOpt: Option[String]
-  }
+  case class ResultStatus(statusType: ResultStatus.Type, message: String)
 
   object ResultStatus {
 
-    case class Invalid(timestamp: Long, message: String) extends ResultStatus {
-      override def statusCode: Int = -19
+    sealed trait Type {
+      def statusCode: Int =
+        this match {
+          case Type.Invalid => -19
+          case Type.Unknown => -1
+          case Type.Submitted => 1
+          case Type.Succeeded => 7
+          case Type.Failed => 19
+        }
 
-      override def isSubmitted: Boolean = false
+      def isSubmitted: Boolean = this == Type.Submitted || this == Type.Succeeded || this == Type.Failed
 
-      override def isCompleted: Boolean = false
+      def isCompleted: Boolean = this == Type.Succeeded || this == Type.Failed
 
-      override def hasSucceeded: Boolean = false
+      def hasSucceeded: Boolean = this == Type.Succeeded
 
-      override def hasFailed: Boolean = false
-
-      override def outputFileOpt: Option[String] = None
+      def hasFailed: Boolean = this == Type.Failed
     }
 
-    case class Unknown(timestamp: Long) extends ResultStatus {
-      override def statusCode: Int = -1
+    object Type {
+      case object Invalid extends Type
 
-      override def isSubmitted: Boolean = false
+      case object Unknown extends Type
 
-      override def isCompleted: Boolean = false
+      case object Submitted extends Type
 
-      override def hasSucceeded: Boolean = false
+      case object Succeeded extends Type
 
-      override def hasFailed: Boolean = false
-
-      override def message: String = "Unknown id."
-
-      override def outputFileOpt: Option[String] = None
+      case object Failed extends Type
     }
 
-    case class Submitted(timestamp: Long) extends ResultStatus {
-      override def statusCode: Int = 1
+    def createInvalid(message: String): ResultStatus = ResultStatus(Type.Invalid, message)
 
-      override def isSubmitted: Boolean = true
+    def createUnknown(): ResultStatus = ResultStatus(Type.Unknown, "Unknown submission id.")
 
-      override def isCompleted: Boolean = false
+    def createSubmitted(submissionTime: Long): ResultStatus =
+      ResultStatus(Type.Submitted, "Submitted at " + new Date(submissionTime))
 
-      override def hasSucceeded: Boolean = false
+    def createSucceeded(): ResultStatus = ResultStatus(Type.Succeeded, "Success!")
 
-      override def hasFailed: Boolean = false
-
-      override def message: String = "Submitted"
-
-      override def outputFileOpt: Option[String] = None
-    }
-
-    case class Succeeded(timestamp: Long, outputFile: String) extends ResultStatus {
-      override def statusCode: Int = 7
-
-      override def isSubmitted: Boolean = true
-
-      override def isCompleted: Boolean = true
-
-      override def hasSucceeded: Boolean = true
-
-      override def hasFailed: Boolean = false
-
-      override def message: String = s"Success!"
-
-      override def outputFileOpt: Option[String] = Some(outputFile)
-    }
-
-    case class Failed(timestamp: Long, message: String) extends ResultStatus {
-      override def statusCode: Int = 19
-
-      override def isSubmitted: Boolean = true
-
-      override def isCompleted: Boolean = true
-
-      override def hasSucceeded: Boolean = false
-
-      override def hasFailed: Boolean = true
-
-      override def outputFileOpt: Option[String] = None
-    }
-
-    def createInvalid(message: String): Invalid = Invalid(System.currentTimeMillis(), message)
-
-    def createUnknown(): Unknown = Unknown(System.currentTimeMillis())
-
-    def createSubmitted(): Submitted = Submitted(System.currentTimeMillis())
-
-    def createSucceeded(outputFile: String): Succeeded = Succeeded(System.currentTimeMillis(), outputFile)
-
-    def createFailed(message: String): Failed = Failed(System.currentTimeMillis(), message)
+    def createFailed(message: String): ResultStatus = ResultStatus(Type.Failed, message)
   }
 
 }

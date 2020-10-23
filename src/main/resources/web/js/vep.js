@@ -48,7 +48,7 @@ function init() {
 }
 
 
-setInterval(updatePendingStatuses, 700);
+setInterval(updatePendingStatuses, 300);
 
 function submit() {
     const inputFile = document.getElementById("inputfile").files[0];
