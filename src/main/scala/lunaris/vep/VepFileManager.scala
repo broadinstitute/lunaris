@@ -12,9 +12,10 @@ import lunaris.app.{VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.{LunCompiler, LunRunContext}
-import lunaris.utils.NumberParser
+import lunaris.utils.{DateUtils, NumberParser}
 import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
+import org.threeten.bp.DateTimeUtils
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
@@ -28,7 +29,6 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
   val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
 
   var statusById: Map[ResultId, ResultStatus] = Map.empty
-  var submissionTimes: Map[ResultId, Long] = Map.empty
 
   def updateStatus(resultId: ResultId, resultStatus: ResultStatus): Unit = {
     statusById = statusById + (resultId -> resultStatus)
@@ -74,7 +74,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     implicit actorSystem: ActorSystem
   ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
 
-  def newQueryFuture(formData: VepFormData)(implicit actorSystem: ActorSystem): Future[Done] = {
+  def newQueryFuture(formData: VepFormData, submissionTime: Long)(implicit actorSystem: ActorSystem): Future[Done] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val inputFile = inputFilePathForId(resultId)
@@ -96,33 +96,32 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
         runnable.executeAsync(context)
     }.flatten
     queryFuture.onComplete {
-      case Success(_) => updateStatus(resultId, ResultStatus.createSucceeded())
+      case Success(_) =>
+        val successTime = System.currentTimeMillis()
+        updateStatus(resultId, ResultStatus.createSucceeded(submissionTime, successTime))
       case Failure(exception) =>
+        val failTime = System.currentTimeMillis()
         val snag = Snag(exception)
         println(snag.report)
-        updateStatus(resultId, ResultStatus.createFailed(snag.message))
+        updateStatus(resultId, ResultStatus.createFailed(submissionTime, failTime, snag.message))
     }
     queryFuture
   }
 
-  def newUploadAndQueryFutureFuture(formData: VepFormData)(
+  def newUploadAndQueryFutureFuture(formData: VepFormData, submissionTime: Long)(
     implicit actorSystem: ActorSystem): Future[Done] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    newQueryFuture(formData)
+    newQueryFuture(formData, submissionTime)
   }
 
   class SubmissionResponse(val resultId: ResultId, val fut: Future[Done])
-
-  def recordSubmissionTime(id: ResultId): Unit = {
-  }
 
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val submissionTime = System.currentTimeMillis()
-    submissionTimes += (resultId -> submissionTime)
     updateStatus(resultId, ResultStatus.createSubmitted(submissionTime))
-    val fut = newUploadAndQueryFutureFuture(formData)
+    val fut = newUploadAndQueryFutureFuture(formData, submissionTime)
     new SubmissionResponse(resultId, fut)
   }
 
@@ -203,12 +202,25 @@ object VepFileManager {
 
     def createUnknown(): ResultStatus = ResultStatus(Type.Unknown, "Unknown submission id.")
 
-    def createSubmitted(submissionTime: Long): ResultStatus =
-      ResultStatus(Type.Submitted, "Submitted at " + new Date(submissionTime))
+    def createSubmitted(submissionTime: Long): ResultStatus = {
+      val subTimeStr = DateUtils.timeToString(submissionTime)
+      ResultStatus(Type.Submitted, s"Submitted at $subTimeStr.")
+    }
 
-    def createSucceeded(): ResultStatus = ResultStatus(Type.Succeeded, "Success!")
+    def createSucceeded(submissionTime: Long, successTime: Long): ResultStatus = {
+      val subTimeStr = DateUtils.timeToString(submissionTime)
+      val successTimeStr = DateUtils.timeToString(successTime)
+      val timeDiffStr = DateUtils.timeDiffToString(successTime - submissionTime)
+      ResultStatus(Type.Succeeded, s"Success on $successTimeStr, after $timeDiffStr.")
+    }
 
-    def createFailed(message: String): ResultStatus = ResultStatus(Type.Failed, message)
+    def createFailed(submissionTime: Long, failTime: Long, message: String): ResultStatus = {
+      val subTimeStr = DateUtils.timeToString(submissionTime)
+      val successTimeStr = DateUtils.timeToString(failTime)
+      val timeDiffStr = DateUtils.timeDiffToString(failTime - submissionTime)
+      ResultStatus(Type.Succeeded,
+        s"Failed on $successTimeStr, after $timeDiffStr: $message")
+    }
   }
 
 }
