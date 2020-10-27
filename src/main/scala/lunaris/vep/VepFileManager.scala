@@ -208,14 +208,12 @@ object VepFileManager {
     }
 
     def createSucceeded(submissionTime: Long, successTime: Long): ResultStatus = {
-      val subTimeStr = DateUtils.timeToString(submissionTime)
       val successTimeStr = DateUtils.timeToString(successTime)
       val timeDiffStr = DateUtils.timeDiffToString(successTime - submissionTime)
       ResultStatus(Type.Succeeded, s"Success on $successTimeStr, after $timeDiffStr.")
     }
 
     def createFailed(submissionTime: Long, failTime: Long, message: String): ResultStatus = {
-      val subTimeStr = DateUtils.timeToString(submissionTime)
       val successTimeStr = DateUtils.timeToString(failTime)
       val timeDiffStr = DateUtils.timeDiffToString(failTime - submissionTime)
       ResultStatus(Type.Succeeded,

@@ -155,7 +155,13 @@ object RecordStreamJoinerWithFallback {
         } else {
           val State.RecordStack.Result(_, generatedRecords) = records.drainDriverRecords()
           val (stateNew, _) = InitialState.withTaggedRecord(taggedRecord)
-          (stateNew, generatedRecords)
+          if(gotLastRecordsNew.gotLastDriverRecord) {
+            val State.RecordStack.Result(recordStackNew2, generatedRecords2) = stateNew.records.drainDriverRecords()
+            val stateNew2 = StateWithLocus(record.locus, recordStackNew2, gotLastRecordsNew)
+            (stateNew2, generatedRecords ++ generatedRecords2)
+          } else {
+            (stateNew, generatedRecords)
+          }
         }
       }
     }
