@@ -142,7 +142,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
 object VepFileManager {
 
   case class ResultId(inputFileName: String, randomPart: Long, timestamp: Long) {
-    override def toString: String = inputFileName + "_" + randomPart + "_" + timestamp
+    override def toString: String = inputFileName + "_" + randomPart + "_" + timestamp + ".tsv"
   }
 
   object ResultId {
@@ -150,7 +150,13 @@ object VepFileManager {
       ResultId(inputFileName, 1 + Random.nextLong(Long.MaxValue), System.currentTimeMillis())
 
     def fromString(string: String): Either[Snag, ResultId] = {
-      val parts = string.split("_")
+      val stringWithoutSuffix =
+        if(string.endsWith(".tsv")) {
+          string.substring(0, string.length - 4)
+        } else {
+          string
+        }
+      val parts = stringWithoutSuffix.split("_")
       if (parts.length < 3) {
         Left(Snag(s"$string is not a valid result id."))
       } else {

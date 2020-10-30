@@ -40,6 +40,18 @@ object FieldFilterExpression {
     override def createFilter(field: String, value: String): StringNotEqual = StringNotEqual(field, value)
   }
 
+  object ContainsOperator extends StringFieldOperator[StringContains] {
+    override val string: String = "~"
+
+    override def createFilter(field: String, value: String): StringContains = StringContains(field, value)
+  }
+
+  object NotContainsOperator extends StringFieldOperator[StringNotContains] {
+    override val string: String = "!~"
+
+    override def createFilter(field: String, value: String): StringNotContains = StringNotContains(field, value)
+  }
+
   object MatchesOperator extends StringFieldOperator[StringMatches] {
     override val string: String = "=~"
 
@@ -116,6 +128,18 @@ object FieldFilterExpression {
 
   case class StringNotEqual(field: String, value: String) extends StringFilter {
     override def fieldTest(string: String): Boolean = string != value
+  }
+
+  case class StringContains(field: String, regexString: String) extends StringFilter {
+    val regex: Regex = (".*" + regexString + ".*").r
+
+    override def fieldTest(string: String): Boolean = regex.matches(string)
+  }
+
+  case class StringNotContains(field: String, regexString: String) extends StringFilter {
+    val regex: Regex = (".*" + regexString + ".*").r
+
+    override def fieldTest(string: String): Boolean = !regex.matches(string)
   }
 
   case class StringMatches(field: String, regexString: String) extends StringFilter {

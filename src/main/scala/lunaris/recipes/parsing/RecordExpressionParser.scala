@@ -25,13 +25,20 @@ object RecordExpressionParser {
 
     def notEqualOperator[_: P]: P[NotEqualOperator.type] = P(NotEqualOperator.string).!.map(_ => NotEqualOperator)
 
+    def containsOperator[_: P]: P[ContainsOperator.type] =
+      P(ContainsOperator.string).!.map(_ => ContainsOperator)
+
+    def notContainsOperator[_: P]: P[NotContainsOperator.type] =
+      P(NotContainsOperator.string).!.map(_ => NotContainsOperator)
+
     def matchesOperator[_: P]: P[MatchesOperator.type] = P(MatchesOperator.string).!.map(_ => MatchesOperator)
 
     def notMatchesOperator[_: P]: P[NotMatchesOperator.type] =
       P(NotMatchesOperator.string).!.map(_ => NotMatchesOperator)
 
     def stringTestOperator[_: P]: P[StringFieldOperator[StringFilter]] =
-      P(equalOperator | notEqualOperator | matchesOperator | notMatchesOperator)
+      P(equalOperator | notEqualOperator | containsOperator | notContainsOperator | matchesOperator |
+        notMatchesOperator)
 
     def stringLiteral[_: P]: P[String] = P(P("\"") ~/ CharPred(_ != '"').rep.! ~ P("\""))
 

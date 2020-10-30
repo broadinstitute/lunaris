@@ -83,7 +83,7 @@ function addTemporaryStatus(file) {
     statusNode.id = tempStatusNodeId;
     statusNode.innerText = file.name + ": uploading ...";
     const statusAreaNode = getSubmissionAreaNode();
-    statusAreaNode.appendChild(statusNode);
+    statusAreaNode.insertAdjacentElement("afterbegin", statusNode);
 }
 
 function removeTemporaryStatus() {
@@ -143,7 +143,7 @@ function showCouldNotSubmit(message) {
 function addStatusEntry(inputFileName, id) {
     const pNode = document.createElement("p");
     const statusAreaNode = getSubmissionAreaNode();
-    statusAreaNode.append(pNode);
+    statusAreaNode.insertAdjacentElement("afterbegin", pNode);
     pNode.setAttribute("id", id)
     showInitialStatus(pNode, inputFileName);
 }

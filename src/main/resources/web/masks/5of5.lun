@@ -1,3 +1,3 @@
 LoF == "HC" OR
-(Polyphen2_HDIV_pred =~ "D" AND Polyphen2_HVAR_pred =~ "D" AND SIFT_pred =~ "D" AND LRT_pred =~ "D" AND
-(MutationTaster_pred =~ "D" OR MutationTaster_pred =~ "A"))
+(Polyphen2_HDIV_pred ~ "D" AND Polyphen2_HVAR_pred ~ "D" AND SIFT_pred ~ "D" AND LRT_pred ~ "D" AND
+(MutationTaster_pred ~ "D" OR MutationTaster_pred ~ "A"))
