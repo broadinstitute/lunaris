@@ -23,9 +23,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v1.5.5 && \
+    git checkout v1.5.6 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_1.5.5_all.deb && \
+    apt -y install ./target/lunaris_1.5.6_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     mkdir work && \

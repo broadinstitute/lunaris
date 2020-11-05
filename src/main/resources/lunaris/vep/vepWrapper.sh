@@ -9,7 +9,11 @@ dbNSFP=$6
 output=$7
 warnings=$8
 
-su vep || echo "Can't switch user to vep, so we just continue as $USER."
+user=$USER
+if id vep &>/dev/null; then
+  echo "User vep exists, so will execute vep as vep user."
+  user=vep
+fi
 
 echo "= = = Begin of vep invocation"
 cat <<COMMANDLINE
@@ -42,7 +46,7 @@ $vepScript -i $input \
 COMMANDLINE
 echo "= = = End of vep invocation"
 
-$vepScript -i $input \
+sudo $user $vepScript -i $input \
 --fork $cpus \
 --force_overwrite \
 --no_stats \

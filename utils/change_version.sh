@@ -12,6 +12,8 @@ sed -i "s/lunaris_${old}_all.deb/lunaris_${new}_all.deb/g" docker/Dockerfile
 sed -i "s/Lunaris $old/Lunaris $new/g" vep/docker/Dockerfile
 sed -i "s/git checkout v$old/git checkout v$new/g" vep/docker/Dockerfile
 sed -i "s/lunaris_${old}_all.deb/lunaris_${new}_all.deb/g" vep/docker/Dockerfile
+sed -i "s/lunaris-variant-mask-server:${old}/lunaris-variant-mask-server:${new}/g" \
+  vep/docker/lunaris_mask_server_docker.sh
 sed -i "s/Version $old/Version $new/g" src/main/resources/web/lunaris.html
 sed -i "s/Version $old/Version $new/g" src/main/resources/web/vep.html
 sed -i "s/\"$old\"/\"$new\"/g" src/main/scala/lunaris/app/LunarisInfo.scala
