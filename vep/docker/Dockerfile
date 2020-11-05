@@ -8,7 +8,7 @@ USER root
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, yootilz 0.1.5, lunaris 1.5.4
+# SBT, tools related to Debian packaging, yootilz 0.1.5, Lunaris 1.5.7
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
