@@ -23,13 +23,14 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v1.5.6 && \
+    git checkout v1.5.7 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_1.5.6_all.deb && \
+    apt -y install ./target/lunaris_1.5.7_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     mkdir work && \
     rm -r yootilz && \
     rm -r lunaris && \
+    apt -y install sudo && \
     apt -y remove sbt gnupg2 fakeroot lintian && \
     apt -y autoremove
