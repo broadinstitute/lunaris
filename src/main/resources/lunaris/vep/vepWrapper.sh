@@ -46,7 +46,7 @@ $vepScript -i $input \
 COMMANDLINE
 echo "= = = End of vep invocation"
 
-sudo $user $vepScript -i $input \
+sudo -u $user $vepScript -i $input \
 --fork $cpus \
 --force_overwrite \
 --no_stats \
