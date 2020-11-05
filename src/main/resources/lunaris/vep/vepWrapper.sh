@@ -9,6 +9,8 @@ dbNSFP=$6
 output=$7
 warnings=$8
 
+su vep || echo "Can't switch user to vep, so we just continue as $USER."
+
 echo "= = = Begin of vep invocation"
 cat <<COMMANDLINE
 $vepScript -i $input \
