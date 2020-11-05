@@ -8,7 +8,7 @@ USER root
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, yootilz 0.1.5, Lunaris 1.5.8
+# SBT, tools related to Debian packaging, yootilz 0.1.5, Lunaris 1.5.9
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -23,12 +23,13 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v1.5.8 && \
+    git checkout v1.5.9 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_1.5.8_all.deb && \
+    apt -y install ./target/lunaris_1.5.9_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     mkdir work && \
+    chmod a+w work && \
     rm -r yootilz && \
     rm -r lunaris && \
     apt -y install sudo && \
