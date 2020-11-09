@@ -1,5 +1,6 @@
 package lunaris.streams
 
+import lunaris.genomics.Locus
 import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
 import lunaris.streams.utils.StreamTagger.TaggedItem
 import lunaris.streams.utils.{StreamTagger, TaggedRecordOrdering}
@@ -16,37 +17,85 @@ object RecordStreamJoinerWithFallback {
 
   case class DataSourceId(i: Int) extends SourceId
 
-  case class GotLastOf(gotLastOfDriver: Boolean, gotLastsOfData: Seq[Boolean])
+  class MergedTaggedRecordProcessor(nDataSources: Int)(joiner: Joiner)(fallback: Fallback)(snagLogger: SnagLogger) {
 
-  object GotLastOf {
-    def createNew(nDataStreams: Int): GotLastOf =
-      GotLastOf(gotLastOfDriver = false, Seq.fill(nDataStreams)(false))
-  }
+    case class GotLastOf(gotLastOfDriver: Boolean, gotLastsOfData: Seq[Boolean]) {
+      def add(sourceId: SourceId, gotLast: Boolean): GotLastOf = {
+        sourceId match {
+          case DriverSourceId => copy(gotLastOfDriver = gotLast)
+          case DataSourceId(i) => copy(gotLastsOfData = gotLastsOfData.updated(i, gotLast))
+        }
+      }
+    }
 
-  trait Buffer {
-    def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record])
-  }
+    object GotLastOf {
+      def createNew(): GotLastOf = GotLastOf(gotLastOfDriver = false, Seq.fill(nDataSources)(false))
+    }
 
-  trait NonTerminalBuffer extends Buffer {
-    def nDataStreams: Int
-  }
+    case class BufferForLocus(locus: Locus, drivers: Seq[Record], dataRecords: Seq[Map[String, Record]]) {
+      def add(sourceId: SourceId, record: Record): BufferForLocus = {
+        sourceId match {
+          case DriverSourceId =>
+            copy(drivers = drivers :+ record)
+          case DataSourceId(i) =>
+            val recordsForSourceOld = dataRecords(i)
+            val recordsForSourceNew = recordsForSourceOld + (record.id -> record)
+            copy(dataRecords = dataRecords.updated(i, recordsForSourceNew))
+        }
+      }
+    }
 
-  case class InitialBuffer(nDataStreams: Int) extends NonTerminalBuffer {
-    override def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record]) = ???
-  }
+    object BufferForLocus {
+      def fromRecord(sourceId: SourceId, record: Record): BufferForLocus = {
+        val locus = record.locus
+        sourceId match {
+          case DriverSourceId =>
+            BufferForLocus(locus, Seq(record), Seq.fill(nDataSources)(Map.empty))
+          case DataSourceId(i) =>
+            val dataRecords = Seq.tabulate[Map[String, Record]](nDataSources) { j =>
+              if(j == i) {
+                Map(record.id -> record)
+              } else {
+                Map.empty
+              }
+            }
+            BufferForLocus(locus, Seq.empty, dataRecords)
+        }
+      }
+    }
 
-  case class DefaultBuffer(nDataStreams: Int, gotLastOf: GotLastOf) extends NonTerminalBuffer {
-    override def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record]) = ???
-  }
+    case class Buffer(gotLastOf: GotLastOf, buffersByLocus: Seq[BufferForLocus]) {
+      def add(taggedRecord: TaggedItem[Record, SourceId]): Buffer = {
+        val sourceId = taggedRecord.sourceId
+        val gotLastOfNew = gotLastOf.add(sourceId, taggedRecord.isLast)
+        val recordAdded = taggedRecord.item
+        val locusAdded = recordAdded.locus
+        val buffersByLocusNew = buffersByLocus.lastOption match {
+          case Some(bufferForLocusLast) if bufferForLocusLast.locus == locusAdded =>
+            val bufferForLocusLastNew = bufferForLocusLast.add(sourceId, recordAdded)
+            buffersByLocus.updated(buffersByLocus.size - 1, bufferForLocusLastNew)
+          case _ =>
+            buffersByLocus :+ BufferForLocus.fromRecord(sourceId, recordAdded)
+        }
+        Buffer(gotLastOfNew, buffersByLocusNew)
+      }
 
-  object TerminalBuffer extends Buffer {
-    override def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record]) =
-      (TerminalBuffer, Seq.empty)
-  }
+      def join(): (Buffer, Seq[Record]) = {
+        ???
+      }
 
-  class MergedTaggedRecordProcessor(nDataStreams: Int)(joiner: Joiner)(fallback: Fallback)(snagLogger: SnagLogger) {
+      def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record]) = add(taggedRecord).join()
+    }
+
+    object Buffer {
+      def create(): Buffer = Buffer(GotLastOf.createNew(), Seq.empty)
+    }
+
+    var buffer: Buffer = Buffer.create()
     def processNext(taggedRecord: TaggedItem[Record, SourceId]): Seq[Record] = {
-      ???
+      val (bufferNew, recordsJoined) = buffer.process(taggedRecord)
+      buffer = bufferNew
+      recordsJoined
     }
   }
 
