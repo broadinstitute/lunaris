@@ -80,8 +80,95 @@ object RecordStreamJoinerWithFallback {
         Buffer(gotLastOfNew, buffersByLocusNew)
       }
 
+      def joinPastLocus(): (Buffer, Seq[Record]) = {
+        if(buffersByLocus.size > 1) {
+          val bufferForPastLocus = buffersByLocus.head
+          val joinedRecordsBuilder = Seq.newBuilder[Record]
+          var dataRecordsRemaining = bufferForPastLocus.dataRecords
+          for(driverRecord <- bufferForPastLocus.drivers) {
+            var snagOrJoinedRecord: Either[Snag, Record] = Right(driverRecord)
+            val id = driverRecord.id
+            var foundData: Boolean = false
+            for(dataRecordsForSource <- dataRecordsRemaining) {
+              dataRecordsForSource.get(id).foreach { dataRecord =>
+                snagOrJoinedRecord = for {
+                  joinedRecord <- snagOrJoinedRecord
+                  joinedRecordNew <- joiner(joinedRecord, dataRecord)
+                } yield joinedRecordNew
+                foundData = true
+              }
+            }
+            if(!foundData) {
+              snagOrJoinedRecord = snagOrJoinedRecord.flatMap(fallback)
+            }
+            snagOrJoinedRecord match {
+              case Left(snag) => snagLogger(snag)
+              case Right(joinedRecord) => joinedRecordsBuilder += joinedRecord
+            }
+            dataRecordsRemaining = dataRecordsRemaining.map(_ - id)
+          }
+          val buffersByLocusNew = buffersByLocus.tail
+          (copy(buffersByLocus = buffersByLocusNew), joinedRecordsBuilder.result())
+        } else {
+          (this, Seq.empty)
+        }
+      }
+
+      def joinCompleted(): (Buffer, Seq[Record]) = {
+        buffersByLocus.headOption match {
+          case Some(bufferForLocus) =>
+            var driverRecordsRemaining: Seq[Record] = bufferForLocus.drivers
+            var encounteredJoiningObstacle: Boolean = false
+            val joinedRecordsBuilder = Seq.newBuilder[Record]
+            var dataRecordsRemaining: Seq[Map[String, Record]] = bufferForLocus.dataRecords
+            while((!encounteredJoiningObstacle) && driverRecordsRemaining.nonEmpty) {
+              val driverRecord = driverRecordsRemaining.head
+              val id = driverRecord.id
+              var snagOrJoinedRecord: Either[Snag, Record] = Right(driverRecord)
+              var iDataSource: Int = 0
+              var foundData: Boolean = false
+              while(snagOrJoinedRecord.isRight && (!encounteredJoiningObstacle) && iDataSource < nDataSources) {
+                dataRecordsRemaining(iDataSource).get(id) match {
+                  case Some(dataRecord) =>
+                    snagOrJoinedRecord = for {
+                      joinedRecord <- snagOrJoinedRecord
+                      joinedRecordNew <- joiner(joinedRecord, dataRecord)
+                    } yield joinedRecordNew
+                    foundData = true
+                  case None =>
+                    if(!gotLastOf.gotLastsOfData(iDataSource)) {
+                      encounteredJoiningObstacle = true
+                    }
+                }
+                iDataSource += 1
+              }
+              if(!encounteredJoiningObstacle) {
+                if(!foundData) {
+                  snagOrJoinedRecord = snagOrJoinedRecord.flatMap(fallback)
+                }
+                driverRecordsRemaining = driverRecordsRemaining.tail
+                dataRecordsRemaining = dataRecordsRemaining.map(_ - id)
+                snagOrJoinedRecord match {
+                  case Left(snag) => snagLogger(snag)
+                  case Right(joinedRecord) => joinedRecordsBuilder += joinedRecord
+                }
+              }
+            }
+            val joinedRecords = joinedRecordsBuilder.result()
+            val bufferForLocusNew =
+              bufferForLocus.copy(drivers = driverRecordsRemaining, dataRecords = dataRecordsRemaining)
+            val buffersByLocusNew = buffersByLocus.updated(0, bufferForLocusNew)
+            val bufferNew = buffer.copy(buffersByLocus = buffersByLocusNew)
+            (bufferNew, joinedRecords)
+          case None =>
+            (this, Seq.empty)
+        }
+      }
+
       def join(): (Buffer, Seq[Record]) = {
-        ???
+        val (bufferMinusPastLocus, joinedFromPastLocus) = joinPastLocus()
+        val (bufferNew, joinedCompleted) = bufferMinusPastLocus.joinCompleted()
+        (bufferNew, joinedFromPastLocus ++ joinedCompleted)
       }
 
       def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record]) = add(taggedRecord).join()

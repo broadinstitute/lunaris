@@ -3,12 +3,12 @@ package lunaris.recipes.tools.builtin
 import lunaris.app.VepRunSettings
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval._
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.RecordStreamJoinerWithFallbackOld
+import lunaris.streams.RecordStreamJoinerWithFallback
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.vep.{VepRunSettingsBox, VepRunner}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -88,8 +88,8 @@ object JoinRecordsWithFallback extends tools.Tool {
                 metaJoined <- Meta.combine(driverStream.meta, dataStream.meta)
               } yield {
                 val fallback = fallbackGenerator.createFallback()
-                val sourceJoined = RecordStreamJoinerWithFallbackOld.joinWithFallback(metaJoined,
-                  driverStream.source, dataStream.source) {
+                val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
+                  driverStream.source, Seq(dataStream.source)) {
                   _.joinWith(_)
                 } {
                   fallback
