@@ -13,7 +13,7 @@ object RecordStreamJoinerWithFallback {
 
   sealed trait SourceId
 
-  object DriverSourceId extends SourceId
+  case object DriverSourceId extends SourceId
 
   case class DataSourceId(i: Int) extends SourceId
 
@@ -108,7 +108,8 @@ object RecordStreamJoinerWithFallback {
             dataRecordsRemaining = dataRecordsRemaining.map(_ - id)
           }
           val buffersByLocusNew = buffersByLocus.tail
-          (copy(buffersByLocus = buffersByLocusNew), joinedRecordsBuilder.result())
+          val joinedRecords = joinedRecordsBuilder.result()
+          (copy(buffersByLocus = buffersByLocusNew), joinedRecords)
         } else {
           (this, Seq.empty)
         }
@@ -158,7 +159,7 @@ object RecordStreamJoinerWithFallback {
             val bufferForLocusNew =
               bufferForLocus.copy(drivers = driverRecordsRemaining, dataRecords = dataRecordsRemaining)
             val buffersByLocusNew = buffersByLocus.updated(0, bufferForLocusNew)
-            val bufferNew = buffer.copy(buffersByLocus = buffersByLocusNew)
+            val bufferNew = copy(buffersByLocus = buffersByLocusNew)
             (bufferNew, joinedRecords)
           case None =>
             (this, Seq.empty)
