@@ -4,16 +4,16 @@ import akka.stream.SourceShape
 import akka.stream.scaladsl.{GraphDSL, MergeSorted, Source}
 import lunaris.genomics.Locus
 import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
-import lunaris.streams.utils.StreamTagger.TaggedItem
-import lunaris.streams.utils.{StreamTagger, TaggedRecordOrdering}
+import lunaris.streams.utils.StreamTaggerOld.TaggedItemOld
+import lunaris.streams.utils.{StreamTaggerOld, TaggedRecordOrdering}
 
 object RecordStreamMerger {
   private class TaggedRecordMerger(nStreams: Int) {
     val locusByStream: Array[Option[Locus]] = Array.fill(nStreams)(None)
-    var records: Seq[TaggedItem[Record, Int]] = Seq.empty
+    var records: Seq[TaggedItemOld[Record, Int]] = Seq.empty
     val streamIsExhausted: Array[Boolean] = Array.fill(nStreams)(false)
 
-    private def enterRecord(record: TaggedItem[Record, Int]): Unit = {
+    private def enterRecord(record: TaggedItemOld[Record, Int]): Unit = {
       records :+= record
       val iStream = record.sourceId
       streamIsExhausted(iStream) = record.isLast
@@ -39,7 +39,7 @@ object RecordStreamMerger {
       sameRecords.sortBy(_.sourceId).map(_.item).reduce((o1, o2) => o1.joinWith(o2).toOption.get)
     }
 
-    def addNext(taggedRecord: TaggedItem[Record, Int]): Seq[Record] = {
+    def addNext(taggedRecord: TaggedItemOld[Record, Int]): Seq[Record] = {
       enterRecord(taggedRecord)
       val builder = Seq.newBuilder[Record]
       while (records.nonEmpty && noStreamHasMoreForLocus(records.head.item.locus)) {
@@ -51,7 +51,7 @@ object RecordStreamMerger {
 
   def merge(meta: Meta, sources: Seq[RecordSource]): RecordSource = {
     val taggedSources = sources.zipWithIndex.collect {
-      case (source, iSource) => StreamTagger.tagSource(source, iSource)
+      case (source, iSource) => StreamTaggerOld.tagSource(source, iSource)
     }
     val mergedTaggedSource = Source.fromGraph(GraphDSL.create(taggedSources) { implicit builder =>
       sources =>
@@ -61,11 +61,11 @@ object RecordStreamMerger {
         } else {
           val source0 :: source1 :: tail = sources
           implicit val taggedRecordOrdering: TaggedRecordOrdering[Int] = TaggedRecordOrdering(meta.chroms)
-          var merged = builder.add(new MergeSorted[TaggedItem[Record, Int]]())
+          var merged = builder.add(new MergeSorted[TaggedItemOld[Record, Int]]())
           source0.out ~> merged.in0
           source1.out ~> merged.in1
           for (oSource <- tail) {
-            val mergedNew = builder.add(new MergeSorted[TaggedItem[Record, Int]]())
+            val mergedNew = builder.add(new MergeSorted[TaggedItemOld[Record, Int]]())
             merged.out ~> mergedNew.in0
             oSource ~> mergedNew.in1
             merged = mergedNew

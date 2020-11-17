@@ -2,8 +2,8 @@ package lunaris.streams
 
 import lunaris.genomics.Locus
 import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
-import lunaris.streams.utils.StreamTagger.TaggedItem
-import lunaris.streams.utils.{StreamTagger, TaggedRecordOrdering}
+import lunaris.streams.utils.RecordTaggedSortedMerger.{TaggedEndMarker, TaggedItem, TaggedRecord}
+import lunaris.streams.utils.{RecordTaggedSortedMerger, TaggedRecordOrdering}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordStreamJoinerWithFallback {
@@ -20,10 +20,10 @@ object RecordStreamJoinerWithFallback {
   class MergedTaggedRecordProcessor(nDataSources: Int)(joiner: Joiner)(fallback: Fallback)(snagLogger: SnagLogger) {
 
     case class GotLastOf(gotLastOfDriver: Boolean, gotLastsOfData: Seq[Boolean]) {
-      def add(sourceId: SourceId, gotLast: Boolean): GotLastOf = {
+      def addEndOf(sourceId: SourceId): GotLastOf = {
         sourceId match {
-          case DriverSourceId => copy(gotLastOfDriver = gotLast)
-          case DataSourceId(i) => copy(gotLastsOfData = gotLastsOfData.updated(i, gotLast))
+          case DriverSourceId => copy(gotLastOfDriver = true)
+          case DataSourceId(i) => copy(gotLastsOfData = gotLastsOfData.updated(i, true))
         }
       }
     }
@@ -65,19 +65,22 @@ object RecordStreamJoinerWithFallback {
     }
 
     case class Buffer(gotLastOf: GotLastOf, buffersByLocus: Seq[BufferForLocus]) {
-      def add(taggedRecord: TaggedItem[Record, SourceId]): Buffer = {
-        val sourceId = taggedRecord.sourceId
-        val gotLastOfNew = gotLastOf.add(sourceId, taggedRecord.isLast)
-        val recordAdded = taggedRecord.item
-        val locusAdded = recordAdded.locus
-        val buffersByLocusNew = buffersByLocus.lastOption match {
-          case Some(bufferForLocusLast) if bufferForLocusLast.locus == locusAdded =>
-            val bufferForLocusLastNew = bufferForLocusLast.add(sourceId, recordAdded)
-            buffersByLocus.updated(buffersByLocus.size - 1, bufferForLocusLastNew)
-          case _ =>
-            buffersByLocus :+ BufferForLocus.fromRecord(sourceId, recordAdded)
+      def add(taggedRecord: TaggedItem[SourceId]): Buffer = {
+        taggedRecord match {
+          case TaggedRecord(recordAdded, sourceId) =>
+            val locusAdded = recordAdded.locus
+            val buffersByLocusNew = buffersByLocus.lastOption match {
+              case Some(bufferForLocusLast) if bufferForLocusLast.locus == locusAdded =>
+                val bufferForLocusLastNew = bufferForLocusLast.add(sourceId, recordAdded)
+                buffersByLocus.updated(buffersByLocus.size - 1, bufferForLocusLastNew)
+              case _ =>
+                buffersByLocus :+ BufferForLocus.fromRecord(sourceId, recordAdded)
+            }
+            copy(buffersByLocus = buffersByLocusNew)
+          case TaggedEndMarker(sourceId) =>
+            val gotLastOfNew = gotLastOf.addEndOf(sourceId)
+            copy(gotLastOf = gotLastOfNew)
         }
-        Buffer(gotLastOfNew, buffersByLocusNew)
       }
 
       def joinPastLocus(): (Buffer, Seq[Record]) = {
@@ -172,7 +175,7 @@ object RecordStreamJoinerWithFallback {
         (bufferNew, joinedFromPastLocus ++ joinedCompleted)
       }
 
-      def process(taggedRecord: TaggedItem[Record, SourceId]): (Buffer, Seq[Record]) = add(taggedRecord).join()
+      def process(taggedRecord: TaggedItem[SourceId]): (Buffer, Seq[Record]) = add(taggedRecord).join()
     }
 
     object Buffer {
@@ -180,7 +183,7 @@ object RecordStreamJoinerWithFallback {
     }
 
     var buffer: Buffer = Buffer.create()
-    def processNext(taggedRecord: TaggedItem[Record, SourceId]): Seq[Record] = {
+    def processNext(taggedRecord: TaggedItem[SourceId]): Seq[Record] = {
       val (bufferNew, recordsJoined) = buffer.process(taggedRecord)
       buffer = bufferNew
       recordsJoined
@@ -198,13 +201,13 @@ object RecordStreamJoinerWithFallback {
                       )(
                         snagLogger: SnagLogger
                       ): RecordSource = {
-    val driverSourceTagged = StreamTagger.tagSource[Record, Meta, SourceId](driverSource, DriverSourceId)
-    val dataSourcesTagged = dataSources.zipWithIndex.map {
-      case (dataSource, i) =>
-        StreamTagger.tagSource[Record, Meta, SourceId](dataSource, DataSourceId(i))
-    }
+    val driverSourceById = Map[SourceId, RecordSource](DriverSourceId -> driverSource)
+    val dataSourcesById = dataSources.zipWithIndex.map {
+      case (dataSource, i) => (DataSourceId(i), dataSource)
+    }.toMap
+    val sourcesById: Map[SourceId, RecordSource] = driverSourceById ++ dataSourcesById
+    val mergedTaggedSource = RecordTaggedSortedMerger.merge(sourcesById, meta.chroms)
     implicit val taggedRecordOrdering: TaggedRecordOrdering[SourceId] = TaggedRecordOrdering(meta.chroms)
-    val mergedTaggedSource = dataSourcesTagged.foldLeft(driverSourceTagged)(_.mergeSorted(_))
     val mergedTaggedRecordProcessor = new MergedTaggedRecordProcessor(dataSources.size)(joiner)(fallBack)(snagLogger)
     mergedTaggedSource.statefulMapConcat(() => mergedTaggedRecordProcessor.processNext).mapMaterializedValue(_ => meta)
   }
