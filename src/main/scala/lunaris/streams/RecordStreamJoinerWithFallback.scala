@@ -2,8 +2,8 @@ package lunaris.streams
 
 import lunaris.genomics.Locus
 import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
+import lunaris.streams.utils.RecordTaggedSortedMerger
 import lunaris.streams.utils.RecordTaggedSortedMerger.{TaggedEndMarker, TaggedItem, TaggedRecord}
-import lunaris.streams.utils.{RecordTaggedSortedMerger, TaggedRecordOrdering}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object RecordStreamJoinerWithFallback {
@@ -29,7 +29,7 @@ object RecordStreamJoinerWithFallback {
     }
 
     object GotLastOf {
-      def createNew(): GotLastOf = GotLastOf(gotLastOfDriver = false, Seq.fill(nDataSources)(false))
+      def create(): GotLastOf = GotLastOf(gotLastOfDriver = false, Seq.fill(nDataSources)(false))
     }
 
     case class BufferForLocus(locus: Locus, drivers: Seq[Record], dataRecords: Seq[Map[String, Record]]) {
@@ -175,16 +175,16 @@ object RecordStreamJoinerWithFallback {
         (bufferNew, joinedFromPastLocus ++ joinedCompleted)
       }
 
-      def process(taggedRecord: TaggedItem[SourceId]): (Buffer, Seq[Record]) = add(taggedRecord).join()
+      def process(taggedItem: TaggedItem[SourceId]): (Buffer, Seq[Record]) = add(taggedItem).join()
     }
 
     object Buffer {
-      def create(): Buffer = Buffer(GotLastOf.createNew(), Seq.empty)
+      def create(): Buffer = Buffer(GotLastOf.create(), Seq.empty)
     }
 
     var buffer: Buffer = Buffer.create()
-    def processNext(taggedRecord: TaggedItem[SourceId]): Seq[Record] = {
-      val (bufferNew, recordsJoined) = buffer.process(taggedRecord)
+    def processItem(taggedItem: TaggedItem[SourceId]): Seq[Record] = {
+      val (bufferNew, recordsJoined) = buffer.process(taggedItem)
       buffer = bufferNew
       recordsJoined
     }
@@ -194,21 +194,14 @@ object RecordStreamJoinerWithFallback {
   def joinWithFallback(meta: Meta,
                        driverSource: RecordSource,
                        dataSources: Seq[RecordSource]
-                      )(
-                        joiner: (Record, Record) => Either[Snag, Record]
-                      )(
-                        fallBack: Record => Either[Snag, Record]
-                      )(
-                        snagLogger: SnagLogger
-                      ): RecordSource = {
+                      )(joiner: Joiner)(fallBack: Fallback)(snagLogger: SnagLogger): RecordSource = {
     val driverSourceById = Map[SourceId, RecordSource](DriverSourceId -> driverSource)
     val dataSourcesById = dataSources.zipWithIndex.map {
       case (dataSource, i) => (DataSourceId(i), dataSource)
     }.toMap
     val sourcesById: Map[SourceId, RecordSource] = driverSourceById ++ dataSourcesById
     val mergedTaggedSource = RecordTaggedSortedMerger.merge(sourcesById, meta.chroms)
-    implicit val taggedRecordOrdering: TaggedRecordOrdering[SourceId] = TaggedRecordOrdering(meta.chroms)
     val mergedTaggedRecordProcessor = new MergedTaggedRecordProcessor(dataSources.size)(joiner)(fallBack)(snagLogger)
-    mergedTaggedSource.statefulMapConcat(() => mergedTaggedRecordProcessor.processNext).mapMaterializedValue(_ => meta)
+    mergedTaggedSource.statefulMapConcat(() => mergedTaggedRecordProcessor.processItem).mapMaterializedValue(_ => meta)
   }
 }

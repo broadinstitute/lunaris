@@ -7,6 +7,7 @@ import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
 import lunaris.streams.utils.StreamTaggerOld.TaggedItemOld
 import lunaris.streams.utils.{StreamTaggerOld, TaggedRecordOrdering}
 
+@deprecated("Doesn't work with empty streams", "2020/11/18")
 object RecordStreamMerger {
   private class TaggedRecordMerger(nStreams: Int) {
     val locusByStream: Array[Option[Locus]] = Array.fill(nStreams)(None)
