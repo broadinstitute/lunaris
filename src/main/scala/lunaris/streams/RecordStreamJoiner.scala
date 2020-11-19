@@ -69,9 +69,96 @@ object RecordStreamJoiner {
         }
       }
 
-      def joinPastLocus(): (Buffer, Seq[Record]) = ???
+      def joinPastLocus(): (Buffer, Seq[Record]) = {
+        if(buffersByLocus.size > 1) {
+          val bufferForPastLocus = buffersByLocus.head
+          var recordsRemaining: Seq[Map[String, Record]] = bufferForPastLocus.records
+          val joinedRecordsBuilder = Seq.newBuilder[Record]
+          for(id <- bufferForPastLocus.ids) {
+            var recordJoinedOpt: Option[Record] = None
+            var snagOpt: Option[Snag] = None
+            val recordsForSourceIter = bufferForPastLocus.records.iterator
+            while(recordsForSourceIter.hasNext && snagOpt.isEmpty) {
+              val recordsForSource = recordsForSourceIter.next()
+              recordsForSource.get(id) match {
+                case Some(recordForId) =>
+                  recordJoinedOpt match {
+                    case Some(recordJoined) =>
+                      joiner(recordJoined, recordForId) match {
+                        case Left(snag) => snagOpt = Some(snag)
+                        case Right(joinedRecordNew) => recordJoinedOpt = Some(joinedRecordNew)
+                      }
+                    case None =>
+                      recordJoinedOpt = Some(recordForId)
+                  }
+                case None => ()
+              }
+            }
+            (recordJoinedOpt, snagOpt) match {
+              case (_, Some(snag)) => snagLogger(snag)
+              case (Some(recordJoined), _) => joinedRecordsBuilder += recordJoined
+              case (_, _) => ()
+            }
+            recordsRemaining = recordsRemaining.map(_ - id)
+          }
+          val recordsJoined = joinedRecordsBuilder.result()
+          val buffersByLocusNew = buffersByLocus.tail
+          (copy(buffersByLocus = buffersByLocusNew), recordsJoined)
+        } else {
+          (this, Seq.empty)
+        }
+      }
 
-      def joinCompleted(): (Buffer, Seq[Record]) = ???
+      def joinCompleted(): (Buffer, Seq[Record]) = {
+        buffersByLocus.headOption match {
+          case Some(bufferForLocus) =>
+            var idsRemaining: Seq[String] = bufferForLocus.ids
+            var encounteredJoiningObstacle: Boolean = false
+            val joinedRecordsBuilder = Seq.newBuilder[Record]
+            var recordsRemaining: Seq[Map[String, Record]] = bufferForLocus.records
+            while((!encounteredJoiningObstacle) && idsRemaining.nonEmpty) {
+              val id = idsRemaining.head
+              var snagOpt: Option[Snag] = None
+              var joinedRecordOpt: Option[Record] = None
+              var iSource: Int = 0
+              while((!encounteredJoiningObstacle) && snagOpt.isEmpty && iSource < nSources) {
+                recordsRemaining(iSource).get(id) match {
+                  case Some(recordForSource) =>
+                    joinedRecordOpt match {
+                      case Some(joinedRecord) =>
+                        joiner(joinedRecord, recordForSource) match {
+                          case Left(snag) => snagOpt = Some(snag)
+                          case Right(joinedRecordNew) => joinedRecordOpt = Some(joinedRecordNew)
+                        }
+                      case None =>
+                        joinedRecordOpt = Some(recordForSource)
+                    }
+                  case None =>
+                    if(!gotLastOf.gotLastsOf(iSource)) {
+                      encounteredJoiningObstacle = true
+                    }
+                }
+                iSource += 1
+              }
+              if(!encounteredJoiningObstacle) {
+                idsRemaining = idsRemaining.tail
+                recordsRemaining = recordsRemaining.map(_ - id)
+                (joinedRecordOpt, snagOpt) match {
+                  case (_, Some(snag)) => snagLogger(snag)
+                  case (Some(joinedRecord), _) => joinedRecordsBuilder += joinedRecord
+                  case _ => ()
+                }
+              }
+            }
+            val joinedRecords = joinedRecordsBuilder.result()
+            val bufferForLocusNew = bufferForLocus.copy(ids = idsRemaining, records = recordsRemaining)
+            val buffersByLocusNew = buffersByLocus.updated(0, bufferForLocusNew)
+            val bufferNew = copy(buffersByLocus = buffersByLocusNew)
+            (bufferNew, joinedRecords)
+          case None =>
+            (this, Seq.empty)
+        }
+      }
 
       def join(): (Buffer, Seq[Record]) = {
         val (bufferMinusPastLocus, joinedFromPastLocus) = joinPastLocus()

@@ -1,11 +1,11 @@
 package lunaris.recipes.tools.builtin
 
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval._
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.RecordStreamMerger
+import lunaris.streams.RecordStreamJoiner
 import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -60,7 +60,8 @@ object JoinRecords extends tools.Tool {
             val snagOrStreams = EitherSeqUtils.sequence(fromWorkers.map(_.getStreamBox(context).snagOrStream))
             val snagOrStream = snagOrStreams.flatMap { streams =>
               RecordStreamWithMeta.Meta.sequence(streams.map(_.meta)).map { meta =>
-                val stream = RecordStreamMerger.merge(meta, streams.map(_.source))
+                val stream =
+                  RecordStreamJoiner.join(meta, streams.map(_.source))(_.joinWith(_))(context.observer.logSnag)
                 RecordStreamWithMeta(meta, stream)
               }
             }
