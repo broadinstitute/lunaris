@@ -21,6 +21,28 @@ object ToolInstanceUtils {
     snagOrWorker(refKey, workers).flatMap(workerToSnagOrMaker)
   }
 
+  private def refsToWorkerMaker(
+                                 refKeys: Seq[String], workers: Map[String, LunWorker]
+                               )(
+                                 workerToSnagOrMaker: Seq[RecordStreamWorker] => Either[Snag, WorkerMaker]
+                               ): Either[Snag, WorkerMaker] = {
+    var snagOpt: Option[Snag] = None
+    val refKeysIter = refKeys.iterator
+    val workersBuilder = Seq.newBuilder[RecordStreamWorker]
+    while (snagOpt.isEmpty && refKeysIter.hasNext) {
+      val refKey = refKeysIter.next()
+      snagOrWorker(refKey, workers) match {
+        case Left(snag) => snagOpt = Some(snag)
+        case Right(worker) => workersBuilder += worker
+      }
+    }
+    snagOpt match {
+      case Some(snag) => Left(snag)
+      case None => workerToSnagOrMaker(workersBuilder.result())
+    }
+  }
+
+
   def newWorkerMaker1(
                        refKey: String, workers: Map[String, LunWorker]
                      )(
@@ -48,19 +70,8 @@ object ToolInstanceUtils {
                        )(
                          workerGen: Seq[RecordStreamWorker] => WorkerMaker
                        ): Either[Snag, WorkerMaker] = {
-    var snagOpt: Option[Snag] = None
-    val refKeysIter = refKeys.iterator
-    val workersBuilder = Seq.newBuilder[RecordStreamWorker]
-    while (snagOpt.isEmpty && refKeysIter.hasNext) {
-      val refKey = refKeysIter.next()
-      snagOrWorker(refKey, workers) match {
-        case Left(snag) => snagOpt = Some(snag)
-        case Right(worker) => workersBuilder += worker
-      }
-    }
-    snagOpt match {
-      case Some(snag) => Left(snag)
-      case None => Right(workerGen(workersBuilder.result()))
+    refsToWorkerMaker(refKeys, workers){ workers =>
+      Right(workerGen(workers))
     }
   }
 
@@ -69,7 +80,10 @@ object ToolInstanceUtils {
                         )(
                           workerGen: (RecordStreamWorker, Seq[RecordStreamWorker]) => WorkerMaker
                         ): Either[Snag, WorkerMaker] = {
-    ???
+    refToWorkerMaker(refKey1, workers) { worker1 =>
+      refsToWorkerMaker(refKeys, workers) { workers2 =>
+        Right(workerGen(worker1, workers2))
+      }
+    }
   }
-
 }
