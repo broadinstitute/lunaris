@@ -10,6 +10,7 @@ import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.RecordStreamJoinerWithFallback
 import lunaris.streams.utils.RecordStreamTypes.Record
+import lunaris.utils.EitherSeqUtils
 import lunaris.vep.{VepRunSettingsBox, VepRunner}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -69,13 +70,13 @@ object JoinRecordsWithFallback extends tools.Tool {
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
       ToolInstanceUtils.newWorkerMaker2(Params.Keys.driver, Params.Keys.data, workers) {
-        (driverWorker, dataWorker) => new WorkerMaker(driverWorker, dataWorker, fallbackGenerator)
+        (driverWorker, dataWorker) => new WorkerMaker(driverWorker, Seq(dataWorker), fallbackGenerator)
       }
     }
   }
 
   class WorkerMaker(driverWorker: RecordStreamWorker,
-                    dataWorker: RecordStreamWorker,
+                    dataWorkers: Seq[RecordStreamWorker],
                     fallbackGenerator: FallbackGenerator) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
@@ -84,12 +85,12 @@ object JoinRecordsWithFallback extends tools.Tool {
             val snagOrStream =
               for {
                 driverStream <- driverWorker.getStreamBox(context).snagOrStream
-                dataStream <- dataWorker.getStreamBox(context).snagOrStream
-                metaJoined <- Meta.combine(driverStream.meta, dataStream.meta)
+                dataStreams <- EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context).snagOrStream))
+                metaJoined <- Meta.sequence(driverStream.meta +: dataStreams.map(_.meta))
               } yield {
                 val fallback = fallbackGenerator.createFallback()
                 val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
-                  driverStream.source, Seq(dataStream.source)) {
+                  driverStream.source, dataStreams.map(_.source)) {
                   _.joinWith(_)
                 } {
                   fallback
