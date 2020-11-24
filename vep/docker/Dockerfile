@@ -207,15 +207,15 @@ RUN apt -y update && \
     apt-get -y install sbt && \
     git clone https://github.com/broadinstitute/yootilz.git && \
     cd yootilz && \
-    git checkout v0.1.3 && \
+    git checkout v0.1.5 && \
     sbt publishLocal && \
-    cd /work && \
+    cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
     git checkout v1.5.13 && \
     sbt debian:packageBin && \
     apt -y install ./target/lunaris_1.5.13_all.deb && \
-    cd /work && \
+    cd .. && \
     rm -r yootilz && \
     rm -r lunaris && \
     apt -y remove sbt gnupg2 fakeroot lintian && \
