@@ -193,6 +193,10 @@ RUN git clone https://github.com/konradjk/loftee.git && \
 # add loftee to perl5lib
 ENV PERL5LIB $PERL5LIB:/usr/local/bin/loftee
 
+# Java Runtime Environment
+
+RUN apt update && apt -y install openjdk-11-jdk-headless
+
 # SBT, tools related to Debian packaging, Lunaris 1.5.13
 
 RUN apt -y update && \
