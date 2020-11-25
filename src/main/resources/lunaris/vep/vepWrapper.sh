@@ -1,6 +1,6 @@
 #!/bin/bash
 
-vepScript=$1
+vepCmd=$1
 input=$2
 cpus=$3
 fasta=$4
@@ -22,7 +22,7 @@ warnings=$8
 
 echo "= = = Begin of vep invocation"
 cat <<COMMANDLINE
-$vepScript -i $input \
+$vepCmd -i $input \
 --fork $cpus \
 --force_overwrite \
 --no_stats \
@@ -51,7 +51,7 @@ $vepScript -i $input \
 COMMANDLINE
 echo "= = = End of vep invocation"
 
-$vepScript -i $input \
+$vepCmd -i $input \
 --fork $cpus \
 --force_overwrite \
 --no_stats \

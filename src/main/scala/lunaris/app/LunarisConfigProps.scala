@@ -25,7 +25,7 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val varIdField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.varId")
   val refField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.ref")
   val altField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.alt")
-  val vepScriptFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.vepScriptFile")
+  val vepScriptFile: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.vepCmd")
   val vepWorkDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.workDir")
   val vepFastaFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.fastaFile")
   val vepPluginsDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.pluginsDir")

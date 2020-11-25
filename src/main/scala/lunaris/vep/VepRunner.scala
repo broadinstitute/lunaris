@@ -61,14 +61,14 @@ class VepRunner(val runSettings: VepRunSettings) {
   }
 
   def runVep(inputFile: File, outputFile: File, warningsFile: File): Int = {
-    val vepScriptFile = runSettings.vepScriptFile
+    val vepCmd = runSettings.vepCmd
     val cpus = 1
     val fastaFile = runSettings.fastaFile
     val pluginsDir = runSettings.pluginsDir
     val dbNsfp = runSettings.dbNSFPFile
     // TODO remaining arguments
     val commandLine =
-      s"bash $vepWrapperScriptFile $vepScriptFile $inputFile $cpus $fastaFile $pluginsDir $dbNsfp " +
+      s"bash $vepWrapperScriptFile $vepCmd $inputFile $cpus $fastaFile $pluginsDir $dbNsfp " +
         s"$outputFile $warningsFile"
     commandLine.!
   }
