@@ -64,11 +64,12 @@ class VepRunner(val runSettings: VepRunSettings) {
     val vepCmd = runSettings.vepCmd
     val cpus = 1
     val fastaFile = runSettings.fastaFile
+    val cacheDir = runSettings.cacheDir
     val pluginsDir = runSettings.pluginsDir
     val dbNsfp = runSettings.dbNSFPFile
     // TODO remaining arguments
     val commandLine =
-      s"bash $vepWrapperScriptFile $vepCmd $inputFile $cpus $fastaFile $pluginsDir $dbNsfp " +
+      s"bash $vepWrapperScriptFile $vepCmd $inputFile $cpus $fastaFile $cacheDir $pluginsDir $dbNsfp " +
         s"$outputFile $warningsFile"
     commandLine.!
   }

@@ -4,10 +4,11 @@ vepCmd=$1
 input=$2
 cpus=$3
 fasta=$4
-dirPlugins=$5
-dbNSFP=$6
-output=$7
-warnings=$8
+dirCache=$5
+dirPlugins=$6
+dbNSFP=$7
+output=$8
+warnings=$9
 
 #user=$USER
 #if id vep &>/dev/null; then
@@ -30,6 +31,7 @@ $vepCmd -i $input \
 --fasta $fasta \
 --tab \
 --cache \
+--dir_cache $dirCache \
 --dir_plugins $dirPlugins \
 --polyphen b \
 --sift b \
@@ -59,6 +61,7 @@ $vepCmd -i $input \
 --fasta $fasta \
 --tab \
 --cache \
+--dir_cache $dirCache \
 --dir_plugins $dirPlugins \
 --polyphen b \
 --sift b \
