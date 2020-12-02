@@ -10,7 +10,7 @@ import lunaris.io.ResourceConfig
 import lunaris.io.request.RequestJson
 import lunaris.io.request.examples.ParamsReplacer
 import lunaris.recipes.RecipeChecker
-import lunaris.recipes.eval.{LunCompiler, LunRunContext}
+import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
 import lunaris.utils.HttpUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -58,9 +58,11 @@ object ServerRunner {
                   snagOrRunnable match {
                     case Left(snag) => complete(HttpUtils.ResponseBuilder.forError(snag.report))
                     case Right(runnable) =>
-                      val runContext =
-                        LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
-                      runnable.getStream(runContext) match {
+                      val runContext = {
+                        LunRunContext(materializer, ResourceConfig.empty)
+                      }
+                      val snagTracker = SnagTracker.briefConsolePrinting
+                      runnable.getStream(runContext, snagTracker) match {
                         case Left(snag) => complete(HttpUtils.ResponseBuilder.forError(snag.report))
                         case Right(recordStream) =>
                           complete(HttpUtils.ResponseBuilder.fromTsvStream(recordStream.recover { ex =>

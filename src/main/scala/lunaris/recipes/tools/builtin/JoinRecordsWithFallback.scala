@@ -81,11 +81,12 @@ object JoinRecordsWithFallback extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
         Some {
-          (context: LunRunContext) => {
+          (context: LunRunContext, snagTracker: SnagTracker) => {
             val snagOrStream =
               for {
-                driverStream <- driverWorker.getStreamBox(context).snagOrStream
-                dataStreams <- EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context).snagOrStream))
+                driverStream <- driverWorker.getStreamBox(context, snagTracker).snagOrStream
+                dataStreams <-
+                  EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context, snagTracker).snagOrStream))
                 metaJoined <- Meta.sequence(driverStream.meta +: dataStreams.map(_.meta))
               } yield {
                 val fallback = fallbackGenerator.createFallback()
@@ -95,7 +96,7 @@ object JoinRecordsWithFallback extends tools.Tool {
                 } {
                   fallback
                 } {
-                  (snag: Snag) => context.observer.logSnag(snag)
+                  (snag: Snag) => snagTracker.trackSnag(snag)
                 }
                 RecordStreamWithMeta(metaJoined, sourceJoined)
               }

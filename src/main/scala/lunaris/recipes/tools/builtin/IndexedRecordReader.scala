@@ -6,7 +6,7 @@ import lunaris.io.query.RecordExtractor
 import lunaris.io.{Disposable, InputId}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, SnagTracker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
@@ -107,7 +107,7 @@ object IndexedRecordReader extends tools.Tool {
             def close(): Unit = snagOrRecordEtorDisp.dispose()
           }
 
-          override def getStreamBox(context: LunRunContext): LunWorker.StreamBox = {
+          override def getStreamBox(context: LunRunContext, snagTracker: SnagTracker): LunWorker.StreamBox = {
             val snagOrStream =
               for {
                 meta <- getSnagOrDataDisposable(context).useUp(_.map(_.meta))

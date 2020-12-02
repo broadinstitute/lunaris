@@ -5,7 +5,7 @@ import akka.stream.Materializer
 import lunaris.io.{InputId, ResourceConfig}
 import lunaris.io.request.RequestJson
 import lunaris.recipes.RecipeChecker
-import lunaris.recipes.eval.{LunCompiler, LunRunContext}
+import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
 import lunaris.utils.{DebugUtils, IOUtils}
 
 object BatchRunner {
@@ -25,8 +25,9 @@ object BatchRunner {
       case Right(runnable) =>
         val actorSystem = ActorSystem("Lunaris")
         val materializer = Materializer(actorSystem)
-        val context = LunRunContext(materializer, ResourceConfig.empty, LunRunContext.Observer.forLogger(println))
-        val doneFut = runnable.executeAsync(context)
+        val context = LunRunContext(materializer, ResourceConfig.empty)
+        val snagTracker = SnagTracker.briefConsolePrinting
+        val doneFut = runnable.executeAsync(context, snagTracker)
         doneFut.onComplete(_ => actorSystem.terminate())(context.materializer.executionContext)
     }
   }

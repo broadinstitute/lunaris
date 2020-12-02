@@ -3,7 +3,7 @@ package lunaris.recipes.tools.builtin
 import lunaris.expressions.BooleanRecordExpression
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, SnagTracker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
@@ -58,14 +58,14 @@ object RecordsFilter extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =
         Some[RecordStreamWorker] {
-          (context: LunRunContext) => {
+          (context: LunRunContext, snagTracker: SnagTracker) => {
             val snagOrStream =
-              fromWorker.getStreamBox(context).snagOrStream.map { fromStream =>
+              fromWorker.getStreamBox(context, snagTracker).snagOrStream.map { fromStream =>
                 val filteredSource = fromStream.source.filter { record =>
                   filter.evaluate(record) match {
                     case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
                     case Left(snag) =>
-                      context.observer.logSnag(snag)
+                      snagTracker.trackSnag(snag)
                       false
                   }
                 }

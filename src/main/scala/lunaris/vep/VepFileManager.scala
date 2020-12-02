@@ -1,21 +1,19 @@
 package lunaris.vep
 
-import java.util.Date
-
-import akka.{Done, NotUsed}
+import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{FileIO, Source}
+import akka.stream.{IOResult, Materializer}
 import akka.util.ByteString
 import better.files.File
 import lunaris.app.{VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
-import lunaris.recipes.eval.{LunCompiler, LunRunContext}
+import lunaris.recipes.eval.LunRunnable.RunResult
+import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
 import lunaris.utils.{DateUtils, NumberParser}
 import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
-import org.threeten.bp.DateTimeUtils
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
@@ -74,7 +72,9 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     implicit actorSystem: ActorSystem
   ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
 
-  def newQueryFuture(formData: VepFormData, submissionTime: Long)(implicit actorSystem: ActorSystem): Future[Done] = {
+  def newQueryFuture(formData: VepFormData, submissionTime: Long)(
+    implicit actorSystem: ActorSystem
+  ): Future[RunResult] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val inputFile = inputFilePathForId(resultId)
@@ -91,9 +91,10 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     }.collect {
       case Right(runnable) =>
         val context = {
-          LunRunContext(Materializer(actorSystem), resourceConfig, LunRunContext.Observer.forLogger(println))
+          LunRunContext(Materializer(actorSystem), resourceConfig)
         }
-        runnable.executeAsync(context)
+        val snagTracker = SnagTracker.briefConsolePrinting
+        runnable.executeAsync(context, snagTracker)
     }.flatten
     queryFuture.onComplete {
       case Success(_) =>
@@ -109,12 +110,12 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
   }
 
   def newUploadAndQueryFutureFuture(formData: VepFormData, submissionTime: Long)(
-    implicit actorSystem: ActorSystem): Future[Done] = {
+    implicit actorSystem: ActorSystem): Future[RunResult] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     newQueryFuture(formData, submissionTime)
   }
 
-  class SubmissionResponse(val resultId: ResultId, val fut: Future[Done])
+  class SubmissionResponse(val resultId: ResultId, val fut: Future[RunResult])
 
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher

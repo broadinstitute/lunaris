@@ -3,7 +3,7 @@ package lunaris.recipes.tools.builtin
 import lunaris.io.InputId
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, WorkerMaker}
+import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, SnagTracker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
@@ -52,7 +52,7 @@ object VcfRecordsReader extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker] {
-          (context: LunRunContext) => {
+          (context: LunRunContext, snagTracker: SnagTracker) => {
             val recordType = VcfStreamVariantsReader.vcfRecordType
             val meta = Meta(recordType, chroms)
             val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))

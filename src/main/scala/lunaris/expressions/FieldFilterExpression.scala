@@ -105,7 +105,8 @@ object FieldFilterExpression {
             unpackedValue <- unpackValue(castToType)
             result = fieldTest(unpackedValue)
           } yield PrimitiveValue.BoolValue(result)
-        case None => Right(PrimitiveValue.BoolValue(false))
+        case None =>
+          Left(Snag(s"Filter depends on field `$field`, but record ${record.id} does not have that field."))
       }
     }
 
