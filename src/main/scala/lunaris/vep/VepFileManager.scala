@@ -97,14 +97,15 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
         runnable.executeAsync(context, snagTracker)
     }.flatten
     queryFuture.onComplete {
-      case Success(_) =>
+      case Success(runResult) =>
         val successTime = System.currentTimeMillis()
-        updateStatus(resultId, ResultStatus.createSucceeded(submissionTime, successTime))
+        val snagMessages = runResult.snags.map(_.message)
+        updateStatus(resultId, ResultStatus.createSucceeded(submissionTime, successTime, snagMessages))
       case Failure(exception) =>
         val failTime = System.currentTimeMillis()
         val snag = Snag(exception)
         println(snag.report)
-        updateStatus(resultId, ResultStatus.createFailed(submissionTime, failTime, snag.message))
+        updateStatus(resultId, ResultStatus.createFailed(submissionTime, failTime, snag.message, Seq(snag.message)))
     }
     queryFuture
   }
@@ -121,13 +122,13 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val resultId = formData.resultId
     val submissionTime = System.currentTimeMillis()
-    updateStatus(resultId, ResultStatus.createSubmitted(submissionTime))
+    updateStatus(resultId, ResultStatus.createSubmitted(submissionTime, Seq.empty))
     val fut = newUploadAndQueryFutureFuture(formData, submissionTime)
     new SubmissionResponse(resultId, fut)
   }
 
   def getStatus(resultId: ResultId): ResultStatus = {
-    statusById.getOrElse(resultId, ResultStatus.createUnknown())
+    statusById.getOrElse(resultId, ResultStatus.createUnknown(resultId))
   }
 
   def streamResults(resultId: ResultId): Either[Snag, Source[ByteString, NotUsed]] = {
@@ -170,7 +171,7 @@ object VepFileManager {
     }
   }
 
-  case class ResultStatus(statusType: ResultStatus.Type, message: String)
+  case class ResultStatus(statusType: ResultStatus.Type, message: String, snagMessages: Seq[String])
 
   object ResultStatus {
 
@@ -205,27 +206,30 @@ object VepFileManager {
       case object Failed extends Type
     }
 
-    def createInvalid(message: String): ResultStatus = ResultStatus(Type.Invalid, message)
+    def createInvalid(message: String): ResultStatus = ResultStatus(Type.Invalid, message, Seq(message))
 
-    def createUnknown(): ResultStatus = ResultStatus(Type.Unknown, "Unknown submission id.")
-
-    def createSubmitted(submissionTime: Long): ResultStatus = {
-      val subTimeStr = DateUtils.timeToString(submissionTime)
-      ResultStatus(Type.Submitted, s"Submitted at $subTimeStr.")
+    def createUnknown(resultId: ResultId): ResultStatus = {
+      val message = s"Unknown submission id $resultId."
+      ResultStatus(Type.Unknown, message, Seq(message))
     }
 
-    def createSucceeded(submissionTime: Long, successTime: Long): ResultStatus = {
+    def createSubmitted(submissionTime: Long, snagMessages: Seq[String]): ResultStatus = {
+      val subTimeStr = DateUtils.timeToString(submissionTime)
+      ResultStatus(Type.Submitted, s"Submitted at $subTimeStr.", snagMessages)
+    }
+
+    def createSucceeded(submissionTime: Long, successTime: Long, snagMessages: Seq[String]): ResultStatus = {
       val successTimeStr = DateUtils.timeToString(successTime)
       val timeDiffStr = DateUtils.timeDiffToString(successTime - submissionTime)
-      ResultStatus(Type.Succeeded, s"Success on $successTimeStr, after $timeDiffStr.")
+      ResultStatus(Type.Succeeded, s"Success on $successTimeStr, after $timeDiffStr.", snagMessages)
     }
 
-    def createFailed(submissionTime: Long, failTime: Long, message: String): ResultStatus = {
+    def createFailed(submissionTime: Long, failTime: Long, message: String, snagMessages: Seq[String]):
+    ResultStatus = {
       val successTimeStr = DateUtils.timeToString(failTime)
       val timeDiffStr = DateUtils.timeDiffToString(failTime - submissionTime)
       ResultStatus(Type.Succeeded,
-        s"Failed on $successTimeStr, after $timeDiffStr: $message")
+        s"Failed on $successTimeStr, after $timeDiffStr: $message", snagMessages)
     }
   }
-
 }

@@ -121,7 +121,7 @@ class VepRunner(val runSettings: VepRunSettings) {
         Left(Snag(s"vep produced no header line for variant $id"))
       }
     } else {
-      Left(Snag(s"vep return value was non-zero ($returnValue)."))
+      Left(Snag(s"vep return value was non-zero ($returnValue) for variant $id."))
     }
   }
 
