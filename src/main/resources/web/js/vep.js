@@ -12,26 +12,6 @@ const lunarisVariantPredictor = {
     masksList: []
 }
 
-class Filter {
-    constructor(field, op, value) {
-        this.field = field;
-        this.op = op;
-        this.value = value;
-    }
-
-    applyToNode(filterNode) {
-        filterNode.childNodes.forEach((childNode) => {
-            if (childNode.classList.contains("fieldSelect")) {
-                childNode.value = this.field;
-            } else if (childNode.classList.contains("operatorSelect")) {
-                childNode.value = this.op;
-            } else if (childNode.classList.contains("valueInput")) {
-                childNode.value = this.value;
-            }
-        });
-    }
-}
-
 const codeMirrorConfig = {
     theme: "darcula",
     lineNumbers: true
@@ -141,17 +121,22 @@ function showCouldNotSubmit(message) {
 }
 
 function addStatusEntry(inputFileName, id) {
+    const divNode = document.createElement("div");
     const pNode = document.createElement("p");
+    divNode.appendChild(pNode);
     const statusAreaNode = getSubmissionAreaNode();
-    statusAreaNode.insertAdjacentElement("afterbegin", pNode);
-    pNode.setAttribute("id", id)
-    showInitialStatus(pNode, inputFileName);
+    statusAreaNode.insertAdjacentElement("afterbegin", divNode);
+    divNode.setAttribute("id", id)
+    showInitialStatus(divNode, inputFileName);
 }
 
-function showInitialStatus(pNode, inputFileName) {
-    pNode.innerText = "";
-    const textNode = document.createTextNode("Submitted " + inputFileName + ", waiting for result.");
-    pNode.append(textNode);
+function showInitialStatus(divNode, inputFileName) {
+    const pNode = divNode.getElementsByTagName("p")[0];
+    if(pNode) {
+        pNode.innerText = "";
+        const textNode = document.createTextNode("Submitted " + inputFileName + ", waiting for result.");
+        pNode.append(textNode);
+    }
 }
 
 function getStatus(id) {
@@ -163,8 +148,19 @@ function getStatus(id) {
         });
 }
 
+function soManyErrors(nSnags) {
+    if(nSnags == 0) {
+        return "No errors";
+    } else if(nSnags == 1) {
+        return "One error";
+    } else {
+        return `${nSnags} errors`;
+    }
+}
+
 function showStatus(id) {
-    const pNode = document.getElementById(id);
+    const divNode = document.getElementById(id);
+    const pNode = divNode.getElementsByTagName("p")[0]
     const inputFileName = lunarisVariantPredictor.inputFileNames[id];
     const status = lunarisVariantPredictor.statuses[id];
     if (status) {
@@ -179,8 +175,21 @@ function showStatus(id) {
             pNode.append(spaceNode);
             pNode.append(linkNode);
         }
+        const snagMessages = status.snagMessages;
+        const nSnags = snagMessages.length;
+        if(nSnags) {
+            const snagNode = document.createTextNode(" " + soManyErrors(nSnags));
+            pNode.append(snagNode);
+            if(!divNode.getElementsByTagName("div")[0]) {
+                const snagsDivNode = document.createElement("div");
+                snagsDivNode.innerText = snagMessages.join("\n");
+                snagsDivNode.style.height = "5em";
+                snagsDivNode.style.overflow = "scroll";
+                divNode.appendChild(snagsDivNode);
+            }
+        }
     } else {
-        showInitialStatus(pNode, inputFileName);
+        showInitialStatus(divNode, inputFileName);
     }
 }
 
@@ -205,48 +214,6 @@ function setOptionsForSelect(selectNode, options) {
     options.forEach((option) => {
         selectNode.options.add(new Option(option));
     })
-}
-
-function createSelectWithOptions(options) {
-    const select = document.createElement("select");
-    setOptionsForSelect(select, options);
-    return select;
-}
-
-function countChildrenOfClass(parent, className) {
-    let n = 0;
-    parent.childNodes.forEach((childNode) => {
-        if (childNode.classList && childNode.classList.contains(className)) {
-            n++;
-        }
-    })
-    return n;
-}
-
-function getAllChildrenOfClass(parent, className) {
-    let childrenOfClass = [];
-    parent.childNodes.forEach((childNode) => {
-        if (childNode.classList && childNode.classList.contains(className)) {
-            childrenOfClass.push(childNode);
-        }
-    })
-    return childrenOfClass;
-}
-
-function getLastChildOfClass(parent, className) {
-    let lastChild = null;
-    parent.childNodes.forEach((childNode) => {
-        if (childNode.classList && childNode.classList.contains(className)) {
-            lastChild = childNode;
-        }
-    })
-    return lastChild;
-}
-
-function tightenButton(button) {
-    button.style.margin = "0px 0px 0px 0px";
-    button.style.border = "0px";
-    button.style.padding = "0px";
 }
 
 function clearFilters() {
