@@ -184,7 +184,7 @@ function showStatus(id) {
                 const snagsDivNode = document.createElement("div");
                 snagsDivNode.innerText = snagMessages.join("\n");
                 snagsDivNode.style.height = "5em";
-                snagsDivNode.style.overflow = "scroll";
+                snagsDivNode.style.overflowY = "scroll";
                 divNode.appendChild(snagsDivNode);
             }
         }
