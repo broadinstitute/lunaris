@@ -149,9 +149,9 @@ function getStatus(id) {
 }
 
 function soManyErrors(nSnags) {
-    if(nSnags == 0) {
+    if(nSnags === 0) {
         return "No errors";
-    } else if(nSnags == 1) {
+    } else if(nSnags === 1) {
         return "One error";
     } else {
         return `${nSnags} errors`;
@@ -179,12 +179,20 @@ function showStatus(id) {
         const nSnags = snagMessages.length;
         if(nSnags) {
             const snagNode = document.createTextNode(" " + soManyErrors(nSnags));
-            pNode.append(snagNode);
-            if(!divNode.getElementsByTagName("div")[0]) {
+            const snagNodeSpan = document.createElement("span");
+            snagNodeSpan.style.color = "red";
+            snagNodeSpan.appendChild(snagNode)
+            pNode.append(snagNodeSpan);
+            const snagMessagesClass = "snagMessages";
+            if(!divNode.getElementsByClassName(snagMessagesClass).length) {
                 const snagsDivNode = document.createElement("div");
                 snagsDivNode.innerText = snagMessages.join("\n");
+                snagsDivNode.classList.add(snagMessagesClass);
                 snagsDivNode.style.height = "5em";
+                snagsDivNode.style.width = "95%"
+                snagsDivNode.style.margin = "auto";
                 snagsDivNode.style.overflowY = "scroll";
+                snagsDivNode.style.color = "red";
                 divNode.appendChild(snagsDivNode);
             }
         }
