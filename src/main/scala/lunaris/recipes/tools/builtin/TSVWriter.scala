@@ -74,14 +74,15 @@ object TSVWriter extends Tool {
         }
       }
 
-      private def dataLine(objectValue: RecordValue): String = {
-        objectValue.lunType.fields.map(objectValue.values.get).map(_.map(valueToString))
+      private def dataLine(objectValue: RecordValue, meta: RecordStreamWithMeta.Meta): String = {
+        meta.objectType.fields.map(objectValue.values.get).map(_.map(valueToString))
           .map(_.getOrElse("")).mkString("\t")
       }
 
       private def getLineStream(recordStream: RecordStreamWithMeta): Source[String, RecordStreamWithMeta.Meta] = {
         val meta = recordStream.meta
-        Source.single(headerLine(meta.objectType)).concatMat(recordStream.source.map(dataLine))(Keep.right)
+        Source.single(headerLine(meta.objectType)).concatMat(recordStream.source
+          .map(objectValue => dataLine(objectValue, meta)))(Keep.right)
       }
 
       private def writeStreamAsTsv(stream: RecordStreamWithMeta,
@@ -102,16 +103,16 @@ object TSVWriter extends Tool {
                 snagTracker.trackSnag(snag)
                 RunResult(snagTracker.buildSeq())
               }
-            case Right(headerAndRecordEtor) =>
+            case Right(recordStreamWithMeta) =>
               fileOpt match {
                 case Some(file) =>
                   val writeChannelDisp = file.newWriteChannelDisposable(context.resourceConfig)
                   val channel = writeChannelDisp.a
                   val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
-                  val doneFut = writeStreamAsTsv(headerAndRecordEtor, context, snagTracker)(writer.println)
+                  val doneFut = writeStreamAsTsv(recordStreamWithMeta, context, snagTracker)(writer.println)
                   doneFut.onComplete(_ => writer.close())
                   doneFut
-                case None => writeStreamAsTsv(headerAndRecordEtor, context, snagTracker)(println)
+                case None => writeStreamAsTsv(recordStreamWithMeta, context, snagTracker)(println)
               }
           }
         }

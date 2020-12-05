@@ -185,8 +185,14 @@ object LunType {
 
   object RecordType {
     def apply(id: String, chrom: String, begin: String, end: String): RecordType = {
-      RecordType(RecordSpecialFields(id, chrom, begin, end), Seq(id, chrom, begin, end),
-        Map(id -> StringType, chrom -> StringType, begin -> IntType, end -> IntType))
+      val recordSpecialFields = RecordSpecialFields(id, chrom, begin, end)
+      if(begin == end) {
+        RecordType(recordSpecialFields, Seq(id, chrom, begin),
+          Map(id -> StringType, chrom -> StringType, begin -> IntType))
+      } else {
+        RecordType(recordSpecialFields, Seq(id, chrom, begin, end),
+          Map(id -> StringType, chrom -> StringType, begin -> IntType, end -> IntType))
+      }
     }
   }
 

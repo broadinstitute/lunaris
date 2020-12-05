@@ -73,20 +73,6 @@ function removeTemporaryStatus() {
         statusAreaNode.removeChild(statusNode);
     }
 }
-
-function temporaryHackToFixDataProblem(colsRaw) {
-    const colsFixed = [];
-    colsRaw.forEach((colRaw) => {
-            if (colRaw.length < 100) {
-                colsFixed.push(colRaw);
-            } else {
-                colRaw.split(" ").forEach((colSplit) => colsFixed.push(colSplit));
-            }
-        }
-    )
-    return colsFixed;
-}
-
 function getSchema() {
     fetch("/lunaris/predictor/schema")
         .then((response) => {
@@ -98,7 +84,7 @@ function getSchema() {
                 statusTextNode.innerText = "Unable to load available fields: " + schema.message;
             }
             if (schema.col_names) {
-                lunarisVariantPredictor.fieldNames = temporaryHackToFixDataProblem(schema.col_names);
+                lunarisVariantPredictor.fieldNames = schema.col_names;
                 const statusTextNode = getStatusAreaNode();
                 statusTextNode.innerText = "Loaded " + lunarisVariantPredictor.fieldNames.length + " field names."
             }
