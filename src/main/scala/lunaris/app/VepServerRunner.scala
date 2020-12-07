@@ -159,10 +159,18 @@ object VepServerRunner {
               get {
                 val maskPath = VepMasksManager.getPathForMask(remaining)
                 complete {
-                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, maskPath)
+                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/plain(UTF-8)`, maskPath)
                 }
               }
-            }
+            },
+            path("lunaris" / "predictor" / "sample_input.vcf") {
+              get {
+                val sampleInputPath = "lunaris/vep/sample_input.vcf"
+                complete {
+                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/plain(UTF-8)`, sampleInputPath)
+                }
+              }
+            },
           )
         }
         HttpUtils.runWebServiceWhileWaiting(route, host, port)(StdIn.readLine())
