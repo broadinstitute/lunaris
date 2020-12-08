@@ -13,7 +13,7 @@ const lunarisVariantPredictor = {
 }
 
 const codeMirrorConfig = {
-    theme: "darcula",
+    theme: "liquibyte",
     lineNumbers: true
 }
 

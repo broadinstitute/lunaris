@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Lunaris Variant Mask Server Version 1.5.22</title>
+    <title>Group File Generator (Lunaris Version 1.5.22)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -11,29 +11,45 @@
 </head>
 
 <body onload="init()">
+<header>
 <h1><img src="http://kp4cd.org/sites/default/files/lunaris/lunaris_logo_white.svg"
          style="width: 80px; vertical-align: -10px;" alt="Lunaris logo"/>
-    Lunaris Variant Mask Server Version 1.5.22
+    Group File Generator
 </h1>
+</header>
 
+<p>Given a location-sorted list of variants, this server generates annotations and allows filtering variants based
+on complex mask expressions (and we are working on generating group files).</p>
 
-<p>This is the Lunaris Variant Mask Server Version 1.5.22. Submit a VCF file (example is
-    <a href="predictor/sample_input.vcf" download="sample_input.vcf">here</a>).</p>
+<p>
+    <label for="inputfile">
+        Select a VCF file as input to upload on submit
+        (for an example input VCF file, check
+        <a href="predictor/sample_input.vcf" download="sample_input.vcf">here</a>):
+    </label>
+    <input type="file" id="inputfile" name="myfile">
+</p>
 
+<p>
+    Enter your won mask or use predefined ones
+    <button onclick="resetFilters()">Clear mask</button>
+    <button onclick="setMask()">Load predefined mask</button>
+    <select name="masks" id="masks"></select>
+</p>
 <p id="status_area"></p>
 
 <p id="code_mirror_parent"></p>
 
 <p>
-    <label for="inputfile">Select a file:</label>
-    <input type="file" id="inputfile" name="myfile">
     <button onclick="submit()">Submit</button>
-    <button onclick="resetFilters()">Clear mask</button>
-    <button onclick="setMask()">Load predefined mask</button>
-    <select name="masks" id="masks"></select>
 </p>
 
 <p id="submission_area"></p>
+
+<hr>
+<p>
+    Powered by Lunaris Version 1.5.22. Copyright 2020 Broad Institute
+</p>
 
 </body>
 

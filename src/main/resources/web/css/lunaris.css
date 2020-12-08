@@ -1,5 +1,10 @@
 body, button, textarea {
-    background-color: black;
-    color: yellow;
+    background-color: white;
+    color: black;
     font-family: Sans-Serif, sans-serif;
+}
+
+header {
+    background-color: blue;
+    color: white;
 }
