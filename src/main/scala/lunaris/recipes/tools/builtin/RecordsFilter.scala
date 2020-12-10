@@ -1,6 +1,6 @@
 package lunaris.recipes.tools.builtin
 
-import lunaris.expressions.BooleanRecordExpression
+import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, SnagTracker, WorkerMaker}
@@ -34,7 +34,7 @@ object RecordsFilter extends tools.Tool {
       expression <- ToolArgUtils.asExpression(Params.Keys.filter, args)
       booleanExpression <- {
         expression match {
-          case booleanExpression: BooleanRecordExpression => Right(booleanExpression)
+          case booleanExpression: LunBoolExpression => Right(booleanExpression)
           case otherExpression =>
             Left(Snag(s"Expected boolean expression, but expression is of type ${otherExpression.returnType.asString}"))
         }
@@ -42,7 +42,7 @@ object RecordsFilter extends tools.Tool {
     } yield ToolInstance(from, booleanExpression)
   }
 
-  case class ToolInstance(from: String, filter: BooleanRecordExpression) extends tools.ToolInstance {
+  case class ToolInstance(from: String, filter: LunBoolExpression) extends tools.ToolInstance {
     override def refs: Map[String, String] = Map(Params.Keys.from -> from)
 
     override def newWorkerMaker(context: LunCompileContext,
@@ -53,7 +53,7 @@ object RecordsFilter extends tools.Tool {
     }
   }
 
-  class WorkerMaker(fromWorker: RecordStreamWorker, filter: BooleanRecordExpression)
+  class WorkerMaker(fromWorker: RecordStreamWorker, filter: LunBoolExpression)
     extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =

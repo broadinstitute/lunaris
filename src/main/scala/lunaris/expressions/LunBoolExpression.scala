@@ -1,19 +1,19 @@
 package lunaris.expressions
 
-import lunaris.expressions.LunRecordExpression.LunRecordExpressionTyped
+import lunaris.expressions.LunExpression.LunExpressionTyped
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.BoolValue
 import org.broadinstitute.yootilz.core.snag.Snag
 
-trait BooleanRecordExpression extends LunRecordExpressionTyped[BoolValue] {
-  override def cleaned: BooleanRecordExpression
+trait LunBoolExpression extends LunExpressionTyped[BoolValue] {
+  override def cleaned: LunBoolExpression
 
   override def returnType: LunType.BoolType.type = LunType.BoolType
 }
 
-object BooleanRecordExpression {
+object LunBoolExpression {
 
-  object True extends BooleanRecordExpression {
+  object True extends LunBoolExpression {
     override def fields: Set[String] = Set.empty
 
     override def evaluate(record: LunValue.RecordValue): Either[Snag, BoolValue] = Right(BoolValue(true))
@@ -21,7 +21,7 @@ object BooleanRecordExpression {
     override def cleaned: True.type = this
   }
 
-  object False extends BooleanRecordExpression {
+  object False extends LunBoolExpression {
     override def fields: Set[String] = Set.empty
 
     override def evaluate(record: LunValue.RecordValue): Either[Snag, BoolValue] = Right(BoolValue(false))
@@ -29,8 +29,8 @@ object BooleanRecordExpression {
     override def cleaned: False.type = this
   }
 
-  case class AndExpression(terms: Seq[BooleanRecordExpression])
-    extends BooleanRecordExpression with LunRecordExpression.PrimitiveOperatorChain[Boolean, BoolValue] {
+  case class AndExpression(terms: Seq[LunBoolExpression])
+    extends LunBoolExpression with LunExpression.PrimitiveOperatorChain[Boolean, BoolValue] {
     override def zeroValue: Boolean = true
 
     override def fold(value1: Boolean, value2: Boolean): Boolean = value1 && value2
@@ -39,7 +39,7 @@ object BooleanRecordExpression {
 
     override def liftValue(value: Boolean): BoolValue = LunValue.PrimitiveValue.BoolValue(value)
 
-    override def cleaned: BooleanRecordExpression = {
+    override def cleaned: LunBoolExpression = {
       val termsCleaned = terms.map(_.cleaned).flatMap {
         case AndExpression(subTerms) => subTerms
         case True => Seq()
@@ -57,8 +57,8 @@ object BooleanRecordExpression {
     }
   }
 
-  case class OrExpression(terms: Seq[BooleanRecordExpression])
-    extends BooleanRecordExpression with LunRecordExpression.PrimitiveOperatorChain[Boolean, BoolValue] {
+  case class OrExpression(terms: Seq[LunBoolExpression])
+    extends LunBoolExpression with LunExpression.PrimitiveOperatorChain[Boolean, BoolValue] {
     override def zeroValue: Boolean = false
 
     override def fold(value1: Boolean, value2: Boolean): Boolean = value1 || value2
@@ -67,7 +67,7 @@ object BooleanRecordExpression {
 
     override def liftValue(value: Boolean): BoolValue = LunValue.PrimitiveValue.BoolValue(value)
 
-    override def cleaned: BooleanRecordExpression = {
+    override def cleaned: LunBoolExpression = {
       val termsCleaned = terms.map(_.cleaned).flatMap {
         case OrExpression(subTerms) => subTerms
         case False => Seq()

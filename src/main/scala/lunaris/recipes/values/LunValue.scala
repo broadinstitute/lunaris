@@ -1,6 +1,6 @@
 package lunaris.recipes.values
 
-import lunaris.expressions.LunRecordExpression
+import lunaris.expressions.LunExpression
 import lunaris.genomics.Locus
 import lunaris.io.{InputId, OutputId}
 import lunaris.utils.{EitherSeqUtils, NumberParser}
@@ -245,7 +245,7 @@ object LunValue {
     }
   }
 
-  case class ExpressionValue(value: LunRecordExpression) extends LunValue {
+  case class ExpressionValue(value: LunExpression) extends LunValue {
     override def lunType: LunType = LunType.ExpressionType(value.returnType)
   }
 

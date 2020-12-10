@@ -6,7 +6,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 import scala.util.matching.Regex
 
 
-trait FieldFilterExpression extends BooleanRecordExpression {
+trait FieldFilterExpression extends LunBoolExpression {
   def field: String
 
   override def fields: Set[String] = Set(field)

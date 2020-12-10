@@ -3,8 +3,8 @@ package lunaris.vep
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Multipart
 import akka.util.ByteString
-import lunaris.expressions.BooleanRecordExpression
-import lunaris.recipes.parsing.RecordExpressionParser
+import lunaris.expressions.LunBoolExpression
+import lunaris.recipes.parsing.LunBoolExpressionParser
 import lunaris.vep.VepFileManager.ResultId
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
@@ -12,7 +12,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 case class VepFormData(fileName: String,
                        resultId: ResultId,
-                       filter: BooleanRecordExpression)
+                       filter: LunBoolExpression)
 
 object VepFormData {
   def fromFields(fields: Map[String, FormField]): VepFormData = {
@@ -20,7 +20,7 @@ object VepFormData {
     val fileName = inputFileField.fileName
     val resultId = inputFileField.resultId
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
-    val filter = SnagUtils.assertNotSnag(RecordExpressionParser.parse(filterString))
+    val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
     VepFormData(fileName, resultId, filter)
   }
 

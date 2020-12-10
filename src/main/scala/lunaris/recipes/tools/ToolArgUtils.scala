@@ -1,8 +1,8 @@
 package lunaris.recipes.tools
 
-import lunaris.expressions.LunRecordExpression
+import lunaris.expressions.LunExpression
 import lunaris.io.{InputId, OutputId}
-import lunaris.recipes.parsing.RecordExpressionParser
+import lunaris.recipes.parsing.LunBoolExpressionParser
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.utils.EitherSeqUtils
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -131,15 +131,14 @@ object ToolArgUtils {
     }
   }
 
-  val toExpression: LunValue => Either[Snag, LunRecordExpression] = {
+  val toExpression: LunValue => Either[Snag, LunExpression] = {
     case LunValue.ExpressionValue(expression) => Right(expression)
-    case LunValue.PrimitiveValue.StringValue(string) =>
-      RecordExpressionParser.parse(string)
-    case value => Left(Snag(s"Expected expression, but got ${value.asString}."))
+    case LunValue.PrimitiveValue.StringValue(string) => LunBoolExpressionParser.parse(string)
+    case value => Left(Snag(s"Expected Bool expression, but got ${value.asString}."))
   }
 
-  def asExpression(arg: ToolCall.Arg): Either[Snag, LunRecordExpression] = as[LunRecordExpression](arg)(toExpression)
+  def asExpression(arg: ToolCall.Arg): Either[Snag, LunExpression] = as[LunExpression](arg)(toExpression)
 
-  def asExpression(name: String, args: Map[String, ToolCall.Arg]): Either[Snag, LunRecordExpression] =
-    as[LunRecordExpression](name, args)(toExpression)
+  def asExpression(name: String, args: Map[String, ToolCall.Arg]): Either[Snag, LunExpression] =
+    as[LunExpression](name, args)(toExpression)
 }

@@ -1,7 +1,7 @@
 package lunaris.vep
 
 import better.files.{File, Resource}
-import lunaris.recipes.parsing.RecordExpressionParser
+import lunaris.recipes.parsing.LunBoolExpressionParser
 import org.scalatest.funsuite.AnyFunSuite
 
 class VepMasksManagerTest extends AnyFunSuite {
@@ -29,7 +29,7 @@ class VepMasksManagerTest extends AnyFunSuite {
       val maskStringOpt = Resource.asString(maskPath)
       assert(maskStringOpt.nonEmpty, s"Could not load mask $maskName.")
       val maskString = maskStringOpt.get
-      val snagOrRecordExpression = RecordExpressionParser.parse(maskString)
+      val snagOrRecordExpression = LunBoolExpressionParser.parse(maskString)
       val shouldNeverBeNeeded = ""
       val parseErrorMessage = snagOrRecordExpression.left.toOption.map(_.report).getOrElse(shouldNeverBeNeeded)
       val errorMessage = s"$maskName does not parse: " + parseErrorMessage

@@ -4,7 +4,14 @@ body, button, textarea {
     font-family: Sans-Serif, sans-serif;
 }
 
+h1 {
+    padding: 10px;
+}
+
 header {
     background-color: blue;
     color: white;
+}
+
+#lunarisLogo {
 }

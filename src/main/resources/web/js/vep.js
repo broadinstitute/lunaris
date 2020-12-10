@@ -85,8 +85,8 @@ function getSchema() {
             }
             if (schema.col_names) {
                 lunarisVariantPredictor.fieldNames = schema.col_names;
-                const statusTextNode = getStatusAreaNode();
-                statusTextNode.innerText = "Loaded " + lunarisVariantPredictor.fieldNames.length + " field names."
+                const fieldsSelectNode = document.getElementById("fields");
+                setOptionsForSelect(fieldsSelectNode, schema.col_names);
             }
         })
 }

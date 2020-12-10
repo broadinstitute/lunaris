@@ -2,7 +2,7 @@ package lunaris.vep
 
 import better.files.File
 import lunaris.app.VepDataFieldsSettings
-import lunaris.expressions.BooleanRecordExpression
+import lunaris.expressions.LunBoolExpression
 import lunaris.genomics.{Region, Variant}
 import lunaris.io.InputId
 import lunaris.io.request.Request
@@ -22,7 +22,7 @@ object VepRequestBuilder {
                    driverFileName: String,
                    dataFileName: String,
                    outputFile: File,
-                   filter: BooleanRecordExpression,
+                   filter: LunBoolExpression,
                    indexFileNameOpt: Option[String],
                    dataFields: VepDataFieldsSettings): Request = {
 
