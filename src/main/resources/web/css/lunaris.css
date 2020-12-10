@@ -15,3 +15,8 @@ header {
 
 #lunarisLogo {
 }
+
+.stepNumber {
+    font-size: large;
+    color: green;
+}

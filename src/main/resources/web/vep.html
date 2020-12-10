@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Group File Generator (Lunaris Version 1.5.23)</title>
+    <title>Group File Generator (Lunaris Version 1.5.24)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -23,8 +23,9 @@
 on complex mask expressions (and we are working on generating group files).</p>
 
 <p>
+    <span class="stepNumber">1.</span>
     <label for="inputfile">
-        Select a VCF file as input to upload on submit
+        Select a VCF file as input (start with a few variants - we are working on performance) to upload on submit
         (for an example input VCF file, check
         <a href="predictor/sample_input.vcf" download="sample_input.vcf">here</a>):
     </label>
@@ -32,30 +33,39 @@ on complex mask expressions (and we are working on generating group files).</p>
 </p>
 
 <p>
-    Enter a mask. You can also use or edit a predefined mask
+    <span class="stepNumber">2.</span>
+    To use a mask, you can start from scratch or from a predefined mask
     <span>
         <button onclick="resetFilters()">Clear mask</button>
         <button onclick="setMask()">Load predefined mask</button>
         <select name="masks" id="masks"></select>
     </span>
-    <span>
-        Available fields:
-        <select name="fields" id="fields"></select>
-    </span>
 </p>
-<p id="status_area"></p>
-
+<p>
+    <span class="stepNumber">3.</span>
+    If needed, edit the mask below. Available fields:
+    <select name="fields" id="fields"></select>
+</p>
 <p id="code_mirror_parent"></p>
 
 <p>
+    <span class="stepNumber">4.</span>
+    When ready, submit
     <button onclick="submit()">Submit</button>
 </p>
+
+<p>
+    <span class="stepNumber">5.</span>
+    Wait for results to be calculated. Check for status updates below.
+</p>
+
+<p id="status_area"></p>
 
 <p id="submission_area"></p>
 
 <hr>
 <p>
-    Powered by Lunaris Version 1.5.23. Copyright 2020 Broad Institute
+    Powered by Lunaris Version 1.5.24. Copyright 2020 Broad Institute
 </p>
 
 </body>
