@@ -111,6 +111,10 @@ function addStatusEntry(inputFileName, id) {
     const pNode = document.createElement("p");
     divNode.appendChild(pNode);
     const statusAreaNode = getSubmissionAreaNode();
+    const placeholder = document.getElementById("statusUpdatesPlaceholder");
+    if(placeholder) {
+        statusAreaNode.removeChild(placeholder);
+    }
     statusAreaNode.insertAdjacentElement("afterbegin", divNode);
     divNode.setAttribute("id", id)
     showInitialStatus(divNode, inputFileName);
