@@ -8,7 +8,7 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.RecordStreamJoinerWithFallback
+import lunaris.streams.{MafForVepCalculator, RecordStreamJoinerWithFallback}
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.EitherSeqUtils
 import lunaris.vep.{VepRunSettingsBox, VepRunner}
@@ -98,7 +98,10 @@ object JoinRecordsWithFallback extends tools.Tool {
                 } {
                   (snag: Snag) => snagTracker.trackSnag(snag)
                 }
-                RecordStreamWithMeta(metaJoined, sourceJoined)
+                // Hacked in for Mask server to have MAF field
+                // TODO: move adding of MAF into its own tool
+                val sourceJoinedWithMaf = sourceJoined.map(MafForVepCalculator.addMaf)
+                RecordStreamWithMeta(metaJoined, sourceJoinedWithMaf)
               }
             LunWorker.StreamBox(snagOrStream)
           }
