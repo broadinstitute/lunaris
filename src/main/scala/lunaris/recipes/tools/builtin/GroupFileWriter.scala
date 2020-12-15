@@ -79,7 +79,7 @@ object GroupFileWriter extends Tool {
         val alt = getString(record, "ALT", "?")
         val rs = getString(record, "ID", record.id)
         val af = getString(record, "MAF", "NA")
-        val id = getString(record, "Symbol", "")
+        val id = getString(record, "SYMBOL", getString(record, "Gene", ""))
         Seq(chrom, pos, ref, alt, rs, af, id).mkString("\t")
       }
 
