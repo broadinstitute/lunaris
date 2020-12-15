@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.builtin.{IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.tools.builtin.{GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -106,6 +106,13 @@ object RequestExamplesUtils {
         IdCanonicalizer.Params.Keys.refField -> ValueArg(IdCanonicalizer.Params.refField, refField),
         IdCanonicalizer.Params.Keys.altField -> ValueArg(IdCanonicalizer.Params.altField, altField),
         IdCanonicalizer.Params.Keys.idFieldNew -> ValueArg(IdCanonicalizer.Params.idFieldNew, idFieldNew)
+      ))
+
+    def groupFileWriter(from: String, file: FileValue, format: StringValue): ToolCall =
+      ToolCall(GroupFileWriter, Map(
+        GroupFileWriter.Params.Keys.from -> RefArg(GroupFileWriter.Params.from, from),
+        GroupFileWriter.Params.Keys.file -> ValueArg(GroupFileWriter.Params.file, file),
+        GroupFileWriter.Params.Keys.format -> ValueArg(GroupFileWriter.Params.format, format)
       ))
   }
 

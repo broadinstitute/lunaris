@@ -1,6 +1,6 @@
 package lunaris.app
 
 object LunarisInfo {
-  val version: String = "1.5.25"
+  val version: String = "1.5.26"
   val versionLong: String = s"Lunaris Version $version (c) 2020 Broad Institute"
 }

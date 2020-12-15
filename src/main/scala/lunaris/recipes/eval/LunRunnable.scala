@@ -1,12 +1,18 @@
 package lunaris.recipes.eval
 
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
+import lunaris.io.OutputId
 import lunaris.recipes.eval.LunRunnable.RunResult
+import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.values.RecordStreamWithMeta
+import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.Snag
 
+import java.io.PrintWriter
+import java.nio.channels.Channels
+import java.nio.charset.StandardCharsets
 import scala.collection.immutable.Iterable
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 trait LunRunnable {
   def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult]
@@ -57,6 +63,50 @@ object LunRunnable {
         runnables.head.getStream(context, snagTracker)
       } else {
         Left(Snag("Don't know how to combine multiple output streams."))
+      }
+    }
+  }
+
+  class TextWriter(fromWorker: RecordStreamWorker, outputIdOpt: Option[OutputId])(
+    recordsToLines: RecordStreamWithMeta => Source[String, RecordStreamWithMeta.Meta]
+  )
+  extends LunRunnable {
+    private def writeRecords(stream: RecordStreamWithMeta,
+                             context: LunRunContext,
+                             snagTracker: SnagTracker)(
+                              writer: String => Unit
+                            )(implicit executor: ExecutionContext): Future[RunResult] = {
+      recordsToLines(stream).runWith(Sink.foreach(writer))(context.materializer)
+        .map(_ => RunResult(snagTracker.buildSeq()))
+    }
+
+
+    override def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult] = {
+      implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
+      fromWorker.getStreamBox(context, snagTracker).snagOrStream match {
+        case Left(snag) =>
+          Future {
+            snagTracker.trackSnag(snag)
+            RunResult(snagTracker.buildSeq())
+          }
+        case Right(recordStreamWithMeta) =>
+          outputIdOpt match {
+            case Some(file) =>
+              val writeChannelDisp = file.newWriteChannelDisposable(context.resourceConfig)
+              val channel = writeChannelDisp.a
+              val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
+              val doneFut = writeRecords(recordStreamWithMeta, context, snagTracker)(writer.println)
+              doneFut.onComplete(_ => writer.close())
+              doneFut
+            case None => writeRecords(recordStreamWithMeta, context, snagTracker)(println)
+          }
+      }
+    }
+
+    override def getStream(context: LunRunContext, snagTracker: SnagTracker):
+    Either[Snag, Source[String, RecordStreamWithMeta.Meta]] = {
+      fromWorker.getStreamBox(context,snagTracker).snagOrStream.map { recordStream =>
+        recordsToLines(recordStream)
       }
     }
   }

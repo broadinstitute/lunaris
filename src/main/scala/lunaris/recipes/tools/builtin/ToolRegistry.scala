@@ -6,7 +6,7 @@ object ToolRegistry {
   val tools: Set[Tool] =
     Set(
       IndexedRecordReader, TSVWriter, JSONWriter, RecordsSimpleFilter, RecordsFilter, JoinRecords,
-      JoinRecordsWithFallback, VcfRecordsReader, IdCanonicalizer
+      JoinRecordsWithFallback, VcfRecordsReader, IdCanonicalizer, GroupFileWriter
     )
   val toolsByName: Map[String, Tool] = tools.map(tool => (tool.name, tool)).toMap
 }

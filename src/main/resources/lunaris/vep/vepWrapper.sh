@@ -48,6 +48,7 @@ $vepCmd -i $input \
 --plugin LoF \
 --plugin LoFtool \
 --plugin dbNSFP,${dbNSFP},ALL \
+--symbol \
 --output_file $output \
 --warning_file $warnings
 COMMANDLINE
@@ -78,5 +79,6 @@ $vepCmd -i $input \
 --plugin LoF \
 --plugin LoFtool \
 --plugin dbNSFP,${dbNSFP},ALL \
+--symbol \
 --output_file $output \
 --warning_file $warnings

@@ -3,15 +3,13 @@ package lunaris.vep
 import better.files.File
 import lunaris.app.VepDataFieldsSettings
 import lunaris.expressions.LunBoolExpression
-import lunaris.genomics.{Region, Variant}
-import lunaris.io.InputId
+import lunaris.genomics.Region
 import lunaris.io.request.Request
 import lunaris.io.request.examples.RequestExamplesUtils.ToolCalls
 import lunaris.recipes.Recipe
-import lunaris.recipes.tools.builtin.JoinRecordsWithFallback
 import lunaris.recipes.values.LunType.StringType
-import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
+import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
 import lunaris.vep.VepFileManager.ResultId
 
 object VepRequestBuilder {
@@ -22,6 +20,7 @@ object VepRequestBuilder {
                    driverFileName: String,
                    dataFileName: String,
                    outputFile: File,
+                   outFileFormat: String,
                    filter: LunBoolExpression,
                    indexFileNameOpt: Option[String],
                    dataFields: VepDataFieldsSettings): Request = {
@@ -43,6 +42,7 @@ object VepRequestBuilder {
     val fallbackValue: StringValue = StringValue(fallbackString)
     val filterValue: ExpressionValue = ExpressionValue(filter)
     val outputFileValue: FileValue = FileValue(outputFile.toString())
+    val outputFileFormatValue: StringValue = StringValue(outFileFormat)
 
     object Keys {
       val readDriver: String = "readDriver"
@@ -63,7 +63,7 @@ object VepRequestBuilder {
         Keys.canonicalizeData -> ToolCalls.idCanonicalizer(Keys.readData, refField, altField, idFieldNew),
         Keys.join -> ToolCalls.joinRecordsWithFallback(Keys.canonicalizeDriver, Keys.canonicalizeData, fallbackValue),
         Keys.filter -> ToolCalls.filter(Keys.join, filterValue),
-        Keys.write -> ToolCalls.tsvWriter(Keys.filter, outputFileValue)
+        Keys.write -> ToolCalls.groupFileWriter(Keys.filter, outputFileValue, outputFileFormatValue)
       ))
     )
   }

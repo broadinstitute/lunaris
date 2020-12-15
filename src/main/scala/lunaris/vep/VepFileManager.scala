@@ -82,10 +82,12 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
+      val groupFileFormat = "rareMETALS"  //  TODO: make this user option
       val request =
         VepRequestBuilder.buildRequest(
           resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
-          outputFilePathForId(resultId), formData.filter, Some(dataFileWithIndex.index.toString), vepDataFields
+          outputFilePathForId(resultId), groupFileFormat, formData.filter, Some(dataFileWithIndex.index.toString),
+          vepDataFields
         )
       LunCompiler.compile(request)
     }.collect {

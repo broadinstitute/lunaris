@@ -1,20 +1,15 @@
 package lunaris.recipes.tools.builtin
 
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.{Keep, Source}
 import lunaris.io.OutputId
-import lunaris.recipes.eval.LunRunnable.RunResult
+import lunaris.recipes.eval.LunRunnable.TextWriter
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval._
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
-import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamWithMeta}
+import lunaris.recipes.values.{LunType, LunValueJson, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
-
-import java.io.PrintWriter
-import java.nio.channels.Channels
-import java.nio.charset.StandardCharsets
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 object JSONWriter extends Tool {
   override def resultType: LunType.UnitType.type = LunType.UnitType
@@ -63,9 +58,9 @@ object JSONWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      private def toLineSource(recordSource: Source[LunValue.RecordValue, RecordStreamWithMeta.Meta]):
+      private def toLineSource(recordSource: RecordStreamWithMeta):
       Source[String, RecordStreamWithMeta.Meta] = {
-        val recordJsonStringStream = recordSource.map(Some(_))
+        val recordJsonStringStream = recordSource.source.map(Some(_))
           .concat(Source(Seq(None)))
           .sliding(2)
           .map { recordOpts =>
@@ -82,46 +77,8 @@ object JSONWriter extends Tool {
           .concat(Source.single("}\n"))
       }
 
-      private def writeRecords(source: Source[LunValue.RecordValue, RecordStreamWithMeta.Meta],
-                               runContext: LunRunContext,
-                               snagTracker: SnagTracker)(
-                                linePrinter: String => Unit
-                              )(implicit executor: ExecutionContext): Future[RunResult] = {
-        toLineSource(source).runWith(Sink.foreach(linePrinter))(runContext.materializer).map { _ =>
-          RunResult(snagTracker.buildSeq())
-        }
-      }
-
-      override def pickupRunnableOpt(): Option[LunRunnable] = Some[LunRunnable](new LunRunnable {
-        override def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult] = {
-          implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
-          fromWorker.getStreamBox(context, snagTracker).snagOrStream match {
-            case Left(snag) =>
-              Future {
-                snagTracker.trackSnag(snag)
-                RunResult(snagTracker.buildSeq())
-              }
-            case Right(recordStream) =>
-              fileOpt match {
-                case Some(file) =>
-                  val writeChannelDisp = file.newWriteChannelDisposable(context.resourceConfig)
-                  val channel = writeChannelDisp.a
-                  val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
-                  val doneFut = writeRecords(recordStream.source, context, snagTracker)(writer.println)
-                  doneFut.onComplete(_ => writeChannelDisp.dispose())
-                  doneFut
-                case None =>
-                  writeRecords(recordStream.source, context, snagTracker)(println)
-              }
-          }
-        }
-
-        override def getStream(context: LunRunContext, snagTracker: SnagTracker):
-        Either[Snag, Source[String, RecordStreamWithMeta.Meta]] =
-          fromWorker.getStreamBox(context, snagTracker).snagOrStream.map { recordStream =>
-            toLineSource(recordStream.source)
-          }
-      })
+      override def pickupRunnableOpt(): Some[TextWriter] =
+        Some[TextWriter](new TextWriter(fromWorker, fileOpt)(toLineSource))
     }
   }
 
