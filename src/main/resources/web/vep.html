@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.5.28)</title>
+    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.6.0)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -22,7 +22,7 @@
 <p>The Exome Gene-Level Group-File Generator is designed to, based on a user-provided location-sorted list of exome
     variants, annotate variants using the
     <a href="https://www.ensembl.org/info/docs/tools/vep/index.html">Ensembl Variant Effect Predictor (VEP)</a>
-    and generate group files to run gene-level association tests using common formats (e.g. EPACTS, RAREMETALS).
+    and generate group files to run gene-level association tests using rareMETALS format.
     Users can define masks based on annotations, or use one of the
     <a href="https://www.nature.com/articles/s41586-019-1231-2">published masks provided</a>.</p>
 
@@ -57,12 +57,7 @@
 <p>
     <span class="stepNumber">3.</span>
     Submit variant list to server
-    <button onclick="submit()">Submit</button>
-</p>
-
-<p>
-    <span class="stepNumber">4.</span>
-    Wait for results to be calculated. Check for status updates below.
+    <button onclick="submit()">Submit</button> and wait for results to be calculated. Check for status updates below.
 </p>
 
 <p id="status_area"></p>
@@ -73,7 +68,7 @@
 
 <hr>
 <p>
-    Powered by Lunaris Version 1.5.28. Copyright 2020 Broad Institute
+    Powered by Lunaris Version 1.6.0. Copyright 2020 Broad Institute
 </p>
 
 </body>
