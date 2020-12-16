@@ -8,7 +8,7 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.{MafForVepCalculator, RecordStreamJoinerWithFallback}
+import lunaris.streams.transform.{MafForVepCalculator, RecordStreamJoinerWithFallback}
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.EitherSeqUtils
 import lunaris.vep.{VepRunSettingsBox, VepRunner}

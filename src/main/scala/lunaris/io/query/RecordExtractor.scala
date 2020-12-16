@@ -5,7 +5,8 @@ import lunaris.genomics.Region
 import lunaris.io.tbi.{TBIChunk, TBIFileReader}
 import lunaris.io.{ByteBufferReader, ByteBufferRefiller, Disposable, ResourceConfig}
 import lunaris.recipes.values.RecordStreamWithMeta
-import lunaris.streams.{TsvHeader, TsvRecord, RecordProcessor}
+import lunaris.streams.transform.RecordProcessor
+import lunaris.streams.{TsvHeader, TsvRecord}
 import lunaris.utils.Eitherator
 import org.broadinstitute.yootilz.core.snag.Snag
 

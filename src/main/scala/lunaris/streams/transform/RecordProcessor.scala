@@ -1,4 +1,4 @@
-package lunaris.streams
+package lunaris.streams.transform
 
 import org.broadinstitute.yootilz.core.snag.Snag
 

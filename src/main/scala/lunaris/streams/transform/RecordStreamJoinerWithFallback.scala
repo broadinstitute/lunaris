@@ -1,7 +1,7 @@
-package lunaris.streams
+package lunaris.streams.transform
 
 import lunaris.genomics.Locus
-import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
+import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource, SnagLogger}
 import lunaris.streams.utils.RecordTaggedSortedMerger
 import lunaris.streams.utils.RecordTaggedSortedMerger.{TaggedEndMarker, TaggedItem, TaggedRecord}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -9,7 +9,6 @@ import org.broadinstitute.yootilz.core.snag.Snag
 object RecordStreamJoinerWithFallback {
   type Joiner = (Record, Record) => Either[Snag, Record]
   type Fallback = Record => Either[Snag, Record]
-  type SnagLogger = Snag => Unit
 
   sealed trait SourceId
 
@@ -53,7 +52,7 @@ object RecordStreamJoinerWithFallback {
             BufferForLocus(locus, Seq(record), Seq.fill(nDataSources)(Map.empty))
           case DataSourceId(i) =>
             val dataRecords = Seq.tabulate[Map[String, Record]](nDataSources) { j =>
-              if(j == i) {
+              if (j == i) {
                 Map(record.id -> record)
               } else {
                 Map.empty
@@ -84,15 +83,15 @@ object RecordStreamJoinerWithFallback {
       }
 
       def joinPastLocus(): (Buffer, Seq[Record]) = {
-        if(buffersByLocus.size > 1) {
+        if (buffersByLocus.size > 1) {
           val bufferForPastLocus = buffersByLocus.head
           val joinedRecordsBuilder = Seq.newBuilder[Record]
           var dataRecordsRemaining = bufferForPastLocus.dataRecords
-          for(driverRecord <- bufferForPastLocus.drivers) {
+          for (driverRecord <- bufferForPastLocus.drivers) {
             var snagOrJoinedRecord: Either[Snag, Record] = Right(driverRecord)
             val id = driverRecord.id
             var foundData: Boolean = false
-            for(dataRecordsForSource <- dataRecordsRemaining) {
+            for (dataRecordsForSource <- dataRecordsRemaining) {
               dataRecordsForSource.get(id).foreach { dataRecord =>
                 snagOrJoinedRecord = for {
                   joinedRecord <- snagOrJoinedRecord
@@ -101,7 +100,7 @@ object RecordStreamJoinerWithFallback {
                 foundData = true
               }
             }
-            if(!foundData) {
+            if (!foundData) {
               snagOrJoinedRecord = snagOrJoinedRecord.flatMap(fallback)
             }
             snagOrJoinedRecord match {
@@ -125,13 +124,13 @@ object RecordStreamJoinerWithFallback {
             var encounteredJoiningObstacle: Boolean = false
             val joinedRecordsBuilder = Seq.newBuilder[Record]
             var dataRecordsRemaining: Seq[Map[String, Record]] = bufferForLocus.dataRecords
-            while((!encounteredJoiningObstacle) && driverRecordsRemaining.nonEmpty) {
+            while ((!encounteredJoiningObstacle) && driverRecordsRemaining.nonEmpty) {
               val driverRecord = driverRecordsRemaining.head
               val id = driverRecord.id
               var snagOrJoinedRecord: Either[Snag, Record] = Right(driverRecord)
               var iDataSource: Int = 0
               var foundData: Boolean = false
-              while(snagOrJoinedRecord.isRight && (!encounteredJoiningObstacle) && iDataSource < nDataSources) {
+              while (snagOrJoinedRecord.isRight && (!encounteredJoiningObstacle) && iDataSource < nDataSources) {
                 dataRecordsRemaining(iDataSource).get(id) match {
                   case Some(dataRecord) =>
                     snagOrJoinedRecord = for {
@@ -140,14 +139,14 @@ object RecordStreamJoinerWithFallback {
                     } yield joinedRecordNew
                     foundData = true
                   case None =>
-                    if(!gotLastOf.gotLastsOfData(iDataSource)) {
+                    if (!gotLastOf.gotLastsOfData(iDataSource)) {
                       encounteredJoiningObstacle = true
                     }
                 }
                 iDataSource += 1
               }
-              if(!encounteredJoiningObstacle) {
-                if(!foundData) {
+              if (!encounteredJoiningObstacle) {
+                if (!foundData) {
                   snagOrJoinedRecord = snagOrJoinedRecord.flatMap(fallback)
                 }
                 driverRecordsRemaining = driverRecordsRemaining.tail
@@ -183,6 +182,7 @@ object RecordStreamJoinerWithFallback {
     }
 
     var buffer: Buffer = Buffer.create()
+
     def processItem(taggedItem: TaggedItem[SourceId]): Seq[Record] = {
       val (bufferNew, recordsJoined) = buffer.process(taggedItem)
       buffer = bufferNew

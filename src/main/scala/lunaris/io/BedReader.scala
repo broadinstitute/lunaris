@@ -2,7 +2,8 @@ package lunaris.io
 
 import lunaris.genomics.Region
 import lunaris.io
-import lunaris.streams.{TsvHeader, TsvRecord, RecordProcessor}
+import lunaris.streams.transform.RecordProcessor
+import lunaris.streams.{TsvHeader, TsvRecord}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.collection.mutable

@@ -197,6 +197,15 @@ object LunValue {
       }
     }
 
+    def has(field: String): Boolean = values.contains(field)
+
+    def get(field: String): Either[Snag, LunValue] = {
+      values.get(field) match {
+        case None => Left(Snag(s"Record $id doesn't have a value for field '$field'."))
+        case Some(value) => Right(value)
+      }
+    }
+
     def keepOnlyPrimitiveFields: RecordValue = {
       val fieldsNew = lunType.fields.filter(field => lunType.elementTypes.get(field).exists(_.isPrimitive))
       copy(lunType = lunType.copy(fields = fieldsNew))

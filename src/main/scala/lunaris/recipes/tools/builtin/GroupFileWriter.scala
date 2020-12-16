@@ -9,6 +9,7 @@ import lunaris.recipes.eval.{LunCompileContext, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
+import lunaris.streams.transform.RareMetalsGroupSerializer
 import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -62,34 +63,10 @@ object GroupFileWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      private val rareMetalsHeaderLine: String = "CHROM\tPOS\tREF\tALT\tRS\tAF\tID"
-
-      private def getString(record: Record, field: String, default: String): String = {
-        val stringOpt = for {
-          value <- record.values.get(field)
-          string <- value.asString.toOption
-        } yield string
-        stringOpt.getOrElse(default)
-      }
-
-      private def recordToRareMetalsDataLine(record: Record): String = {
-        val chrom = record.locus.chrom
-        val pos = record.locus.region.begin
-        val ref = getString(record, "REF", "?")
-        val alt = getString(record, "ALT", "?")
-        val rs = getString(record, "ID", record.id)
-        val af = getString(record, "MAF", "NA")
-        val id = getString(record, "SYMBOL", getString(record, "Gene", ""))
-        Seq(chrom, pos, ref, alt, rs, af, id).mkString("\t")
-      }
-
-      private def recordsToRareMetalsLines(recordStream: RecordStreamWithMeta): Source[String, RecordStreamWithMeta.Meta] = {
-        Source.single(rareMetalsHeaderLine).concatMat(recordStream.source
-          .map(recordToRareMetalsDataLine))(Keep.right)
-      }
-
       override def pickupRunnableOpt(): Some[TextWriter] = {
-        Some(new TextWriter(fromWorker, fileOpt)(recordsToRareMetalsLines))
+        val groupIdFields = Seq("SYMBOL", "Gene")
+        val groupSerializer = new RareMetalsGroupSerializer(groupIdFields)
+        Some(new TextWriter(fromWorker, fileOpt)(groupSerializer.recordsToRareMetalsLines))
       }
     }
   }

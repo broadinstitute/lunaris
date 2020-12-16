@@ -1,4 +1,4 @@
-package lunaris.streams
+package lunaris.streams.transform
 
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.utils.RecordStreamTypes.Record
@@ -16,7 +16,7 @@ object MafForVepCalculator {
           if (key.length >= keyLengthMin && key.startsWith("gnomAD_exomes_") && key.endsWith("_AF")) {
             value.castTo(LunType.FloatType).flatMap(_.asDouble) match {
               case Left(_) => ()
-              case Right(mafCohort) => maf = Math.max(maf, mafCohort)
+              case Right(mafCohort) => maf = Math.max(maf, Math.min(mafCohort, 1.0 - mafCohort))
             }
           }
         }

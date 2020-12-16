@@ -1,8 +1,8 @@
 package lunaris.recipes.tools.builtin
 
-import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.stream.scaladsl.{Keep, Source}
 import lunaris.io.OutputId
-import lunaris.recipes.eval.LunRunnable.{RunResult, TextWriter}
+import lunaris.recipes.eval.LunRunnable.TextWriter
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval._
@@ -12,8 +12,6 @@ import lunaris.recipes.values.LunValue.RecordValue
 import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
-
-import scala.concurrent.{ExecutionContext, Future}
 
 object TSVWriter extends Tool {
   override def resultType: LunType.UnitType.type = LunType.UnitType
@@ -76,7 +74,8 @@ object TSVWriter extends Tool {
           .map(_.getOrElse("")).mkString("\t")
       }
 
-      private def getLineStream(recordStream: RecordStreamWithMeta): Source[String, RecordStreamWithMeta.Meta] = {
+      private def getLineStream(recordStream: RecordStreamWithMeta, snagTracker: SnagTracker):
+      Source[String, RecordStreamWithMeta.Meta] = {
         val meta = recordStream.meta
         Source.single(headerLine(meta.objectType)).concatMat(recordStream.source
           .map(objectValue => dataLine(objectValue, meta)))(Keep.right)

@@ -5,7 +5,6 @@ import lunaris.io.OutputId
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.values.RecordStreamWithMeta
-import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import java.io.PrintWriter
@@ -68,7 +67,7 @@ object LunRunnable {
   }
 
   class TextWriter(fromWorker: RecordStreamWorker, outputIdOpt: Option[OutputId])(
-    recordsToLines: RecordStreamWithMeta => Source[String, RecordStreamWithMeta.Meta]
+    recordsToLines: (RecordStreamWithMeta, SnagTracker) => Source[String, RecordStreamWithMeta.Meta]
   )
   extends LunRunnable {
     private def writeRecords(stream: RecordStreamWithMeta,
@@ -76,7 +75,7 @@ object LunRunnable {
                              snagTracker: SnagTracker)(
                               writer: String => Unit
                             )(implicit executor: ExecutionContext): Future[RunResult] = {
-      recordsToLines(stream).runWith(Sink.foreach(writer))(context.materializer)
+      recordsToLines(stream, snagTracker).runWith(Sink.foreach(writer))(context.materializer)
         .map(_ => RunResult(snagTracker.buildSeq()))
     }
 
@@ -106,7 +105,7 @@ object LunRunnable {
     override def getStream(context: LunRunContext, snagTracker: SnagTracker):
     Either[Snag, Source[String, RecordStreamWithMeta.Meta]] = {
       fromWorker.getStreamBox(context,snagTracker).snagOrStream.map { recordStream =>
-        recordsToLines(recordStream)
+        recordsToLines(recordStream, snagTracker)
       }
     }
   }

@@ -10,7 +10,7 @@ import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunW
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.RecordProcessor
+import lunaris.streams.transform.RecordProcessor
 import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 

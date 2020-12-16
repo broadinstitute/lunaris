@@ -3,6 +3,7 @@ package lunaris.streams
 import lunaris.genomics.{Locus, Region}
 import lunaris.io.ByteBufferReader
 import lunaris.recipes.values.LunValue
+import lunaris.streams.transform.RecordProcessor
 import lunaris.utils.{Eitherator, NumberParser}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
