@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cmd=$@
-image=lunaris-variant-mask-server:1.6.3
+image=lunaris-variant-mask-server:1.6.4
 
 echo "This is Lunaris Variant Mask Server Docker run script"
 

@@ -197,7 +197,7 @@ ENV PERL5LIB $PERL5LIB:/usr/local/bin/loftee
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 1.6.3
+# SBT, tools related to Debian packaging, Lunaris 1.6.4
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -212,9 +212,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v1.6.3 && \
+    git checkout v1.6.4 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_1.6.3_all.deb && \
+    apt -y install ./target/lunaris_1.6.4_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
