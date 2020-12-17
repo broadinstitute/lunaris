@@ -39,6 +39,7 @@ function submit() {
 
     formData.append("filter", codeMirror.getValue());
     formData.append("inputFile", inputFile);
+    formData.append("format", getOutputFormat());
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
         .then((response) => {
             removeTemporaryStatus();
@@ -234,6 +235,10 @@ function initMasksSelector() {
 
 function getMaskSelectNode() {
     return document.getElementById("masks");
+}
+
+function getOutputFormat() {
+    return document.getElementById("formats").value;
 }
 
 function setMask() {

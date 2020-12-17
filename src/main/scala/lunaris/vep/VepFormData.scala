@@ -12,7 +12,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 
 case class VepFormData(fileName: String,
                        resultId: ResultId,
-                       filter: LunBoolExpression)
+                       filter: LunBoolExpression,
+                       format: String)
 
 object VepFormData {
   def fromFields(fields: Map[String, FormField]): VepFormData = {
@@ -21,7 +22,8 @@ object VepFormData {
     val resultId = inputFileField.resultId
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
-    VepFormData(fileName, resultId, filter)
+    val format = fields(FormField.Keys.format).asInstanceOf[FormatField].format
+    VepFormData(fileName, resultId, filter, format)
   }
 
   sealed trait FormField {
@@ -37,6 +39,10 @@ object VepFormData {
     override def name: String = FormField.Keys.inputFile
   }
 
+  case class FormatField(format: String) extends FormField {
+    override def name: String = FormField.Keys.format
+  }
+
   case class IgnoredField(name: String) extends FormField
 
   object FormField {
@@ -44,6 +50,7 @@ object VepFormData {
     object Keys {
       val filter: String = "filter"
       val inputFile: String = "inputFile"
+      val format: String = "format"
     }
 
     def bodyPartToFieldFut(bodyPart: Multipart.FormData.BodyPart, vepFileManager: VepFileManager)(
@@ -58,6 +65,8 @@ object VepFormData {
           vepFileManager.uploadFile(bodyPart.entity.dataBytes, inputFile).map { _ =>
             InputFileField(bodyPart.filename.get, resultId)
           }
+        case Keys.format =>
+          bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FormatField)
         case unknownName: String =>
           bodyPart.entity.dataBytes.runFold(())((_, _) => ()).map(_ => IgnoredField(unknownName))
       }

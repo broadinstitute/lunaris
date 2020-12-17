@@ -11,6 +11,7 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
+import lunaris.streams.transform.RareMetalsGroupSerializer
 import lunaris.utils.{DateUtils, NumberParser}
 import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -82,13 +83,14 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
-      val groupFileFormat = "rareMETALS"  //  TODO: make this user option
-      val request =
+      val request = {
+        println(s"Chosen format is $formData.")
         VepRequestBuilder.buildRequest(
           resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
-          outputFilePathForId(resultId), groupFileFormat, formData.filter, Some(dataFileWithIndex.index.toString),
+          outputFilePathForId(resultId), formData.format, formData.filter, Some(dataFileWithIndex.index.toString),
           vepDataFields
         )
+      }
       LunCompiler.compile(request)
     }.collect {
       case Right(runnable) =>

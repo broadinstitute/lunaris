@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.6.4)</title>
+    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.6.5)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -58,7 +58,12 @@
 
 <p>
     <span class="stepNumber">3.</span>
-    Submit variant list to server
+    Select an output format
+    <select name="formats" id="formats">
+        <option value="rareMETALS">rareMETALS</option>
+        <option value="EPACTS">EPACTS</option>
+    </select>
+    and submit variant list to server
     <button onclick="submit()">Submit</button> and wait for results to be calculated. Check for status updates below.
 </p>
 
@@ -70,7 +75,7 @@
 
 <hr>
 <p>
-    Powered by Lunaris Version 1.6.4. Copyright 2020 Broad Institute
+    Powered by Lunaris Version 1.6.5. Copyright 2020 Broad Institute
 </p>
 
 </body>

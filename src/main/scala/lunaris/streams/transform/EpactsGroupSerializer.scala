@@ -1,22 +1,18 @@
 package lunaris.streams.transform
 
 import akka.stream.scaladsl.Source
+import lunaris.recipes.eval.SnagTracker
 import lunaris.recipes.values.RecordStreamWithMeta
-import lunaris.streams.utils.RecordStreamTypes.{Record, SnagLogger}
+import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.DedupLilo
 
 import scala.collection.mutable
 
-final class EpactsGroupSerializer(snagLogger: SnagLogger) {
-  private final class Grouper(field: String, nBufferedGroupsMax: Int)(snagLogger: SnagLogger) {
+final class EpactsGroupSerializer(override val groupIdFields: Seq[String])
+  extends GroupSerializer {
+  private final class Grouper(nBufferedGroupsMax: Int)(snagTracker: SnagTracker) {
 
     private type VariantIdsBuilder = mutable.Builder[String, Seq[String]]
-
-    private final class GroupBuffer(val groupId: String, val variantIdsBuilder: VariantIdsBuilder) {
-      def add(record: Record): Unit = {
-        variantIdsBuilder += record.id
-      }
-    }
 
     private var variantIdBuilders: Map[String, VariantIdsBuilder] = Map.empty
 
@@ -33,9 +29,9 @@ final class EpactsGroupSerializer(snagLogger: SnagLogger) {
     def process(recordOpt: Option[Record]): Seq[String] = {
       recordOpt match {
         case Some(record) =>
-          record.get(field).flatMap(_.asString) match {
+          getGroupId(record) match {
             case Left(snag) =>
-              snagLogger(snag)
+              snagTracker.trackSnag(snag)
               Seq.empty
             case Right(groupId) =>
               val variantIdBuilder = variantIdBuilders.getOrElse(groupId, {
@@ -61,11 +57,18 @@ final class EpactsGroupSerializer(snagLogger: SnagLogger) {
 
   val nBufferedGroupsMax: Int = 10
 
-  def generateGroups(records: RecordStreamWithMeta, field: String):
+  override def recordsToLines(records: RecordStreamWithMeta, snagTracker: SnagTracker):
   Source[String, RecordStreamWithMeta.Meta] = {
-    val grouper = new Grouper(field, nBufferedGroupsMax)(snagLogger)
+    val grouper = new Grouper(nBufferedGroupsMax)(snagTracker)
     val wrappedSource = records.source.map(Some(_)).concat(Source.single(None))
     wrappedSource.statefulMapConcat(() => grouper.process)
   }
+}
 
+object EpactsGroupSerializer {
+  object Factory extends GroupSerializer.Factory {
+    override val name: String = "EPACTS"
+    override def create(groupIdFields: Seq[String]): EpactsGroupSerializer =
+      new EpactsGroupSerializer(groupIdFields)
+  }
 }

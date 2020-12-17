@@ -1,16 +1,14 @@
 package lunaris.recipes.tools.builtin
 
-import akka.stream.scaladsl.{Keep, Source}
 import lunaris.io.OutputId
 import lunaris.recipes.eval.LunRunnable.TextWriter
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunWorker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
-import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
+import lunaris.recipes.values.LunType
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.transform.RareMetalsGroupSerializer
-import lunaris.streams.utils.RecordStreamTypes.Record
+import lunaris.streams.transform.{GroupSerializer, RareMetalsGroupSerializer}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object GroupFileWriter extends Tool {
@@ -53,6 +51,7 @@ object GroupFileWriter extends Tool {
       }
     }
   }
+
   class WorkerMaker(fromWorker: RecordStreamWorker,
                     fileOpt: Option[OutputId], format: String) extends eval.WorkerMaker {
     override def nOrders: Int = 0
@@ -65,9 +64,12 @@ object GroupFileWriter extends Tool {
 
       override def pickupRunnableOpt(): Some[TextWriter] = {
         val groupIdFields = Seq("SYMBOL", "Gene")
-        val groupSerializer = new RareMetalsGroupSerializer(groupIdFields)
-        Some(new TextWriter(fromWorker, fileOpt)(groupSerializer.recordsToRareMetalsLines))
+        val groupSerializerFactory =
+          GroupSerializer.Registry.getFactoryOrElse(format, RareMetalsGroupSerializer.Factory)
+        val groupSerializer = groupSerializerFactory.create(groupIdFields)
+        Some(new TextWriter(fromWorker, fileOpt)(groupSerializer.recordsToLines))
       }
     }
   }
+
 }
