@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
 cmd=$@
-image=lunaris-variant-mask-server:1.6.1
+image=lunaris-variant-mask-server:1.6.2
 
 echo "This is Lunaris Variant Mask Server Docker run script"
 
 if [[ -z ${cmd} ]]; then
-  cmd="lunaris vep --config-file configs/lunarisVepDocker.conf"
+  cmd="sudo lunaris vep --config-file configs/lunarisVepDocker.conf"
   echo "No command specified, that's fine, defaulting to:"
   echo $cmd
   echo "This should start the Lunaris Variant Mask Server"
