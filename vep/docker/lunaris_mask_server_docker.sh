@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 cmd=$@
-image=lunaris-variant-mask-server:1.6.0
+image=lunaris-variant-mask-server:1.6.1
 
 echo "This is Lunaris Variant Mask Server Docker run script"
 
@@ -21,6 +21,6 @@ cache_dir=$HOME/.vep
 echo "But first, if not done already, building image ${image}."
 sudo docker build ~/git/lunaris/vep/docker/ -t ${image}
 echo "Done building image ${image}, now running command."
-sudo docker run -p 8080:8080 -v $aux_dir:/mnt/aux -v $data_dir:/mnt/data -v $work_dir:/mnt/work \
+sudo docker run -p 80:80 -v $aux_dir:/mnt/aux -v $data_dir:/mnt/data -v $work_dir:/mnt/work \
   -v $cache_dir:/opt/vep/.vep -it ${image} ${cmd}
 echo "Done with Lunaris Variant Mask Server Docker run script."
