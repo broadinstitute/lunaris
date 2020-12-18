@@ -76,52 +76,59 @@ class VepRunner(val runSettings: VepRunSettings) {
 
   val colNamePick: String = "PICK"
 
+  private def createUseDiscardDir[T](dir: File)(user: File => T): T = {
+    dir.createDirectory()
+    val result = user(dir)
+    dir.delete(swallowIOExceptions = true)
+    result
+  }
+
   def calculateValues(id: String, chrom: String, pos: Int, ref: String, alt: String, qual: String, filter: String,
                       info: String, format: String):
   Either[Snag, (Array[String], Array[String])] = {
-    val subRunDir = vepRunDir / Random.nextLong(Long.MaxValue).toHexString
-    subRunDir.createDirectory()
-    val inputFile = subRunDir / "input.vcf"
-    inputFile.bufferedWriter(StandardCharsets.UTF_8).map(new PrintWriter(_)).foreach { printWriter =>
-      printWriter.println("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
-      printWriter.println(s"$chrom\t$pos\t$id\t$ref\t$alt\t$qual\t$filter\t$info\t$format")
-    }
-    val outputFile = subRunDir / "output.tsv"
-    val warningsFile = subRunDir / "warnings"
-    val returnValue = runVep(inputFile, outputFile, warningsFile)
-    if (returnValue == 0) {
-      val lineIter = outputFile.lineIterator.dropWhile(_.startsWith("##"))
-      if (lineIter.hasNext) {
-        val headerLineRaw = lineIter.next()
-        val headerLine = if (headerLineRaw.startsWith("#")) {
-          headerLineRaw.substring(1)
-        } else {
-          headerLineRaw
-        }
-        val headers = headerLine.split("\t")
-        var valuesOpt: Option[Array[String]] = None
-        val iPick = headers.indexOf(colNamePick)
-        if (iPick >= 0) {
-          val requiredPickValue = "1"
-          while (lineIter.hasNext && valuesOpt.isEmpty) {
-            val dataLine = lineIter.next()
-            val values = dataLine.split("\t")
-            if (values.length > iPick && values(iPick) == requiredPickValue) {
-              valuesOpt = Some(values)
+    createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
+      val inputFile = subRunDir / "input.vcf"
+      inputFile.bufferedWriter(StandardCharsets.UTF_8).map(new PrintWriter(_)).foreach { printWriter =>
+        printWriter.println("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
+        printWriter.println(s"$chrom\t$pos\t$id\t$ref\t$alt\t$qual\t$filter\t$info\t$format")
+      }
+      val outputFile = subRunDir / "output.tsv"
+      val warningsFile = subRunDir / "warnings"
+      val returnValue = runVep(inputFile, outputFile, warningsFile)
+      if (returnValue == 0) {
+        val lineIter = outputFile.lineIterator.dropWhile(_.startsWith("##"))
+        if (lineIter.hasNext) {
+          val headerLineRaw = lineIter.next()
+          val headerLine = if (headerLineRaw.startsWith("#")) {
+            headerLineRaw.substring(1)
+          } else {
+            headerLineRaw
+          }
+          val headers = headerLine.split("\t")
+          var valuesOpt: Option[Array[String]] = None
+          val iPick = headers.indexOf(colNamePick)
+          if (iPick >= 0) {
+            val requiredPickValue = "1"
+            while (lineIter.hasNext && valuesOpt.isEmpty) {
+              val dataLine = lineIter.next()
+              val values = dataLine.split("\t")
+              if (values.length > iPick && values(iPick) == requiredPickValue) {
+                valuesOpt = Some(values)
+              }
             }
-          }
-          valuesOpt match {
-            case None => Left(Snag(s"vep produced no row with value $requiredPickValue for $colNamePick."))
-            case Some(values) => Right((headers, values))
+            valuesOpt match {
+              case None => Left(Snag(s"vep produced no row with value $requiredPickValue for $colNamePick."))
+              case Some(values) => Right((headers, values))
+            }
+          } else {
+            Left(Snag(s"vep produced no data line for variant $id"))
           }
         } else {
-          Left(Snag(s"vep produced no data line for variant $id"))
+          Left(Snag(s"vep produced no header line for variant $id"))
         }
       } else {
-        Left(Snag(s"vep produced no header line for variant $id"))
+        Left(Snag(s"vep return value was non-zero ($returnValue) for variant $id."))
       }
-    } else {
-      Left(Snag(s"vep return value was non-zero ($returnValue) for variant $id."))
     }
   }
 

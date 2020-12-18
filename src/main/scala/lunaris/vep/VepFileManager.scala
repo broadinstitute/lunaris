@@ -146,32 +146,16 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
 
 object VepFileManager {
 
-  case class ResultId(inputFileName: String, randomPart: Long, timestamp: Long) {
-    override def toString: String = inputFileName + "_" + randomPart + "_" + timestamp + ".tsv"
+  final case class ResultId(string: String) {
+    override def toString: String = string
   }
 
   object ResultId {
-    def createNew(inputFileName: String): ResultId =
-      ResultId(inputFileName, 1 + Random.nextLong(Long.MaxValue), System.currentTimeMillis())
+    private def hash(num: Long): String = (num % 65536L).toHexString
 
-    def fromString(string: String): Either[Snag, ResultId] = {
-      val stringWithoutSuffix =
-        if(string.endsWith(".tsv")) {
-          string.substring(0, string.length - 4)
-        } else {
-          string
-        }
-      val parts = stringWithoutSuffix.split("_")
-      if (parts.length < 3) {
-        Left(Snag(s"$string is not a valid result id."))
-      } else {
-        for {
-          randomPart <- NumberParser.parseLong(parts(parts.length - 2))
-          timestamp <- NumberParser.parseLong(parts(parts.length - 1))
-          inputFileName = parts.slice(0, parts.length - 2).mkString("_")
-        } yield ResultId(inputFileName, randomPart, timestamp)
-      }
-    }
+    def createNew(inputFileName: String): ResultId =
+      ResultId(inputFileName + "." + hash(1 + Random.nextLong(Long.MaxValue)) +
+        hash(System.currentTimeMillis()) + ".tsv")
   }
 
   case class ResultStatus(statusType: ResultStatus.Type, message: String, snagMessages: Seq[String])

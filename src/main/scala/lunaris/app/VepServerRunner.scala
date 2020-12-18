@@ -107,10 +107,7 @@ object VepServerRunner {
             },
             path("lunaris" / "predictor" / "status" / Remaining) { resultIdString =>
               get {
-                val status = ResultId.fromString(resultIdString) match {
-                  case Left(snag) => VepFileManager.ResultStatus.createInvalid(snag.message)
-                  case Right(resultId) => vepFileManager.getStatus(resultId)
-                }
+                val status = vepFileManager.getStatus(ResultId(resultIdString))
                 complete(
                   HttpUtils.ResponseBuilder.fromJson(VepJson.resultStatusToJson(status))
                 )
@@ -118,8 +115,8 @@ object VepServerRunner {
             },
             path("lunaris" / "predictor" / "results" / Remaining) { resultIdString =>
               get {
+                val resultId = ResultId(resultIdString)
                 val snagOrSource = for {
-                  resultId <- ResultId.fromString(resultIdString)
                   source <- vepFileManager.streamResults(resultId)
                 } yield source
                 snagOrSource match {

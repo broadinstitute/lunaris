@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.6.7)</title>
+    <title>Exome Gene-level Group-File Server (Lunaris Version 1.6.8)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -15,7 +15,7 @@
     <h1>
 <img id="lunarisLogo" src="http://kp4cd.org/sites/default/files/lunaris/lunaris_logo_white.svg"
          style="width: 80px" alt="Lunaris logo"/>
-        Exome Gene-level Group-File Generator
+        Exome Gene-level Group-File Server
 </h1>
 </header>
 
@@ -23,12 +23,12 @@
     variants, annotate variants using the
     <a href="https://www.ensembl.org/info/docs/tools/vep/index.html" target="_blank"
        rel="noopener noreferrer">Ensembl Variant Effect Predictor (VEP)</a>
-    and generate group files to run gene-level association tests using rareMETALS format.
+    and generate group files to run gene-level association tests using rareMETALS or EPACTS format.
     Users can define masks based on annotations, or use one of the
     <a href="https://www.nature.com/articles/s41586-019-1231-2" target="_blank"
        rel="noopener noreferrer">published masks provided</a>.</p>
 
-<p> To check out example group files for UK BioBank, check
+<p> To download group files for UK BioBank 50k Exome release (2019), click
     <a
     href="https://storage.googleapis.com/eggserver-data/examples/output/UKBBw1.ALL.variant.groupfiles.raremetals.tar"
     download="UKBBw1.ALL.variant.groupfiles.raremetals.tar">here</a>
@@ -43,7 +43,7 @@
     <label for="inputfile">
         As a variant site list to upload on submit, select a location-sorted VCF with at least the first five columns
         (start with a few variants - we are working on performance, for an example input
-        VCF file, check
+        VCF file, click
         <a href="predictor/sample_input.vcf" download="sample_input.vcf">here</a>):
     </label>
     <input type="file" id="inputfile" name="myfile">
@@ -104,7 +104,7 @@
 
 <hr>
 <p>
-    Powered by Lunaris Version 1.6.7. Copyright 2020 Broad Institute
+    Powered by Lunaris Version 1.6.8. Copyright 2020 Broad Institute
 </p>
 
 </body>
