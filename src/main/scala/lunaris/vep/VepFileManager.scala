@@ -84,7 +84,6 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
       val request = {
-        println(s"Chosen format is $formData.")
         VepRequestBuilder.buildRequest(
           resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
           outputFilePathForId(resultId), formData.format, formData.filter, Some(dataFileWithIndex.index.toString),

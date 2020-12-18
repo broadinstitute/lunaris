@@ -40,7 +40,8 @@ object VepServerRunner {
             path("lunaris" / "vep.html") {
               get {
                 complete(
-                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`, "web/vep.html")
+                  HttpUtils.ResponseBuilder.fromResourceOrError(ContentTypes.`text/html(UTF-8)`,
+                    "web/vep.html")
                 )
               }
             },

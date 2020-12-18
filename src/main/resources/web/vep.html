@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.6.6)</title>
+    <title>Exome Gene-level Group-File Generator (Lunaris Version 1.6.7)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -28,6 +28,16 @@
     <a href="https://www.nature.com/articles/s41586-019-1231-2" target="_blank"
        rel="noopener noreferrer">published masks provided</a>.</p>
 
+<p> To check out example group files for UK BioBank, check
+    <a
+    href="https://storage.googleapis.com/eggserver-data/examples/output/UKBBw1.ALL.variant.groupfiles.raremetals.tar"
+    download="UKBBw1.ALL.variant.groupfiles.raremetals.tar">here</a>
+    for rareMETALS and
+    <a
+    href="https://storage.googleapis.com/eggserver-data/examples/output/UKBBw1.ALL.variant.groupfiles.epacts.tar"
+    download="UKBBw1.ALL.variant.groupfiles.epacts.tar">here</a>
+    for EPACTS format.</p>
+
 <p>
     <span class="stepNumber">1.</span>
     <label for="inputfile">
@@ -51,8 +61,27 @@
 <p>
     <span class="stepNumber">2b.</span>
     If a custom variant group mask is preferred, manually edit text box below.
-    Available fields:
-    <select name="fields" id="fields"></select>
+</p>
+<p>
+    To edit masks: Enclose field names in backticks. Backticks can be omitted if field name contains no whitespace and
+    starts with letter or underscore and contains only letters, digits and underscores. Enclose string values in
+    double-quotes. Using field tests written as name-operator-value (e.g. REF == "A"), build Boolean expressions using
+    AND, OR and parentheses. Available fields:
+    <select name="fields" id="fields"></select>.
+    Available operators:
+    <select name="operators" id="operators">
+        <option>== (equals)</option>
+        <option>!= (does not equal)</option>
+        <option>~ (contains regex)</option>
+        <option>!~ (does not contain regex)</option>
+        <option>~= (matches regex)</option>
+        <option>!~= (does not match regex)</option>
+        <option>&lt; (less than)</option>
+        <option>&le; (less or equal)</option>
+        <option>&gt; (greater than)</option>
+        <option>&ge; (greater or equal)</option>
+    </select>
+    Check out predefined masks as examples.
 </p>
 <p id="code_mirror_parent"></p>
 
@@ -75,7 +104,7 @@
 
 <hr>
 <p>
-    Powered by Lunaris Version 1.6.6. Copyright 2020 Broad Institute
+    Powered by Lunaris Version 1.6.7. Copyright 2020 Broad Institute
 </p>
 
 </body>
