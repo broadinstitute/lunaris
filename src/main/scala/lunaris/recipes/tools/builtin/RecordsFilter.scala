@@ -9,7 +9,7 @@ import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object RecordsFilter extends tools.Tool {
+object RecordsFilter extends Tool {
   override def resultType: LunType.RecordStreamType.type = LunType.RecordStreamType
 
   object Params {
@@ -55,7 +55,7 @@ object RecordsFilter extends tools.Tool {
 
   class WorkerMaker(fromWorker: RecordStreamWorker, filter: LunBoolExpression)
     extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
-    override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
+    override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =
         Some[RecordStreamWorker] {
           (context: LunRunContext, snagTracker: SnagTracker) => {

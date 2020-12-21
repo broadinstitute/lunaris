@@ -5,7 +5,7 @@ import lunaris.app.VepDataFieldsSettings
 import lunaris.expressions.LunBoolExpression
 import lunaris.genomics.Region
 import lunaris.io.request.Request
-import lunaris.io.request.examples.RequestExamplesUtils.ToolCalls
+import lunaris.io.request.examples.RequestBuildUtils.ToolCalls
 import lunaris.recipes.Recipe
 import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
@@ -50,6 +50,7 @@ object VepRequestBuilder {
       val readData: String = "readData"
       val canonicalizeData: String = "canonicalizeData"
       val join: String = "join"
+      val calculateMaf: String = "calculateMaf"
       val filter: String = "filter"
       val write: String = "write"
     }
@@ -62,10 +63,10 @@ object VepRequestBuilder {
         Keys.readData -> ToolCalls.indexedObjectReader(dataFile, indexFileOpt, idField),
         Keys.canonicalizeData -> ToolCalls.idCanonicalizer(Keys.readData, refField, altField, idFieldNew),
         Keys.join -> ToolCalls.joinRecordsWithFallback(Keys.canonicalizeDriver, Keys.canonicalizeData, fallbackValue),
-        Keys.filter -> ToolCalls.filter(Keys.join, filterValue),
+        Keys.calculateMaf -> ToolCalls.calculateMaf(Keys.join),
+        Keys.filter -> ToolCalls.filter(Keys.calculateMaf, filterValue),
         Keys.write -> ToolCalls.groupFileWriter(Keys.filter, outputFileValue, outputFileFormatValue)
       ))
     )
   }
-
 }

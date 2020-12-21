@@ -3,11 +3,11 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.builtin.{GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.tools.builtin.{CalculateMaf, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
-object RequestExamplesUtils {
+object RequestBuildUtils {
 
   object PortalData {
     val folder: String = "gs://fc-6fe31e1f-2c36-411c-bf23-60656d621184/data/t2d/"
@@ -113,6 +113,11 @@ object RequestExamplesUtils {
         GroupFileWriter.Params.Keys.from -> RefArg(GroupFileWriter.Params.from, from),
         GroupFileWriter.Params.Keys.file -> ValueArg(GroupFileWriter.Params.file, file),
         GroupFileWriter.Params.Keys.format -> ValueArg(GroupFileWriter.Params.format, format)
+      ))
+
+    def calculateMaf(from: String): ToolCall =
+      ToolCall(CalculateMaf, Map(
+        CalculateMaf.Params.Keys.from -> RefArg(CalculateMaf.Params.from, from)
       ))
   }
 

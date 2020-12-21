@@ -14,7 +14,7 @@ import lunaris.utils.EitherSeqUtils
 import lunaris.vep.{VepRunSettingsBox, VepRunner}
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object JoinRecordsWithFallback extends tools.Tool {
+object JoinRecordsWithFallback extends Tool {
   override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
@@ -29,6 +29,10 @@ object JoinRecordsWithFallback extends tools.Tool {
     val data: Tool.RefParam = Tool.RefParam(Keys.data, LunType.RecordStreamType, isRequired = true)
     val fallback: Tool.ValueParam = Tool.ValueParam(Keys.fallback, LunType.StringType, isRequired = true)
   }
+
+  override def params: Seq[Tool.Param] = Seq(Params.driver, Params.data, Params.fallback)
+
+  override def isFinal: Boolean = false
 
   sealed trait FallbackGenerator {
     def createFallback(): Record => Either[Snag, Record]
@@ -46,10 +50,6 @@ object JoinRecordsWithFallback extends tools.Tool {
       case _ => Left(Snag(s"Unknown fallback '$fallbackString'"))
     }
   }
-
-  override def params: Seq[Tool.Param] = Seq(Params.driver, Params.data, Params.fallback)
-
-  override def isFinal: Boolean = false
 
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
@@ -78,7 +78,7 @@ object JoinRecordsWithFallback extends tools.Tool {
   class WorkerMaker(driverWorker: RecordStreamWorker,
                     dataWorkers: Seq[RecordStreamWorker],
                     fallbackGenerator: FallbackGenerator) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
-    override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
+    override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
         Some {
           (context: LunRunContext, snagTracker: SnagTracker) => {
@@ -98,10 +98,7 @@ object JoinRecordsWithFallback extends tools.Tool {
                 } {
                   (snag: Snag) => snagTracker.trackSnag(snag)
                 }
-                // Hacked in for Mask server to have MAF field
-                // TODO: move adding of MAF into its own tool
-                val sourceJoinedWithMaf = sourceJoined.map(MafForVepCalculator.addMaf)
-                RecordStreamWithMeta(metaJoined, sourceJoinedWithMaf)
+                RecordStreamWithMeta(metaJoined, sourceJoined)
               }
             LunWorker.StreamBox(snagOrStream)
           }

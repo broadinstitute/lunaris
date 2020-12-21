@@ -1,7 +1,7 @@
 package lunaris.io.request.examples
 
 import lunaris.io.request.Request
-import lunaris.io.request.examples.RequestExamplesUtils.{PortalData, Regions, ToolCalls}
+import lunaris.io.request.examples.RequestBuildUtils.{PortalData, Regions, ToolCalls}
 import lunaris.recipes.Recipe
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.recipes.values.LunValue.MapValue
