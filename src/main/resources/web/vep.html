@@ -1,7 +1,7 @@
 <html lang="en">
 
 <head>
-    <title>Exome Gene-level Group-File Server (Lunaris Version 1.6.9)</title>
+    <title>Exome Gene-level Group-File Server (Lunaris Version 1.6.10)</title>
     <link rel="stylesheet" href="css/lunaris.css">
     <script src="js/vep.js"></script>
     <script src="codemirror/lib/codemirror.js"></script>
@@ -54,8 +54,8 @@
     If preferred, select a predefined variant mask
     <span>
         <button onclick="resetFilters()">Clear mask</button>
-        <button onclick="setMask()">Load predefined mask</button>
-        <select name="masks" id="masks"></select>
+        <label><button onclick="setMask()">Load predefined mask</button></label>
+        <label><select name="masks" id="masks"></select></label>
     </span>
 </p>
 <p>
@@ -66,9 +66,9 @@
     To edit masks: Enclose field names in backticks. Backticks can be omitted if field name contains no whitespace and
     starts with letter or underscore and contains only letters, digits and underscores. Enclose string values in
     double-quotes. Using field tests written as name-operator-value (e.g. REF == "A"), build Boolean expressions using
-    AND, OR and parentheses. Available fields:
-    <select name="fields" id="fields"></select>.
-    Available operators:
+    AND, OR and parentheses.
+    <label>Available fields:<select name="fields" id="fields"></select></label>.
+    <label>Available operators:
     <select name="operators" id="operators">
         <option>== (equals)</option>
         <option>!= (does not equal)</option>
@@ -80,18 +80,18 @@
         <option>&le; (less or equal)</option>
         <option>&gt; (greater than)</option>
         <option>&ge; (greater or equal)</option>
-    </select>
+    </select></label>
     Check out predefined masks as examples.
 </p>
 <p id="code_mirror_parent"></p>
 
 <p>
     <span class="stepNumber">3.</span>
-    Select an output format
+    <label>Select an output format
     <select name="formats" id="formats">
         <option value="rareMETALS">rareMETALS</option>
         <option value="EPACTS">EPACTS</option>
-    </select>
+    </select></label>
     and submit variant list to server
     <button onclick="submit()">Submit</button> and wait for results to be calculated. Check for status updates below.
 </p>
@@ -104,7 +104,7 @@
 
 <hr>
 <p>
-    Powered by Lunaris Version 1.6.9. Copyright 2020 Broad Institute
+    Powered by Lunaris Version 1.6.10. Copyright 2020 Broad Institute
 </p>
 
 </body>

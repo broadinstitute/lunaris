@@ -51,18 +51,13 @@ class ReplacerInputStream(in: InputStream,
     postReplaceBuffer.size
   }
 
-  override def mark(readlimit: Int): Unit = throw new IOException("ReplacerInputStream does not support mark().")
+  override def mark(readLimit: Int): Unit = throw new IOException("ReplacerInputStream does not support mark().")
 
   override def reset(): Unit = throw new IOException("ReplacerInputStream does not support mark().")
 
   override def markSupported(): Boolean = false
 
   private def log(any: Any): Unit = println(any)
-
-  private def logStatus(): Unit = {
-    log(s"Pre-buffer size ${preReplaceBuffer.nBytesStored}, post-buffer size ${postReplaceBuffer.size} " +
-    s"exhausted input: $haveReachedEndOfIn.")
-  }
 
   private def thereArePreReplacementBytes: Boolean = preReplaceBuffer.nBytesStored > 0 || !haveReachedEndOfIn
 

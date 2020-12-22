@@ -3,8 +3,8 @@ package lunaris.io
 import java.io.ByteArrayInputStream
 import java.nio.{BufferUnderflowException, ByteBuffer}
 import java.util.zip.GZIPInputStream
-
 import lunaris.io.IntegersIO.{UnsignedByte, UnsignedInt, UnsignedShort}
+import lunaris.utils.SnagUtils
 import org.broadinstitute.yootilz.core.snag.Snag
 
 class ByteBufferReader(val refiller: ByteBufferRefiller) {
@@ -100,10 +100,7 @@ class ByteBufferReader(val refiller: ByteBufferRefiller) {
           }
       }
     }
-    snagOpt match {
-      case Some(snag) => Left(snag)
-      case None => Right(new String(arrayBuilder.result()))
-    }
+    SnagUtils.optToEither(snagOpt)(new String(arrayBuilder.result()))
   }
 }
 

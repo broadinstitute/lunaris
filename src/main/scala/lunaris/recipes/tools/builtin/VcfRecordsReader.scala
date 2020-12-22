@@ -42,13 +42,12 @@ object VcfRecordsReader extends tools.Tool {
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] =
-      Right(new WorkerMaker(file, chroms, context))
+      Right(new WorkerMaker(file, chroms))
 
   }
 
   class WorkerMaker(file: InputId,
-                    chroms: Seq[String],
-                    compileContext: LunCompileContext) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
+                    chroms: Seq[String]) extends eval.WorkerMaker with eval.WorkerMaker.WithOutput {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker] {

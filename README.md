@@ -5,7 +5,7 @@ block-gzipped tabix-indexed files, which are typically too large to fit into mem
 
 Lunaris can be run in batch mode or as a web server. In batch mode, it reads a request from a file (or Google Cloud 
 Storage object) and writes the output to one or more files (or Google Storage objects). As a web service, the request
-is submitted via HTTP POST and the output is sent back as response. By default, the server expects requests at 
+is submitted via HTTP POST, and the output is sent back as response. By default, the server expects requests at 
 `/lunaris/query` and offers a WebUI at `/lunaris/lunaris.html` to edit requests (with examples) and view responses.
 
 A typical use-case of batch mode is extracting
@@ -66,7 +66,7 @@ The *read* step uses the tool *IndexedRecordReader* to read from a location-sort
 
 The *write* step uses the *TSVWriter* tool to write a stream of objects to a TSV file. The from argument contains the name of the step that produces the stream of objects to be written. file is the file to be written to.
 
-A file in Lunaris can be a local file or a file stored on Google Cloud Storage.
+A file in Lunaris can be a local file, or a file stored on Google Cloud Storage.
 
 #### Request
 
@@ -692,7 +692,7 @@ A realistic example of how T2D portal data would be extracted.
 ### Object streams
 
 Each location-sorted block-gzipped tabix-indexed file is read as a sorted stream of records.
-A record in Lunaris is an ordered list of key/value pairs, where the key is a String and the value can be of one of a
+A record in Lunaris is an ordered list of key/value pairs, where the key is a String, and the value can be of one of a
 number of types. Lunaris' types are very similar to those of JSON, but have a few more distinctions, for example 
 Lunaris has an Int type.
 
@@ -702,7 +702,7 @@ with Tabix specs. id and chromosome are of type String, while begin and end are 
 
 The stream of records is sorted by genomic location, which means it is sorted by chromosome, begin and end, in this 
 order. Multiple records in a stream can have the same id, but any records with the same id must also have the same
-chromosome, begin and end. Some operations, such as joining streams or writing recordss to JSON, require that a 
+chromosome, begin and end. Some operations, such as joining streams or writing records to JSON, require that a 
 stream has only one record per id. This can be ensured by grouping, which collapses all records with the same id
 into one. It can also be achieved by filtering, depending on the data.
 
@@ -718,7 +718,7 @@ typically a stream of records.
 
 #### IndexedRecordReader
 
-This tool reads a stream of records from a given file, which can be a local file or an object on Google Cloud Storage.
+This tool reads a stream of records from a given file, which can be a local file, or an object on Google Cloud Storage.
 
 ##### Arguments
 
@@ -736,7 +736,7 @@ Int for begin and end, and cannot be changed. All fields not  explicitly typed a
 
 #### GroupAsObject
 
-Merges all recordss with the same id in a stream into a single record. Core fields, which are assumed the same if
+Merges all records with the same id in a stream into a single record. Core fields, which are assumed the same if
 the id is the same, are kept intact. Other fields are moved to sub-objects according to the specified path followed
 by the value of the subIdField.
 

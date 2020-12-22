@@ -32,10 +32,7 @@ object IOUtils {
         case Right(byte) => builder += byte
       }
     }
-    snagOpt match {
-      case Some(snag) => Left(snag)
-      case None => Right(new String(builder.result()))
-    }
+    SnagUtils.optToEither(snagOpt)(new String(builder.result()))
   }
 
   def writeAllYouCanRead(is: InputStream, os: OutputStream, bufferSize: Int = 1024): Long = {

@@ -58,8 +58,6 @@ async function* makeTextFileLineIterator(requestUrl, httpInit) {
 
     const re = /\n|\r|\r\n/gm;
     let startIndex = 0;
-    let result;
-
     for (;;) {
         let result = re.exec(chunk);
         if (!result) {

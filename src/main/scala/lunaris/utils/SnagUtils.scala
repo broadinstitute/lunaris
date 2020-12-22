@@ -14,4 +14,10 @@ object SnagUtils {
     }
   }
 
+  def optToEither[T](snagOpt: Option[Snag])(value: => T): Either[Snag, T] = {
+    snagOpt match {
+      case Some(snag) => Left(snag)
+      case None => Right(value)
+    }
+  }
 }
