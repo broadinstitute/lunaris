@@ -12,6 +12,8 @@ val akkaHttpV = "10.1.12"
 val akkaStreamV = "2.6.5"
 val fastParseV = "2.2.2"
 val configV = "1.4.0"
+val scalikeJdbcV = "3.5.0"
+val h2V = "1.4.200"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
@@ -25,7 +27,10 @@ lazy val mainDeps = Seq(
   "com.typesafe.akka" %% "akka-http"   % akkaHttpV,
   "com.typesafe.akka" %% "akka-stream" % akkaStreamV,
   "com.lihaoyi" %% "fastparse" % fastParseV,
-  "com.typesafe" % "config" % configV
+  "com.typesafe" % "config" % configV,
+  "org.scalikejdbc" %% "scalikejdbc"       % scalikeJdbcV,
+  "com.h2database"  %  "h2"                % h2V,
+  "ch.qos.logback"  %  "logback-classic"   % "1.2.3"
 )
 
 lazy val testDeps = Set(
