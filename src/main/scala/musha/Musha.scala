@@ -1,10 +1,12 @@
 package musha
 
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import org.broadinstitute.yootilz.core.snag.Snag
 import org.h2.Driver
 
 import java.io.Closeable
-import java.sql.{DriverManager, Statement}
+import java.sql.{Connection, DriverManager, Statement}
+import scala.util.control.NonFatal
 
 class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
   DriverManager.registerDriver(new Driver)
@@ -18,14 +20,19 @@ class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
   hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
   val dataSource = new HikariDataSource(hikariConfig)
 
-  def runQuery[A, B](query: Statement => A)(consumer: A => B): B = {
-    val conn = dataSource.getConnection()
-    val stmt = conn.createStatement()
-    val b = consumer(query(stmt))
-    conn.close()
-    b
+  def runQuery[A, B](query: Statement => A)(consumer: A => B): Either[Snag, B] = {
+    var connOpt: Option[Connection] = None
+    try {
+      val conn = dataSource.getConnection()
+      connOpt = Some(conn)
+      val stmt = conn.createStatement()
+      Right(consumer(query(stmt)))
+    } catch {
+      case NonFatal(exception) => Left(Snag(exception))
+    } finally {
+      connOpt.foreach(_.close())
+    }
   }
-
   override def close(): Unit = dataSource.close()
 }
 
