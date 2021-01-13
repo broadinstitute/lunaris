@@ -7,7 +7,7 @@ import java.sql.ResultSet
 trait MushaIterator[A] extends Iterator[A] {
   protected def resultSet: ResultSet
   val metaData: MetaData = MetaData.fromJava(resultSet.getMetaData)
-  var hasNextField: Boolean = resultSet.next()
+  protected var hasNextField: Boolean = resultSet.next()
 
   override def hasNext: Boolean = hasNextField
 }
