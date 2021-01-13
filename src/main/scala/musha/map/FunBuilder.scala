@@ -105,8 +105,8 @@ object FunBuilder {
     f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
     f9: A => B9
   ) {
-//    def &[B10](f10: A => B10): T10[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10] =
-//      new T10(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10)
+    def &[B10](f10: A => B10): T10[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10] =
+      new T10(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10)
 
     def apply[C](g: (B1, B2, B3, B4, B5, B6, B7, B8, B9) => C): F9[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, C] =
       new F9(f1, f2, f3, f4, f5, f6, f7, f8, f9)(g)
@@ -121,4 +121,116 @@ object FunBuilder {
     override def apply(a: A): C = g(f1(a), f2(a), f3(a), f4(a), f5(a), f6(a), f7(a), f8(a), f9(a))
   }
 
+  class T10[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10
+  ) {
+    def &[B11](f11: A => B11): T11[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11] =
+      new T11(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11)
+
+    def apply[C](g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10) => C):
+    F10[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, C] =
+      new F10(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10)(g)
+  }
+
+  class F10[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, C]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10
+  )(g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10) => C)
+    extends (A => C) {
+    override def apply(a: A): C = g(f1(a), f2(a), f3(a), f4(a), f5(a), f6(a), f7(a), f8(a), f9(a), f10(a))
+  }
+
+  class T11[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11
+  ) {
+    def &[B12](f12: A => B12): T12[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12] =
+      new T12(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12)
+
+    def apply[C](g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11) => C):
+    F11[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, C] =
+      new F11(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11)(g)
+  }
+
+  class F11[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, C]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11
+  )(g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11) => C)
+    extends (A => C) {
+    override def apply(a: A): C = g(f1(a), f2(a), f3(a), f4(a), f5(a), f6(a), f7(a), f8(a), f9(a), f10(a), f11(a))
+  }
+
+  class T12[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11, f12: A => B12
+  ) {
+    def &[B13](f13: A => B13): T13[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13] =
+      new T13(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13)
+
+    def apply[C](g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12) => C):
+    F12[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, C] =
+      new F12(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12)(g)
+  }
+
+  class F12[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, C]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11, f12: A => B12
+  )(g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12) => C)
+    extends (A => C) {
+    override def apply(a: A): C =
+      g(f1(a), f2(a), f3(a), f4(a), f5(a), f6(a), f7(a), f8(a), f9(a), f10(a), f11(a), f12(a))
+  }
+
+  class T13[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11, f12: A => B12, f13: A => B13
+  ) {
+    def &[B14](f14: A => B14): T14[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14] =
+      new T14(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14)
+
+    def apply[C](g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13) => C):
+    F13[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, C] =
+      new F13(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13)(g)
+  }
+
+  class F13[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, C]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11, f12: A => B12, f13: A => B13
+  )(g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13) => C)
+    extends (A => C) {
+    override def apply(a: A): C =
+      g(f1(a), f2(a), f3(a), f4(a), f5(a), f6(a), f7(a), f8(a), f9(a), f10(a), f11(a), f12(a), f13(a))
+  }
+
+  class T14[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11, f12: A => B12, f13: A => B13, f14: A => B14
+  ) {
+//    def &[B15](f15: A => B15): T15[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, B15] =
+//      new T15(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14, f15)
+
+    def apply[C](g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14) => C):
+    F14[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, C] =
+      new F14(f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11, f12, f13, f14)(g)
+  }
+
+  class F14[A, B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14, C]
+  (
+    f1: A => B1, f2: A => B2, f3: A => B3, f4: A => B4, f5: A => B5, f6: A => B6, f7: A => B7, f8: A => B8,
+    f9: A => B9, f10: A => B10, f11: A => B11, f12: A => B12, f13: A => B13, f14: A => B14
+  )(g: (B1, B2, B3, B4, B5, B6, B7, B8, B9, B10, B11, B12, B13, B14) => C)
+    extends (A => C) {
+    override def apply(a: A): C =
+      g(f1(a), f2(a), f3(a), f4(a), f5(a), f6(a), f7(a), f8(a), f9(a), f10(a), f11(a), f12(a), f13(a), f14(a))
+  }
 }
