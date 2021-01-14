@@ -1,5 +1,6 @@
 package musha
 
+import musha.sql.Sql
 import org.scalatest.funsuite.AnyFunSuite
 
 class MushaTest extends AnyFunSuite {
@@ -11,6 +12,7 @@ class MushaTest extends AnyFunSuite {
     }
     val snagOrUnit = musha.runQuery(query) { iter =>
       println(s"Column count: ${iter.metaData.columns.size}")
+      println(s"Column names: ${iter.metaData.columnNames.mkString("(", ", ", ")")}.")
       println(s"Row count: ${iter.size}")
     }
     musha.close()

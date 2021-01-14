@@ -1,6 +1,6 @@
 package musha
 
-import java.sql.{ResultSet, ResultSetMetaData => JMetaData}
+import java.sql.{ResultSetMetaData => JMetaData}
 
 object MushaMeta {
 

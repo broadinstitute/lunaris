@@ -1,6 +1,7 @@
 package musha
 
 import musha.MushaMeta.MetaData
+import musha.sql.Sql
 
 import java.sql.{ResultSet, Statement}
 
@@ -11,12 +12,12 @@ sealed trait MushaQuery[A] extends (Statement => A) {
 object MushaQuery {
 
   sealed trait WithResultSet[A] extends MushaQuery[A] {
-    override def sql: Sql.GivesResultSet
+    override def sql: Sql.SqlQuery
   }
 
-  def rowsIter[A](sql: Sql.GivesResultSet)(rowMapper: ResultSet => A) = new RowMapping[A](sql)(rowMapper)
+  def rowsIter[A](sql: Sql.SqlQuery)(rowMapper: ResultSet => A) = new RowMapping[A](sql)(rowMapper)
 
-  class RowMapping[A](override val sql: Sql.GivesResultSet)(rowMapper: ResultSet => A)
+  class RowMapping[A](override val sql: Sql.SqlQuery)(rowMapper: ResultSet => A)
     extends WithResultSet[MushaIterator.MapResults[A]] {
     override def apply(statement: Statement): MushaIterator.MapResults[A] =
     {
@@ -25,19 +26,19 @@ object MushaQuery {
     }
   }
 
-  def meta[M](sql: Sql.GivesResultSet): MetaMapping = new MetaMapping(sql)
+  def meta[M](sql: Sql.SqlQuery): MetaMapping = new MetaMapping(sql)
 
-  class MetaMapping(override val sql: Sql.GivesResultSet) extends WithResultSet[MetaData] {
+  class MetaMapping(override val sql: Sql.SqlQuery) extends WithResultSet[MetaData] {
     override def apply(statement: Statement): MetaData = {
       val resultSet = statement.executeQuery(sql.sqlString)
       MetaData.fromJava(resultSet.getMetaData)
     }
   }
 
-  def metaRowsIter[A](sql: Sql.GivesResultSet)(metaRowMapper: (MetaData, ResultSet) => A) =
+  def metaRowsIter[A](sql: Sql.SqlQuery)(metaRowMapper: (MetaData, ResultSet) => A) =
     new MetaRowMapping[A](sql)(metaRowMapper)
 
-  class MetaRowMapping[A](override val sql: Sql.GivesResultSet)(rowMapper: (MetaData, ResultSet) => A)
+  class MetaRowMapping[A](override val sql: Sql.SqlQuery)(rowMapper: (MetaData, ResultSet) => A)
     extends WithResultSet[MushaIterator.MetaMapResults[A]] {
     override def apply(statement: Statement): MushaIterator.MetaMapResults[A] =
     {
