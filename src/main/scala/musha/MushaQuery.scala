@@ -46,4 +46,12 @@ object MushaQuery {
       new MushaIterator.MetaMapResults[A](resultSet)(rowMapper)
     }
   }
+
+  def update(sql: Sql.SqlNoCount): Update = new Update(sql)
+
+  class Update(override val sql: Sql.SqlNoCount) extends MushaQuery[Unit] {
+    override def apply(statement: Statement): Unit = {
+      statement.executeUpdate(sql.sqlString)
+    }
+  }
 }

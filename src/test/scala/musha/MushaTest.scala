@@ -1,13 +1,11 @@
 package musha
 
-import musha.sql.Sql
+import musha.sql.{Sql, SqlName, SqlType}
 import org.scalatest.funsuite.AnyFunSuite
 
 class MushaTest extends AnyFunSuite {
-  test("Hello") {
-    val config = MushaConfig("/home/oliverr/lunaris/vep/work/h2/egg", "egg", "armeritter")
-    val musha = new Musha(config)
-    val query = MushaQuery.metaRowsIter[String](Sql.ShowTables) { (_, rs) =>
+  def runShowTables(musha: Musha): Unit = {
+    val query = MushaQuery.rowsIter[String](Sql.ShowTables) { rs =>
       rs.getString(1)
     }
     val snagOrUnit = musha.runQuery(query) { iter =>
@@ -15,7 +13,22 @@ class MushaTest extends AnyFunSuite {
       println(s"Column names: ${iter.metaData.columnNames.mkString("(", ", ", ")")}.")
       println(s"Row count: ${iter.size}")
     }
-    musha.close()
     snagOrUnit.left.foreach(snag => println(snag.report))
+  }
+
+  def runCreateTable(musha: Musha): Unit = {
+    val table = Sql.table("Statuses")
+    val column = Sql.column("jobId")
+    val query = MushaQuery.update(Sql.createTable(table, Seq(column.withType(SqlType.Varchar(20)).asPrimaryKey)))
+
+
+  }
+
+  test("Hello") {
+    val config = MushaConfig("/home/oliverr/lunaris/vep/work/h2/egg", "egg", "armeritter")
+    val musha = new Musha(config)
+    runShowTables(musha)
+    runCreateTable(musha)
+    musha.close()
   }
 }
