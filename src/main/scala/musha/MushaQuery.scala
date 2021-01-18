@@ -47,9 +47,9 @@ object MushaQuery {
     }
   }
 
-  def update(sql: Sql.SqlNoCount): Update = new Update(sql)
+  def update(sql: Sql.SqlNoCount): UpdateWithoutCount = new UpdateWithoutCount(sql)
 
-  class Update(override val sql: Sql.SqlNoCount) extends MushaQuery[Unit] {
+  class UpdateWithoutCount(override val sql: Sql.SqlNoCount) extends MushaQuery[Unit] {
     override def apply(statement: Statement): Unit = {
       statement.executeUpdate(sql.sqlString)
     }

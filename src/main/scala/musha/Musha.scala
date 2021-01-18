@@ -20,20 +20,28 @@ class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
   hikariConfig.addDataSourceProperty("prepStmtCacheSqlLimit", "2048")
   val dataSource = new HikariDataSource(hikariConfig)
 
-  def runQuery[A, B](query: Statement => A)(consumer: A => B): Either[Snag, B] = {
+  def run[A](query: Statement => A): Either[Snag, A] = {
     var connOpt: Option[Connection] = None
     try {
       val conn = dataSource.getConnection()
       connOpt = Some(conn)
       val stmt = conn.createStatement()
-      Right(consumer(query(stmt)))
+      Right(query(stmt))
     } catch {
       case NonFatal(exception) => Left(Snag(exception))
     } finally {
       connOpt.foreach(_.close())
     }
   }
-//  def runUpdate()  //  TODO
+
+  def runQuery[A, B](query: MushaQuery.WithResultSet[A])(consumer: A => B): Either[Snag, B] = {
+    run(stmt => consumer(query(stmt)))
+  }
+
+  def runUpdate(update: MushaQuery.UpdateWithoutCount): Either[Snag, Unit] = {
+    run(update)
+  }
+
   override def close(): Unit = dataSource.close()
 }
 
