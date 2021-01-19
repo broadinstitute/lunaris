@@ -1,23 +1,13 @@
 package musha.sql
 
-import musha.sql.SqlColDef.Flags
 import musha.sql.SqlName.Column
 
-case class SqlColDef(column: Column, sqlType: SqlType, flags: Flags = Flags.None) extends SqlElement {
-  override def sqlString: String = {
-    flags match {
-      case Flags.None => column.sqlString + " " + sqlType.sqlString
-      case _ => column.sqlString + " " + sqlType.sqlString + " " + flags.sqlString
-    }
-  }
-
-  def asPrimaryKey: SqlColDef = copy(flags = flags.asPrimaryKey)
+case class SqlColDef(column: Column) {  //  TODO: remove class
 }
 
 object SqlColDef {
 
   sealed trait Flags extends SqlElement {
-    def asPrimaryKey: Flags.PrimaryKey.type = Flags.PrimaryKey
   }
 
   object Flags {
@@ -27,7 +17,7 @@ object SqlColDef {
     }
 
     object PrimaryKey extends Flags {
-      override def sqlString: String = "primary key"
+      override def sqlString: String = "PRIMARY KEY"
     }
 
   }

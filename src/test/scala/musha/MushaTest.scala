@@ -18,10 +18,11 @@ class MushaTest extends AnyFunSuite {
 
   def runCreateTable(musha: Musha): Unit = {
     val table = Sql.table("Statuses")
-    val column = Sql.column("jobId")
-    val query = MushaQuery.update(Sql.createTable(table, Seq(column.withType(SqlType.Varchar(20)).asPrimaryKey)))
-
-
+    val column = Sql.column("jobId", SqlType.Varchar(20))
+    val query =
+      MushaQuery.update(Sql.createTableIfNotExists(table, Seq(column.asPrimaryKey)))
+    println(query.sql.sqlString)
+    musha.runUpdate(query)
   }
 
   test("Hello") {
@@ -29,6 +30,7 @@ class MushaTest extends AnyFunSuite {
     val musha = new Musha(config)
     runShowTables(musha)
     runCreateTable(musha)
+    runShowTables(musha)
     musha.close()
   }
 }
