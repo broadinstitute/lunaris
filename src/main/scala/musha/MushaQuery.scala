@@ -54,4 +54,12 @@ object MushaQuery {
       statement.executeUpdate(sql.sqlString)
     }
   }
+
+  def update(sql: Sql.SqlDmlCount): UpdateWithCount = new UpdateWithCount(sql)
+
+  class UpdateWithCount(override val sql: Sql.SqlDmlCount) extends MushaQuery[Int] {
+    override def apply(statement: Statement): Int = {
+      statement.executeUpdate(sql.sqlString)
+    }
+  }
 }

@@ -39,7 +39,7 @@ object Sql {
   case class Insert(table: Table, values: Seq[SqlColumnValue[_]]) extends SqlDmlCount {
     override def sqlString: String = {
       "INSERT INTO " + table.sqlString + "(" +
-        values.map(_.sqlColumn.sqlString).mkString("\n  ", "\n  ", "\n") +
+        values.map(_.sqlColumn.name).mkString("\n  ", ",\n  ", "\n") +
         ") VALUES (" +
         values.map(_.value).map(SqlElement.asSqlLiteral).mkString("\n  ", "\n  ", "\n") +
         ")"

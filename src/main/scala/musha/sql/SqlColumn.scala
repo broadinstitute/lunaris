@@ -9,7 +9,7 @@ case class SqlColumn[A](name: String, sqlType: SqlType[A], flags: Seq[Flag] = Se
     if(flags.contains(Flag.PrimaryKey)) { this } else copy(flags = flags :+ Flag.PrimaryKey)
   }
 
-  override def sqlString: String = (Seq(name, sqlType.sqlString) ++ flags.map(_.string)).mkString(" ") + ";"
+  override def sqlString: String = (Seq(name, sqlType.sqlString) ++ flags.map(_.string)).mkString(" ")
 }
 
 object SqlColumn {

@@ -42,6 +42,10 @@ class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
     run(update)
   }
 
+  def runUpdate(update: MushaQuery.UpdateWithCount): Either[Snag, Int] = {
+    run(update)
+  }
+
   override def close(): Unit = dataSource.close()
 }
 
