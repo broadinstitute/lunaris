@@ -10,9 +10,6 @@ object SqlName {
 
   sealed trait Table extends SqlName
 
-  sealed trait Column extends SqlName {  //  TODO remove class
-  }
-
   sealed trait BareName extends SqlName {
     override def sqlString: String = name
   }

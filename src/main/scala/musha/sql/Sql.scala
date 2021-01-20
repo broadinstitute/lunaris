@@ -1,6 +1,6 @@
 package musha.sql
 
-import musha.sql.SqlName.{BareTable, Column, Table}
+import musha.sql.SqlName.{BareTable, Table}
 
 sealed trait Sql extends SqlElement {
 }
@@ -33,7 +33,7 @@ object Sql {
     }
   }
 
-  case class Insert(table: Table, values: Map[Column, Any])
+  case class Insert(table: Table, values: Seq[SqlColumnValue[_]])
 
   case class Select(table: Table) extends SqlQuery {
     override def sqlString: String = s"SELECT * FROM ${table.sqlString};"
