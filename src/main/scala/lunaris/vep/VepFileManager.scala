@@ -11,8 +11,7 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
-import lunaris.streams.transform.RareMetalsGroupSerializer
-import lunaris.utils.{DateUtils, NumberParser}
+import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
 import org.broadinstitute.yootilz.core.snag.Snag
 
