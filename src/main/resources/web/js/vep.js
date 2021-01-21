@@ -161,7 +161,9 @@ function showStatus(id) {
         if (status.succeeded) {
             const spaceNode = document.createTextNode(" ");
             const linkNode = document.createElement("a");
-            linkNode.setAttribute("href", "/lunaris/predictor/results/" + id);
+            const outputFile = id + ".tsv"
+            linkNode.setAttribute("href", "/lunaris/predictor/results/" + outputFile);
+            linkNode.setAttribute("download", outputFile);
             linkNode.innerText = "Click here to download";
             pNode.append(spaceNode);
             pNode.append(linkNode);

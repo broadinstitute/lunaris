@@ -58,13 +58,13 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     } yield ()
   }
 
-  def createNewIdFor(inputFileName: String): ResultId = ResultId.createNew(inputFileName)
+  def createNewIdFor(inputFileName: String): ResultId = ResultId.createNew()
 
-  def inputFileNameForId(resultId: ResultId): String = "input_" + resultId.toString
+  def inputFileNameForId(resultId: ResultId): String = "input_" + resultId.string + ".vcf"
 
   def inputFilePathForId(resultId: ResultId): File = inputsFolder / inputFileNameForId(resultId)
 
-  def outputFileNameForId(resultId: ResultId): String = resultId.toString
+  def outputFileNameForId(resultId: ResultId): String = resultId.string + ".tsv"
 
   def outputFilePathForId(resultId: ResultId): File = resultsFolder / outputFileNameForId(resultId)
 
@@ -150,11 +150,15 @@ object VepFileManager {
   }
 
   object ResultId {
-    private def hash(num: Long): String = (num % 65536L).toHexString
+    private def fourHexDigits(num: Long): String = ("000" + num.toHexString).takeRight(4)
 
-    def createNew(inputFileName: String): ResultId =
-      ResultId(inputFileName + "." + hash(1 + Random.nextLong(Long.MaxValue)) +
-        hash(System.currentTimeMillis()) + ".tsv")
+    private def positiveRandomLong(): Long = {
+      val raw = Random.nextLong()
+      if(raw < 0) raw + Long.MaxValue else raw
+    }
+
+    def createNew(): ResultId =
+      ResultId(fourHexDigits(System.currentTimeMillis()) + fourHexDigits(positiveRandomLong()))
   }
 
   case class ResultStatus(statusType: ResultStatus.Type, message: String, snagMessages: Seq[String])

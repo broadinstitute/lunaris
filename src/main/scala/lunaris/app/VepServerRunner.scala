@@ -113,8 +113,10 @@ object VepServerRunner {
                 )
               }
             },
-            path("lunaris" / "predictor" / "results" / Remaining) { resultIdString =>
+            path("lunaris" / "predictor" / "results" / Remaining) { rawString =>
               get {
+                val resultIdString =
+                  if(rawString.endsWith(".tsv")) rawString.dropRight(4) else rawString
                 val resultId = ResultId(resultIdString)
                 val snagOrSource = for {
                   source <- vepFileManager.streamResults(resultId)

@@ -23,7 +23,7 @@ object Sql {
 
   case class CreateTable(table: Table, ifNotExists: Boolean, columns: Seq[SqlColumn[_]]) extends SqlNoCount {
     override def sqlString: String = {
-      val colDefsString = columns.map(_.sqlString).mkString("(\n  ", "\n  ", "\n)")
+      val colDefsString = columns.map(_.sqlString).mkString("(\n  ", ",\n  ", "\n)")
       val ifNotExistsString = if (ifNotExists) "IF NOT EXISTS" else ""
       build("CREATE TABLE", ifNotExistsString, table.sqlString, colDefsString)
     }
@@ -41,13 +41,23 @@ object Sql {
       "INSERT INTO " + table.sqlString + "(" +
         values.map(_.sqlColumn.name).mkString("\n  ", ",\n  ", "\n") +
         ") VALUES (" +
-        values.map(_.value).map(SqlElement.asSqlLiteral).mkString("\n  ", "\n  ", "\n") +
+        values.map(_.value).map(SqlElement.asSqlLiteral).mkString("\n  ", ",\n  ", "\n") +
         ")"
     }
   }
 
   case class Select(table: Table) extends SqlQuery {
     override def sqlString: String = s"SELECT * FROM ${table.sqlString};"
+  }
+
+  sealed trait Filter extends SqlElement
+
+  case class Equals[A](column: SqlColumn[A], value: A) extends Filter {
+    override def sqlString: String = column.name + "=" + SqlElement.asSqlLiteral(value)
+  }
+
+  case class SelectWhere(table: Table, filter: Filter) extends SqlQuery {
+    override def sqlString: String = s"SELECT * FROM ${table.sqlString} WHERE ${filter.sqlString};"
   }
 
   def table(name: String): BareTable = BareTable(name)
@@ -69,4 +79,6 @@ object Sql {
   def insert(table: Table, columnValues: SqlColumnValue[_]*): Insert = Insert(table, columnValues)
 
   def select(table: Table): Select = Select(table)
+
+  def select(table: Table, filter: Filter): SelectWhere = SelectWhere(table, filter)
 }
