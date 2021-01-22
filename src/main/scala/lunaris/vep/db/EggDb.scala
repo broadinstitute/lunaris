@@ -12,18 +12,22 @@ class EggDb(mushaConfig: MushaConfig) {
   private val idCol = Sql.column("id", SqlType.Varchar(8))
   private val inputFileCol = Sql.column("input_file", SqlType.Varchar(256))
   private val outputFileCol = Sql.column("output_file", SqlType.Varchar(128))
-  private val messageNumberCol = Sql.column("message_number", SqlType.SqlInt)
+  private val statusTypeCol = Sql.column("status_type", SqlType.Varchar(9))
   private val messageCol = Sql.column("message", SqlType.Varchar(128))
-  private val jobsTable = Sql.table("files", idCol, inputFileCol, outputFileCol, messageCol)
-  private val messagesTable = Sql.table("messages", messageNumberCol, messageCol)
+  private val messagesCol = Sql.column("message", SqlType.Clob)
+  private val cTimeCol = Sql.column("ctime", SqlType.BigInt)
+  private val mTimeCol = Sql.column("mtime", SqlType.BigInt)
+  private val jobsTable =
+    Sql.table("files", idCol.asPrimaryKey, inputFileCol, outputFileCol, statusTypeCol, messageCol, messagesCol,
+      cTimeCol, mTimeCol)
 
-  createTablesIfNotExist()
+  createTableIfNotExist()
 
-  def createTablesIfNotExist(): Unit = {
+  def createTableIfNotExist(): Unit = {
     rightOrThrow(musha.runUpdate(MushaQuery.update(Sql.createTableIfNotExists(jobsTable))))
-    rightOrThrow(musha.runUpdate(MushaQuery.update(Sql.createTableIfNotExists(messagesTable))))
   }
 
+  //  TODO
 }
 
 object EggDb {
