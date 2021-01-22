@@ -1,7 +1,5 @@
 package musha.sql
 
-import musha.sql.SqlName.{BareTable, Table}
-
 sealed trait Sql extends SqlElement {
 }
 
@@ -21,24 +19,24 @@ object Sql {
 
   sealed trait SqlDmlCount extends Sql
 
-  case class CreateTable(table: Table, ifNotExists: Boolean, columns: Seq[SqlColumn[_]]) extends SqlNoCount {
+  case class CreateTable(table: SqlTable, ifNotExists: Boolean) extends SqlNoCount {
     override def sqlString: String = {
-      val colDefsString = columns.map(_.sqlString).mkString("(\n  ", ",\n  ", "\n)")
+      val colDefsString = table.columns.map(_.sqlString).mkString("(\n  ", ",\n  ", "\n)")
       val ifNotExistsString = if (ifNotExists) "IF NOT EXISTS" else ""
-      build("CREATE TABLE", ifNotExistsString, table.sqlString, colDefsString)
+      build("CREATE TABLE", ifNotExistsString, table.name, colDefsString)
     }
   }
 
-  case class DropTable(table: Table, ifExists: Boolean) extends SqlNoCount {
+  case class DropTable(table: SqlTable, ifExists: Boolean) extends SqlNoCount {
     override def sqlString: String = {
       val ifExistsString = if (ifExists) "IF EXISTS" else ""
-      build("DROP TABLE", ifExistsString, table.sqlString)
+      build("DROP TABLE", ifExistsString, table.name)
     }
   }
 
-  case class Insert(table: Table, values: Seq[SqlColumnValue[_]]) extends SqlDmlCount {
+  case class Insert(table: SqlTable, values: Seq[SqlColumnValue[_]]) extends SqlDmlCount {
     override def sqlString: String = {
-      "INSERT INTO " + table.sqlString + "(" +
+      "INSERT INTO " + table.name + "(" +
         values.map(_.sqlColumn.name).mkString("\n  ", ",\n  ", "\n") +
         ") VALUES (" +
         values.map(_.value).map(SqlElement.asSqlLiteral).mkString("\n  ", ",\n  ", "\n") +
@@ -46,8 +44,18 @@ object Sql {
     }
   }
 
-  case class Select(table: Table) extends SqlQuery {
-    override def sqlString: String = s"SELECT * FROM ${table.sqlString};"
+  case class Merge(table: SqlTable, values: Seq[SqlColumnValue[_]]) extends SqlDmlCount {
+    override def sqlString: String = {
+      "MERGE INTO " + table.name + "(" +
+        values.map(_.sqlColumn.name).mkString("\n  ", ",\n  ", "\n") +
+        ") VALUES (" +
+        values.map(_.value).map(SqlElement.asSqlLiteral).mkString("\n  ", ",\n  ", "\n") +
+        ")"
+    }
+  }
+
+  case class Select(table: SqlTable) extends SqlQuery {
+    override def sqlString: String = s"SELECT * FROM ${table.name};"
   }
 
   sealed trait Filter extends SqlElement
@@ -56,29 +64,29 @@ object Sql {
     override def sqlString: String = column.name + "=" + SqlElement.asSqlLiteral(value)
   }
 
-  case class SelectWhere(table: Table, filter: Filter) extends SqlQuery {
-    override def sqlString: String = s"SELECT * FROM ${table.sqlString} WHERE ${filter.sqlString};"
+  case class SelectWhere(table: SqlTable, filter: Filter) extends SqlQuery {
+    override def sqlString: String = s"SELECT * FROM ${table.name} WHERE ${filter.sqlString};"
   }
 
-  def table(name: String): BareTable = BareTable(name)
+  def table(name: String, columns: SqlColumn[_]*): SqlTable = SqlTable(name, columns)
 
   def column[A](name: String, sqlType: SqlType[A]): SqlColumn[A] = SqlColumn(name, sqlType)
 
   def showTables: ShowTables.type = ShowTables
 
-  def createTable(table: Table, columns: Seq[SqlColumn[_]]): CreateTable =
-    CreateTable(table, ifNotExists = false, columns)
+  def createTable(table: SqlTable): CreateTable = CreateTable(table, ifNotExists = false)
 
-  def createTableIfNotExists(table: Table, columns: Seq[SqlColumn[_]]): CreateTable =
-    CreateTable(table, ifNotExists = true, columns)
+  def createTableIfNotExists(table: SqlTable): CreateTable = CreateTable(table, ifNotExists = true)
 
-  def dropTable(table: Table): DropTable = DropTable(table, ifExists = false)
+  def dropTable(table: SqlTable): DropTable = DropTable(table, ifExists = false)
 
-  def dropTableIfNotExists(table: Table): DropTable = DropTable(table, ifExists = true)
+  def dropTableIfNotExists(table: SqlTable): DropTable = DropTable(table, ifExists = true)
 
-  def insert(table: Table, columnValues: SqlColumnValue[_]*): Insert = Insert(table, columnValues)
+  def insert(table: SqlTable, columnValues: SqlColumnValue[_]*): Insert = Insert(table, columnValues)
 
-  def select(table: Table): Select = Select(table)
+  def merge(table: SqlTable, columnValues: SqlColumnValue[_]*): Merge = Merge(table, columnValues)
 
-  def select(table: Table, filter: Filter): SelectWhere = SelectWhere(table, filter)
+  def select(table: SqlTable): Select = Select(table)
+
+  def select(table: SqlTable, filter: Filter): SelectWhere = SelectWhere(table, filter)
 }

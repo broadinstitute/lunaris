@@ -166,15 +166,6 @@ object VepFileManager {
   object ResultStatus {
 
     sealed trait Type {
-      def statusCode: Int =
-        this match {
-          case Type.Invalid => -19
-          case Type.Unknown => -1
-          case Type.Submitted => 1
-          case Type.Succeeded => 7
-          case Type.Failed => 19
-        }
-
       def isSubmitted: Boolean = this == Type.Submitted || this == Type.Succeeded || this == Type.Failed
 
       def isCompleted: Boolean = this == Type.Succeeded || this == Type.Failed
@@ -194,6 +185,12 @@ object VepFileManager {
       case object Succeeded extends Type
 
       case object Failed extends Type
+
+      val all: Set[Type] = Set(Invalid, Unknown, Submitted, Succeeded, Failed)
+
+      val stringToType: Map[String, Type] = all.map(tpe => (tpe.toString, tpe)).toMap
+
+      def fromString(string: String): Type = stringToType.getOrElse(string, Invalid)
     }
 
     def createInvalid(message: String): ResultStatus = ResultStatus(Type.Invalid, message, Seq(message))

@@ -2,10 +2,9 @@ package musha
 
 import better.files.File
 import lunaris.vep.VepFileManager
-import musha.sql.SqlName.Table
-import musha.sql.{Sql, SqlColumn, SqlColumnValue, SqlType}
 import musha.map.FieldExtractors._
 import musha.map.FunBuilder._
+import musha.sql._
 import org.broadinstitute.yootilz.core.snag.Snag
 import org.scalatest.funsuite.AnyFunSuite
 
@@ -29,18 +28,18 @@ class MushaTest extends AnyFunSuite {
     assertRight(snagOrUnit)
   }
 
-  def runCreateTable(musha: Musha, table: Table, columns: SqlColumn[_]*): Unit = {
-    val query = MushaQuery.update(Sql.createTableIfNotExists(table, columns))
+  def runCreateTable(musha: Musha, table: SqlTable): Unit = {
+    val query = MushaQuery.update(Sql.createTableIfNotExists(table))
     println(query.sql.sqlString)
     assertRight(musha.runUpdate(query))
   }
 
-  def runInsert(musha: Musha, table: Table, columnValues: SqlColumnValue[_]*): Unit = {
+  def runInsert(musha: Musha, table: SqlTable, columnValues: SqlColumnValue[_]*): Unit = {
     val insert = MushaQuery.update(Sql.insert(table, columnValues: _*))
     assertRight(musha.runUpdate(insert))
   }
 
-  def runDropTable(musha: Musha, table: Table): Unit = {
+  def runDropTable(musha: Musha, table: SqlTable): Unit = {
     val drop = MushaQuery.update(Sql.dropTable(table))
     assertRight(musha.runUpdate(drop))
   }
@@ -52,27 +51,28 @@ class MushaTest extends AnyFunSuite {
     (rowsIter: Iterator[(String, String, String)]) =>
       rowsIter.foreach { case (id, in, out) => println(s"$id\t$in\t$out") }
 
-  def runSelect(musha: Musha, table: Table): Unit = {
+  def runSelect(musha: Musha, table: SqlTable): Unit = {
     val select = MushaQuery.rowsIter(Sql.select(table))(extractor)
     val snagOrResult = musha.runQuery(select)(consumer)
     assertRight(snagOrResult)
   }
 
-  def runSelectWhere[A](musha: Musha, table: Table, column: SqlColumn[A], value: A): Unit = {
+  def runSelectWhere[A](musha: Musha, table: SqlTable, column: SqlColumn[A], value: A): Unit = {
     val select = MushaQuery.rowsIter(Sql.select(table, Sql.Equals(column, value)))(extractor)
     val snagOrResult = musha.runQuery(select)(consumer)
     assertRight(snagOrResult)
   }
 
   test("Hello") {
-    val config = MushaConfig("/home/oliverr/lunaris/vep/work/h2/egg", "egg", "armeritter")
+    val dbFile = File("/home/oliverr/lunaris/vep/work/h2/eggtest")
+    val config = MushaConfig(dbFile, "egg", "armeritter")
     val musha = new Musha(config)
     runShowTables(musha)
-    val filesTable = Sql.table("files")
     val idColumn = Sql.column("job_id", SqlType.Varchar(8)).asPrimaryKey
     val inputFileColumn = Sql.column("input_file", SqlType.Varchar(256))
     val outputFileColumn = Sql.column("output_file", SqlType.Varchar(256))
-    runCreateTable(musha, filesTable, idColumn, inputFileColumn, outputFileColumn)
+    val filesTable = Sql.table("files", idColumn, inputFileColumn, outputFileColumn)
+    runCreateTable(musha, filesTable)
     runShowTables(musha)
     val jobId = VepFileManager.ResultId.createNew()
     val inputFile = File("input.vcf")

@@ -1,3 +1,5 @@
 package musha
 
-case class MushaConfig(dbFilePath: String, user: String, password: String)
+import better.files.File
+
+case class MushaConfig(dbFilePath: File, user: String, password: String)

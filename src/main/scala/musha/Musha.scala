@@ -51,6 +51,8 @@ class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
 
 object Musha {
 
+  def apply(config: MushaConfig): Musha = new Musha(config)
+
   class ResultsWithMeta[A, B](val meta: A, val iterator: MushaIterator[B])
 
 }

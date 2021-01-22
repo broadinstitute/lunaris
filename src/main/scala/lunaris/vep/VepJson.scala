@@ -6,7 +6,7 @@ import lunaris.vep.VepFileManager.ResultStatus
 object VepJson {
 
   implicit val resultStatusEncoder: Encoder[ResultStatus] = (status: ResultStatus) => Json.obj(
-    "statusCode" -> Json.fromInt(status.statusType.statusCode),
+    "statusType" -> Json.fromString(status.statusType.toString),
     "submitted" -> Json.fromBoolean(status.statusType.isSubmitted),
     "completed" -> Json.fromBoolean(status.statusType.isCompleted),
     "succeeded" -> Json.fromBoolean(status.statusType.hasSucceeded),
