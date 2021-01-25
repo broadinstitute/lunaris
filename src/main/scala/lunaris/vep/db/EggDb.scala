@@ -72,13 +72,20 @@ class EggDb(mushaConfig: MushaConfig, outputFileForId: ResultId => File) {
     musha.runUpdate(query).filterOrElse(_ > 0, Snag(s"Update of record $id failed.")).map(_ => ())
   }
 
+  private val rowMapper =
+    (idCol.get & inputFileCol.get & outputFileCol.get & statusTypeCol.get & messageCol.get & messagesCol.get
+    & cTimeCol.get & mTimeCol.get) (JobRecord)
+
   def getJob(id: ResultId): Either[Snag, JobRecord] = {
     val sql = Sql.select(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
-    val query = MushaQuery.singleResult(sql) {
-      (idCol.get & inputFileCol.get & outputFileCol.get & statusTypeCol.get & messageCol.get & messagesCol.get
-        & cTimeCol.get & mTimeCol.get) (JobRecord)
-    }
+    val query = MushaQuery.singleResult(sql)(rowMapper)
     musha.runSingleResultQuery(query)
+  }
+
+  def getJobOpt(id: ResultId): Either[Snag, Option[JobRecord]] = {
+    val sql = Sql.select(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
+    val query = MushaQuery.optionalResult(sql)(rowMapper)
+    musha.runOptionalResultQuery(query)
   }
 
   def deleteJob(id: ResultId): Either[Snag, Unit] = {

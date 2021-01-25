@@ -30,7 +30,7 @@ object MushaQuery {
   def singleResult[A](sql: Sql.SqlQuery)(rowMapper: ResultSet => A) = new SingleResultMapping[A](sql)(rowMapper)
 
   class SingleResultMapping[A](override val sql: Sql.SqlQuery)(rowMapper: ResultSet => A)
-  extends WithResultSet[Either[Snag, A]] {
+    extends WithResultSet[Either[Snag, A]] {
     override def apply(statement: Statement): Either[Snag, A] = {
       val resultSet = statement.executeQuery(sql.sqlString)
       val iter = new MushaIterator.MapResults[A](resultSet)(rowMapper)
@@ -42,6 +42,26 @@ object MushaQuery {
           Left(Snag("Required exactly one row, but got more than one row."))
         } else {
           Right(a)
+        }
+      }
+    }
+  }
+
+  def optionalResult[A](sql: Sql.SqlQuery)(rowMapper: ResultSet => A) = new OptionalResultMapping[A](sql)(rowMapper)
+
+  class OptionalResultMapping[A](override val sql: Sql.SqlQuery)(rowMapper: ResultSet => A)
+    extends WithResultSet[Either[Snag, Option[A]]] {
+    override def apply(statement: Statement): Either[Snag, Option[A]] = {
+      val resultSet = statement.executeQuery(sql.sqlString)
+      val iter = new MushaIterator.MapResults[A](resultSet)(rowMapper)
+      if(!iter.hasNext) {
+        Right(None)
+      } else {
+        val a = iter.next()
+        if(iter.hasNext) {
+          Left(Snag("Required not more than one row, but got more than one row."))
+        } else {
+          Right(Some(a))
         }
       }
     }
