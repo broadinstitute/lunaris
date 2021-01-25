@@ -38,6 +38,8 @@ class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
     run(stmt => consumer(query(stmt)))
   }
 
+  def runSingleResultQuery[A](query: MushaQuery.SingleResultMapping[A]): Either[Snag, A] = run(query).flatten
+
   def runUpdate(update: MushaQuery.UpdateWithoutCount): Either[Snag, Unit] = {
     run(update)
   }

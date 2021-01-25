@@ -1,5 +1,7 @@
 package musha.sql
 
+import musha.SqlCodec
+
 sealed trait Sql extends SqlElement {
 }
 
@@ -68,7 +70,11 @@ object Sql {
     override def sqlString: String = s"SELECT * FROM ${table.name} WHERE ${filter.sqlString};"
   }
 
-  def table(name: String, columns: SqlColumn[_]*): SqlTable = SqlTable(name, columns)
+  case class Delete(table: SqlTable, filter: Filter) extends SqlDmlCount {
+    override def sqlString: String = s"DELETE FROM ${table.name} WHERE ${filter.sqlString};"
+  }
+
+  def table(name: String, columns: SqlCodec[_, _]*): SqlTable = SqlTable(name, columns.map(_.sqlColumn))
 
   def column[A](name: String, sqlType: SqlType[A]): SqlColumn[A] = SqlColumn(name, sqlType)
 
@@ -89,4 +95,6 @@ object Sql {
   def select(table: SqlTable): Select = Select(table)
 
   def select(table: SqlTable, filter: Filter): SelectWhere = SelectWhere(table, filter)
+
+  def delete(table: SqlTable, filter: Filter): Delete = Delete(table, filter)
 }
