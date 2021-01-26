@@ -10,7 +10,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.collection.immutable.ArraySeq
 
-class EggDb(mushaConfig: MushaConfig, outputFileForId: ResultId => File) {
+class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFileForId: ResultId => File) {
   private val musha = Musha(mushaConfig)
   private val idCol = Sql.column("id", SqlType.Varchar(8)).bimap[ResultId](_.string, ResultId(_))
   private val inputFileCol = Sql.column("input_file", SqlType.Varchar(256)).bimap[File](_.toString, File(_))
@@ -43,8 +43,9 @@ class EggDb(mushaConfig: MushaConfig, outputFileForId: ResultId => File) {
     rightOrThrow(musha.runUpdate(MushaQuery.update(Sql.createTableIfNotExists(jobsTable))))
   }
 
-  def newSubmittedJob(inputFile: File): Either[Snag, JobRecord] = {
+  def newSubmittedJob(): Either[Snag, JobRecord] = {
     val id = ResultId.createNew()
+    val inputFile = inputFileForId(id)
     val outputFile = outputFileForId(id)
     val time = System.currentTimeMillis()
     val messages = Seq.empty[String]
@@ -126,8 +127,8 @@ object EggDb {
     val password = "armeritter"
   }
 
-  def apply(dbFile: File, outputFileForId: ResultId => File): EggDb = {
-    new EggDb(MushaConfig(dbFile, Defaults.user, Defaults.password), outputFileForId)
+  def apply(dbFile: File, inputFileForId: ResultId => File, outputFileForId: ResultId => File): EggDb = {
+    new EggDb(MushaConfig(dbFile, Defaults.user, Defaults.password), inputFileForId, outputFileForId)
   }
 
   class EggDbException(message: String) extends Exception(message)
@@ -140,6 +141,8 @@ object EggDb {
   }
 
   case class JobRecord(id: ResultId, inputFile: File, outputFile: File, statusType: ResultStatus.Type, message: String,
-                       messages: Seq[String], ctime: Long, mTime: Long)
+                       messages: Seq[String], ctime: Long, mTime: Long) {
+    def status: ResultStatus = ResultStatus(statusType, message, messages)
+  }
 
 }

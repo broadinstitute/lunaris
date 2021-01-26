@@ -6,12 +6,13 @@ import akka.util.ByteString
 import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.parsing.LunBoolExpressionParser
 import lunaris.vep.VepFileManager.ResultId
+import lunaris.vep.db.EggDb.JobRecord
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
 case class VepFormData(fileName: String,
-                       resultId: ResultId,
+                       job: JobRecord,
                        filter: LunBoolExpression,
                        format: String)
 
@@ -19,11 +20,11 @@ object VepFormData {
   def fromFields(fields: Map[String, FormField]): VepFormData = {
     val inputFileField = fields(FormField.Keys.inputFile).asInstanceOf[InputFileField]
     val fileName = inputFileField.fileName
-    val resultId = inputFileField.resultId
+    val job = inputFileField.job
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
     val format = fields(FormField.Keys.format).asInstanceOf[FormatField].format
-    VepFormData(fileName, resultId, filter, format)
+    VepFormData(fileName, job, filter, format)
   }
 
   sealed trait FormField {
@@ -35,7 +36,7 @@ object VepFormData {
   }
 
   case class InputFileField(fileName: String,
-                            resultId: VepFileManager.ResultId) extends FormField {
+                            job: JobRecord) extends FormField {
     override def name: String = FormField.Keys.inputFile
   }
 
@@ -60,10 +61,9 @@ object VepFormData {
         case Keys.filter =>
           bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FilterField)
         case Keys.inputFile =>
-          val resultId = vepFileManager.createNewIdFor(bodyPart.filename.get)
-          val inputFile = vepFileManager.inputFilePathForId(resultId)
-          vepFileManager.uploadFile(bodyPart.entity.dataBytes, inputFile).map { _ =>
-            InputFileField(bodyPart.filename.get, resultId)
+          val job = vepFileManager.createNewJob()
+          vepFileManager.uploadFile(bodyPart.entity.dataBytes, job.inputFile).map { _ =>
+            InputFileField(bodyPart.filename.get, job)
           }
         case Keys.format =>
           bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FormatField)

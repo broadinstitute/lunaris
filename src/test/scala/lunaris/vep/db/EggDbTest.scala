@@ -18,13 +18,13 @@ class EggDbTest extends AnyFunSuite {
     val testDir = File.newTemporaryDirectory()
     val workDir = testDir / "work"
     val dbFile = testDir / "eggtest"
+    val inputFileForId = (id: ResultId) => workDir / ("input_" + id.string + ".vcf")
     val outputFileForId = (id: ResultId) => workDir / (id.string + ".tsv")
-    val db = EggDb(dbFile, outputFileForId)
-    val inputFile = workDir / "my_input_file.vcf"
+    val db = EggDb(dbFile, inputFileForId, outputFileForId)
     var jobIds: Set[ResultId] = Set.empty
     val nJobs = 5
     for(_ <- 0 until nJobs) {
-      val job = getValue(db.newSubmittedJob(inputFile))
+      val job = getValue(db.newSubmittedJob())
       val jobId = job.id
       jobIds += jobId
       val jobCopy = getValue(db.getJob(job.id))

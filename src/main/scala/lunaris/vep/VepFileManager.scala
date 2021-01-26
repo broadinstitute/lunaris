@@ -13,7 +13,9 @@ import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
 import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
-import org.broadinstitute.yootilz.core.snag.Snag
+import lunaris.vep.db.EggDb
+import lunaris.vep.db.EggDb.JobRecord
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
@@ -25,11 +27,18 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
   val resultsFolder: File = vepSettings.resultsFolder
   val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
   val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
+  val dbFile: File = vepSettings.runSettings.workDir / "db" / "egg"
+  val eggDb: EggDb = EggDb(dbFile, inputFilePathForId, outputFilePathForId)
 
-  var statusById: Map[ResultId, ResultStatus] = Map.empty
+  def reportSnag(snag: Snag): Unit = {
+    println(snag.report)
+  }
 
   def updateStatus(resultId: ResultId, resultStatus: ResultStatus): Unit = {
-    statusById = statusById + (resultId -> resultStatus)
+    eggDb.updateJobStatus(resultId, resultStatus) match {
+      case Left(snag) => reportSnag(snag)
+      case _ => ()
+    }
   }
 
   def folderOrSnag(folder: File, folderNick: String): Either[Snag, File] = {
@@ -58,7 +67,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     } yield ()
   }
 
-  def createNewIdFor(inputFileName: String): ResultId = ResultId.createNew()
+  def createNewIdFor(): ResultId = ResultId.createNew()
 
   def inputFileNameForId(resultId: ResultId): String = "input_" + resultId.string + ".vcf"
 
@@ -72,11 +81,12 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     implicit actorSystem: ActorSystem
   ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
 
-  def newQueryFuture(formData: VepFormData, submissionTime: Long)(
+  def newQueryFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem
   ): Future[RunResult] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    val resultId = formData.resultId
+    val job = formData.job
+    val resultId = job.id
     val inputFile = inputFilePathForId(resultId)
     val chromsAndRegionsFut = VcfStreamVariantsReader.readChromsAndRegions(inputFile)
     val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
@@ -85,7 +95,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
       val request = {
         VepRequestBuilder.buildRequest(
           resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
-          outputFilePathForId(resultId), formData.format, formData.filter, Some(dataFileWithIndex.index.toString),
+          job.outputFile, formData.format, formData.filter, Some(dataFileWithIndex.index.toString),
           vepDataFields
         )
       }
@@ -102,35 +112,48 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
       case Success(runResult) =>
         val successTime = System.currentTimeMillis()
         val snagMessages = runResult.snags.map(_.message)
-        updateStatus(resultId, ResultStatus.createSucceeded(submissionTime, successTime, snagMessages))
+        updateStatus(resultId, ResultStatus.createSucceeded(job.ctime, successTime, snagMessages))
       case Failure(exception) =>
         val failTime = System.currentTimeMillis()
         val snag = Snag(exception)
         println(snag.report)
-        updateStatus(resultId, ResultStatus.createFailed(submissionTime, failTime, snag.message, Seq(snag.message)))
+        updateStatus(resultId, ResultStatus.createFailed(job.ctime, failTime, snag.message, Seq(snag.message)))
     }
     queryFuture
   }
 
-  def newUploadAndQueryFutureFuture(formData: VepFormData, submissionTime: Long)(
+  def newUploadAndQueryFutureFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem): Future[RunResult] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    newQueryFuture(formData, submissionTime)
+    newQueryFuture(formData)
   }
 
   class SubmissionResponse(val resultId: ResultId, val fut: Future[RunResult])
 
+  def createNewJob(): JobRecord = {
+    eggDb.newSubmittedJob() match {
+      case Left(snag) => throw new SnagException(snag)
+      case Right(job) => job
+    }
+  }
+
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    val resultId = formData.resultId
-    val submissionTime = System.currentTimeMillis()
-    updateStatus(resultId, ResultStatus.createSubmitted(submissionTime, Seq.empty))
-    val fut = newUploadAndQueryFutureFuture(formData, submissionTime)
-    new SubmissionResponse(resultId, fut)
+
+    val job = formData.job
+    val resultId = job.id
+    val fut = newUploadAndQueryFutureFuture(formData)
+    new SubmissionResponse(job.id, fut)
   }
 
   def getStatus(resultId: ResultId): ResultStatus = {
-    statusById.getOrElse(resultId, ResultStatus.createUnknown(resultId))
+    eggDb.getJobOpt(resultId) match {
+      case Left(snag) =>
+        reportSnag(snag)
+        ResultStatus.createUnknown(resultId)
+      case Right(Some(job)) => job.status
+      case Right(None) => ResultStatus.createUnknown(resultId)
+    }
   }
 
   def streamResults(resultId: ResultId): Either[Snag, Source[ByteString, NotUsed]] = {
