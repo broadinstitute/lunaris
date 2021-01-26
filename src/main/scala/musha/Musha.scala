@@ -1,6 +1,7 @@
 package musha
 
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
+import musha.MushaQuery.RowCount
 import org.broadinstitute.yootilz.core.snag.Snag
 import org.h2.Driver
 
@@ -50,6 +51,8 @@ class Musha(config: MushaConfig) extends AutoCloseable with Closeable {
   def runUpdate(update: MushaQuery.UpdateWithCount): Either[Snag, Int] = {
     run(update)
   }
+
+  def runCountRows(rowCount: MushaQuery.RowCount): Either[Snag, Long] = run(rowCount)
 
   override def close(): Unit = dataSource.close()
 }

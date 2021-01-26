@@ -88,13 +88,25 @@ class EggDb(mushaConfig: MushaConfig, outputFileForId: ResultId => File) {
     musha.runOptionalResultQuery(query)
   }
 
+  def forEachJob(jobConsumer: JobRecord => Any): Either[Snag, Unit] = {
+    val sql = Sql.select(jobsTable)
+    val query = MushaQuery.rowsIter(sql)(rowMapper)
+    musha.runQuery(query)(_.foreach(jobConsumer))
+  }
+
+  def countJobs(): Either[Snag, Long] = {
+    val sql = Sql.countRows(jobsTable)
+    val query = MushaQuery.rowCount(sql)
+    musha.runCountRows(query)
+  }
+
   def deleteJob(id: ResultId): Either[Snag, Unit] = {
     val sql = Sql.delete(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
     val query = MushaQuery.update(sql)
     musha.runUpdate(query) match {
       case Left(snag) => Left(snag)
       case Right(nRows) =>
-        if (nRows > 1) {
+        if (nRows == 1) {
           Right(())
         } else {
           Left(Snag(s"When deleting row with id ${id.string}, only one row should match, but deleted $nRows rows."))

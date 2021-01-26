@@ -21,12 +21,30 @@ class EggDbTest extends AnyFunSuite {
     val outputFileForId = (id: ResultId) => workDir / (id.string + ".tsv")
     val db = EggDb(dbFile, outputFileForId)
     val inputFile = workDir / "my_input_file.vcf"
-    val job1 = getValue(db.newSubmittedJob(inputFile))
-    val status1 = VepFileManager.ResultStatus.createSucceeded(job1.ctime, System.currentTimeMillis(), Seq.empty)
-    val jobCopy1 = getValue(db.getJob(job1.id))
-    assert(job1 == jobCopy1)
-    getValue(db.updateJobStatus(job1.id, status1))
-    val jobUpdated1 = getValue(db.getJob(job1.id))
+    var jobIds: Set[ResultId] = Set.empty
+    val nJobs = 5
+    for(_ <- 0 until nJobs) {
+      val job = getValue(db.newSubmittedJob(inputFile))
+      val jobId = job.id
+      jobIds += jobId
+      val jobCopy = getValue(db.getJob(job.id))
+      assert(job == jobCopy)
+      val status = VepFileManager.ResultStatus.createSucceeded(job.ctime, System.currentTimeMillis(), Seq.empty)
+      getValue(db.updateJobStatus(job.id, status))
+      val jobUpdated = getValue(db.getJob(job.id))
+      assert(job != jobUpdated)
+      val nJobsInDb = getValue(db.countJobs())
+      assert(jobIds.size == nJobsInDb)
+    }
+    while(jobIds.nonEmpty) {
+      val jobId = jobIds.head
+      val nJobsBefore = getValue(db.countJobs())
+      assert(nJobsBefore == jobIds.size)
+      getValue(db.deleteJob(jobId))
+      jobIds -= jobId
+      val nJobsAfter = getValue(db.countJobs())
+      assert(nJobsAfter == jobIds.size)
+    }
     db.close()
     testDir.delete()
   }

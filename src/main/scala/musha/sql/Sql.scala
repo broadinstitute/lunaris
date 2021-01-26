@@ -74,6 +74,10 @@ object Sql {
     override def sqlString: String = s"DELETE FROM ${table.name} WHERE ${filter.sqlString};"
   }
 
+  case class SelectCountRows(table: SqlTable) extends Sql {
+    override def sqlString: String = s"SELECT COUNT(*) FROM ${table.name};"
+  }
+
   def table(name: String, columns: SqlCodec[_, _]*): SqlTable = SqlTable(name, columns.map(_.sqlColumn))
 
   def column[A](name: String, sqlType: SqlType[A]): SqlColumn[A] = SqlColumn(name, sqlType)
@@ -97,4 +101,6 @@ object Sql {
   def select(table: SqlTable, filter: Filter): SelectWhere = SelectWhere(table, filter)
 
   def delete(table: SqlTable, filter: Filter): Delete = Delete(table, filter)
+
+  def countRows(table: SqlTable): SelectCountRows = SelectCountRows(table)
 }
