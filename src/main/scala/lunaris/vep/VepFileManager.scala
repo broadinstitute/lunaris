@@ -141,7 +141,6 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
 
     val job = formData.job
-    val resultId = job.id
     val fut = newUploadAndQueryFutureFuture(formData)
     new SubmissionResponse(job.id, fut)
   }
