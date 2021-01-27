@@ -130,8 +130,8 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
 
   class SubmissionResponse(val resultId: ResultId, val fut: Future[RunResult])
 
-  def createNewJob(): JobRecord = {
-    eggDb.newSubmittedJob() match {
+  def createNewJob(inputFileClientOpt: Option[File]): JobRecord = {
+    eggDb.newSubmittedJob(inputFileClientOpt) match {
       case Left(snag) => throw new SnagException(snag)
       case Right(job) => job
     }

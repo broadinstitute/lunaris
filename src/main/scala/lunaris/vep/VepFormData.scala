@@ -3,6 +3,7 @@ package lunaris.vep
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.Multipart
 import akka.util.ByteString
+import better.files.File
 import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.parsing.LunBoolExpressionParser
 import lunaris.vep.VepFileManager.ResultId
@@ -61,7 +62,7 @@ object VepFormData {
         case Keys.filter =>
           bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FilterField)
         case Keys.inputFile =>
-          val job = vepFileManager.createNewJob()
+          val job = vepFileManager.createNewJob(bodyPart.filename.map(File(_)))
           vepFileManager.uploadFile(bodyPart.entity.dataBytes, job.inputFile).map { _ =>
             InputFileField(bodyPart.filename.get, job)
           }

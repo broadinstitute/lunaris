@@ -24,7 +24,7 @@ class EggDbTest extends AnyFunSuite {
     var jobIds: Set[ResultId] = Set.empty
     val nJobs = 5
     for(_ <- 0 until nJobs) {
-      val job = getValue(db.newSubmittedJob())
+      val job = getValue(db.newSubmittedJob(None))
       val jobId = job.id
       jobIds += jobId
       val jobCopy = getValue(db.getJob(job.id))

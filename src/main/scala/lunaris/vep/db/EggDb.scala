@@ -13,6 +13,8 @@ import scala.collection.immutable.ArraySeq
 class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFileForId: ResultId => File) {
   private val musha = Musha(mushaConfig)
   private val idCol = Sql.column("id", SqlType.Varchar(8)).bimap[ResultId](_.string, ResultId(_))
+  private val inputFileClientCol =
+    Sql.column("input_file_client", SqlType.Varchar(256)).bimap[File](_.toString, File(_))
   private val inputFileCol = Sql.column("input_file", SqlType.Varchar(256)).bimap[File](_.toString, File(_))
   private val outputFileCol = Sql.column("output_file", SqlType.Varchar(128)).bimap[File](_.toString, File(_))
   private val statusTypeCol =
@@ -24,15 +26,15 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
   private val cTimeCol = Sql.column("ctime", SqlType.BigInt)
   private val mTimeCol = Sql.column("mtime", SqlType.BigInt)
   private val jobsTable =
-    Sql.table("files", idCol.asPrimaryKey, inputFileCol, outputFileCol, statusTypeCol, messageCol, messagesCol,
-      cTimeCol, mTimeCol)
+    Sql.table("files", idCol.asPrimaryKey, inputFileClientCol, inputFileCol, outputFileCol, statusTypeCol,
+      messageCol, messagesCol, cTimeCol, mTimeCol)
 
   createTableIfNotExist()
 
   private def messagesToString(messages: Seq[String]): String = messages.mkString("\n")
 
   private def stringToMessages(string: String): Seq[String] = {
-    if(string.isEmpty) {
+    if (string.isEmpty) {
       Seq.empty
     } else {
       ArraySeq.unsafeWrapArray(string.split("\n"))
@@ -43,9 +45,10 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
     rightOrThrow(musha.runUpdate(MushaQuery.update(Sql.createTableIfNotExists(jobsTable))))
   }
 
-  def newSubmittedJob(): Either[Snag, JobRecord] = {
+  def newSubmittedJob(inputFileClientOpt: Option[File]): Either[Snag, JobRecord] = {
     val id = ResultId.createNew()
     val inputFile = inputFileForId(id)
+    val inputFileClient = inputFileClientOpt.getOrElse(inputFile)
     val outputFile = outputFileForId(id)
     val time = System.currentTimeMillis()
     val messages = Seq.empty[String]
@@ -53,13 +56,14 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
     val statusType = submittedStatus.statusType
     val message = submittedStatus.message
     val sql = Sql.insert(
-      jobsTable, idCol.withValue(id), inputFileCol.withValue(inputFile), outputFileCol.withValue(outputFile),
-      statusTypeCol.withValue(statusType), messageCol.withValue(message), messagesCol.withValue(messages),
-      cTimeCol.withValue(time), mTimeCol.withValue(time)
+      jobsTable, idCol.withValue(id), inputFileClientCol.withValue(inputFileClient),
+      inputFileCol.withValue(inputFile), outputFileCol.withValue(outputFile), statusTypeCol.withValue(statusType),
+      messageCol.withValue(message), messagesCol.withValue(messages), cTimeCol.withValue(time),
+      mTimeCol.withValue(time)
     )
     val query = MushaQuery.update(sql)
     musha.runUpdate(query).filterOrElse(_ > 0, Snag("Insert of new record failed")).map { _ =>
-      JobRecord(id, inputFile, outputFile, statusType, message, messages, time, time)
+      JobRecord(id, inputFileClient, inputFile, outputFile, statusType, message, messages, time, time)
     }
   }
 
@@ -74,8 +78,8 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
   }
 
   private val rowMapper =
-    (idCol.get & inputFileCol.get & outputFileCol.get & statusTypeCol.get & messageCol.get & messagesCol.get
-    & cTimeCol.get & mTimeCol.get) (JobRecord)
+    (idCol.get & inputFileClientCol.get & inputFileCol.get & outputFileCol.get & statusTypeCol.get & messageCol.get
+      & messagesCol.get & cTimeCol.get & mTimeCol.get) (JobRecord)
 
   def getJob(id: ResultId): Either[Snag, JobRecord] = {
     val sql = Sql.select(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
@@ -140,8 +144,9 @@ object EggDb {
     }
   }
 
-  case class JobRecord(id: ResultId, inputFile: File, outputFile: File, statusType: ResultStatus.Type, message: String,
-                       messages: Seq[String], ctime: Long, mTime: Long) {
+  case class JobRecord(id: ResultId, inputFileClient: File, inputFile: File, outputFile: File,
+                       statusType: ResultStatus.Type, message: String, messages: Seq[String], ctime: Long,
+                       mTime: Long) {
     def status: ResultStatus = ResultStatus(statusType, message, messages)
   }
 
