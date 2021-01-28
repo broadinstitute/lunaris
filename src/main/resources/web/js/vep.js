@@ -20,11 +20,33 @@ const codeMirrorConfig = {
 let codeMirror;
 
 function init() {
+    initSession();
     getSchema();
     initMasksSelector();
     const codeMirrorParent = document.getElementById("code_mirror_parent");
     codeMirror = CodeMirror(codeMirrorParent, codeMirrorConfig);
     codeMirror.setSize("95%", "7.5em");
+}
+
+function fourHexDigits(num) {
+    return ("000" + num.toString(16)).substr(-4);
+}
+
+function initSession() {
+    let sessionId;
+    const queryParts = window.location.search.substring(1).split("&");
+    queryParts.forEach ( queryPart => {
+        [key, value] = queryPart.split("=");
+        if(key === "session") {
+            sessionId = value;
+        }
+    })
+    if(sessionId === undefined) {
+        sessionId =
+            fourHexDigits((new Date).getTime() % 65536) + fourHexDigits(Math.floor(Math.random() * 65537));
+    }
+    document.getElementById("sessionId").innerHTML = sessionId;
+    lunarisVariantPredictor.sessionId = sessionId;
 }
 
 
