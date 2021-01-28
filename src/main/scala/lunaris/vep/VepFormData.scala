@@ -6,14 +6,15 @@ import akka.util.ByteString
 import better.files.File
 import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.parsing.LunBoolExpressionParser
-import lunaris.vep.VepFileManager.SessionId
-import lunaris.vep.db.EggDb.JobRecord
+import lunaris.vep.VepFileManager.{JobId, SessionId}
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
-case class VepFormData(fileName: String,
-                       job: JobRecord,
+case class VepFormData(jobId: JobId,
+                       inputFileClient: File,
+                       inputFileServer: File,
+                       filterString: String,
                        filter: LunBoolExpression,
                        format: String,
                        sessionId: SessionId)
@@ -21,13 +22,14 @@ case class VepFormData(fileName: String,
 object VepFormData {
   def fromFields(fields: Map[String, FormField]): VepFormData = {
     val inputFileField = fields(FormField.Keys.inputFile).asInstanceOf[InputFileField]
-    val fileName = inputFileField.fileName
-    val job = inputFileField.job
+    val jobId = inputFileField.jobId
+    val inputFileClient = inputFileField.inputFileClient
+    val inputFileServer = inputFileField.inputFileServer
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
     val format = fields(FormField.Keys.format).asInstanceOf[FormatField].format
     val sessionId = fields(FormField.Keys.session).asInstanceOf[SessionIdField].sessionId
-    VepFormData(fileName, job, filter, format, sessionId)
+    VepFormData(jobId, inputFileClient, inputFileServer, filterString, filter, format, sessionId)
   }
 
   sealed trait FormField {
@@ -38,8 +40,8 @@ object VepFormData {
     override def name: String = FormField.Keys.filter
   }
 
-  case class InputFileField(fileName: String,
-                            job: JobRecord) extends FormField {
+  case class InputFileField(jobId: JobId, inputFileClient: File, inputFileServer: File)
+    extends FormField {
     override def name: String = FormField.Keys.inputFile
   }
 
@@ -74,9 +76,11 @@ object VepFormData {
         case Keys.filter =>
           bodyPartToStringFut(bodyPart).map(FilterField)
         case Keys.inputFile =>
-          val job = vepFileManager.createNewJob(bodyPart.filename.map(File(_)))
-          vepFileManager.uploadFile(bodyPart.entity.dataBytes, job.inputFile).map { _ =>
-            InputFileField(bodyPart.filename.get, job)
+          val jobId = JobId.createNew()
+          val inputFileClient = File(bodyPart.filename.get)
+          val inputFileServer = vepFileManager.inputFilePathForId(jobId)
+          vepFileManager.uploadFile(bodyPart.entity.dataBytes, inputFileServer).map { _ =>
+            InputFileField(jobId, inputFileClient, inputFileServer)
           }
         case Keys.format =>
           bodyPartToStringFut(bodyPart).map(FormatField)

@@ -10,11 +10,11 @@ import lunaris.recipes.Recipe
 import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
-import lunaris.vep.VepFileManager.ResultId
+import lunaris.vep.VepFileManager.JobId
 
 object VepRequestBuilder {
 
-  def buildRequest(resultId: ResultId,
+  def buildRequest(resultId: JobId,
                    chroms: Seq[String],
                    regions: Map[String, Seq[Region]],
                    driverFileName: String,

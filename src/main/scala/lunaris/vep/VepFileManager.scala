@@ -12,7 +12,7 @@ import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
 import lunaris.utils.DateUtils
-import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
+import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.JobRecord
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
@@ -34,7 +34,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     println(snag.report)
   }
 
-  def updateStatus(resultId: ResultId, resultStatus: ResultStatus): Unit = {
+  def updateStatus(resultId: JobId, resultStatus: ResultStatus): Unit = {
     eggDb.updateJobStatus(resultId, resultStatus) match {
       case Left(snag) => reportSnag(snag)
       case _ => ()
@@ -67,35 +67,49 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     } yield ()
   }
 
-  def createNewIdFor(): ResultId = ResultId.createNew()
+  def createNewIdFor(): JobId = JobId.createNew()
 
-  def inputFileNameForId(resultId: ResultId): String = "input_" + resultId.string + ".vcf"
+  def inputFileNameForId(resultId: JobId): String = "input_" + resultId.string + ".vcf"
 
-  def inputFilePathForId(resultId: ResultId): File = inputsFolder / inputFileNameForId(resultId)
+  def inputFilePathForId(resultId: JobId): File = inputsFolder / inputFileNameForId(resultId)
 
-  def outputFileNameForId(resultId: ResultId): String = resultId.string + ".tsv"
+  def outputFileNameForId(resultId: JobId): String = resultId.string + ".tsv"
 
-  def outputFilePathForId(resultId: ResultId): File = resultsFolder / outputFileNameForId(resultId)
+  def outputFilePathForId(resultId: JobId): File = resultsFolder / outputFileNameForId(resultId)
 
   def uploadFile(stream: Source[ByteString, Any], inputFile: File)(
     implicit actorSystem: ActorSystem
   ): Future[IOResult] = stream.runWith(FileIO.toPath(inputFile.path))
 
+  def insertNewJobToDb(id: JobId, sessionId: SessionId, inputFileClient: File, inputFileServer: File,
+                       outputFile: File, filter: String, outputFormat: String, submissionTime: Long): Unit = {
+    val resultStatus = ResultStatus.createSubmitted(submissionTime, Seq.empty)
+    val job = JobRecord(id, sessionId, inputFileClient, inputFileServer, outputFile, filter, outputFormat,
+      resultStatus.statusType, resultStatus.message, resultStatus.snagMessages, submissionTime, submissionTime)
+    eggDb.insertJob(job) match {
+      case Left(snag) => println(snag.report)
+      case _ => ()
+    }
+  }
+
   def newQueryFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem
   ): Future[RunResult] = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    val job = formData.job
-    val resultId = job.id
-    val inputFile = inputFilePathForId(resultId)
-    val chromsAndRegionsFut = VcfStreamVariantsReader.readChromsAndRegions(inputFile)
+    val jobId = formData.jobId
+    val inputFileServer = formData.inputFileServer
+    val outputFile = outputFilePathForId(jobId)
+    val submissionTime = System.currentTimeMillis()
+    insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
+      formData.filterString, formData.format, submissionTime)
+    val chromsAndRegionsFut = VcfStreamVariantsReader.readChromsAndRegions(inputFileServer)
     val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
       val request = {
         VepRequestBuilder.buildRequest(
-          resultId, chroms, regionsByChrom, inputFile.toString, dataFileWithIndex.data.toString,
-          job.outputFile, formData.format, formData.filter, Some(dataFileWithIndex.index.toString),
+          jobId, chroms, regionsByChrom, inputFileServer.toString, dataFileWithIndex.data.toString,
+          outputFile, formData.format, formData.filter, Some(dataFileWithIndex.index.toString),
           vepDataFields
         )
       }
@@ -112,12 +126,12 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
       case Success(runResult) =>
         val successTime = System.currentTimeMillis()
         val snagMessages = runResult.snags.map(_.message)
-        updateStatus(resultId, ResultStatus.createSucceeded(job.ctime, successTime, snagMessages))
+        updateStatus(jobId, ResultStatus.createSucceeded(submissionTime, successTime, snagMessages))
       case Failure(exception) =>
         val failTime = System.currentTimeMillis()
         val snag = Snag(exception)
         println(snag.report)
-        updateStatus(resultId, ResultStatus.createFailed(job.ctime, failTime, snag.message, Seq(snag.message)))
+        updateStatus(jobId, ResultStatus.createFailed(submissionTime, failTime, snag.message, Seq(snag.message)))
     }
     queryFuture
   }
@@ -128,24 +142,15 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     newQueryFuture(formData)
   }
 
-  class SubmissionResponse(val resultId: ResultId, val fut: Future[RunResult])
-
-  def createNewJob(inputFileClientOpt: Option[File]): JobRecord = {
-    eggDb.newSubmittedJob(inputFileClientOpt) match {
-      case Left(snag) => throw new SnagException(snag)
-      case Right(job) => job
-    }
-  }
+  class SubmissionResponse(val jobId: JobId, val fut: Future[RunResult])
 
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-
-    val job = formData.job
     val fut = newUploadAndQueryFutureFuture(formData)
-    new SubmissionResponse(job.id, fut)
+    new SubmissionResponse(formData.jobId, fut)
   }
 
-  def getStatus(resultId: ResultId): ResultStatus = {
+  def getStatus(resultId: JobId): ResultStatus = {
     eggDb.getJobOpt(resultId) match {
       case Left(snag) =>
         reportSnag(snag)
@@ -155,7 +160,7 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     }
   }
 
-  def streamResults(resultId: ResultId): Either[Snag, Source[ByteString, NotUsed]] = {
+  def streamResults(resultId: JobId): Either[Snag, Source[ByteString, NotUsed]] = {
     val outputFile = outputFilePathForId(resultId)
     try {
       Right(Source.fromIterator(() => outputFile.lineIterator).map(line => ByteString(line + "\n")))
@@ -167,11 +172,11 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
 
 object VepFileManager {
 
-  final case class ResultId(string: String) {
+  final case class JobId(string: String) {
     override def toString: String = string
   }
 
-  object ResultId {
+  object JobId {
     private def fourHexDigits(num: Long): String = ("000" + num.toHexString).takeRight(4)
 
     private def positiveRandomLong(): Long = {
@@ -179,8 +184,8 @@ object VepFileManager {
       if(raw < 0) raw + Long.MaxValue else raw
     }
 
-    def createNew(): ResultId =
-      ResultId(fourHexDigits(System.currentTimeMillis()) + fourHexDigits(positiveRandomLong()))
+    def createNew(): JobId =
+      JobId(fourHexDigits(System.currentTimeMillis()) + fourHexDigits(positiveRandomLong()))
   }
 
   case class ResultStatus(statusType: ResultStatus.Type, message: String, snagMessages: Seq[String])
@@ -217,7 +222,7 @@ object VepFileManager {
 
     def createInvalid(message: String): ResultStatus = ResultStatus(Type.Invalid, message, Seq(message))
 
-    def createUnknown(resultId: ResultId): ResultStatus = {
+    def createUnknown(resultId: JobId): ResultStatus = {
       val message = s"Unknown submission id $resultId."
       ResultStatus(Type.Unknown, message, Seq(message))
     }

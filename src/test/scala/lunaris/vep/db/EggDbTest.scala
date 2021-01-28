@@ -2,9 +2,12 @@ package lunaris.vep.db
 
 import better.files.File
 import lunaris.vep.VepFileManager
-import lunaris.vep.VepFileManager.ResultId
+import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
+import lunaris.vep.db.EggDb.JobRecord
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 import org.scalatest.funsuite.AnyFunSuite
+
+import scala.util.Random
 
 class EggDbTest extends AnyFunSuite {
   private def getValue[A](snagOrValue: Either[Snag, A]): A = {
@@ -14,17 +17,32 @@ class EggDbTest extends AnyFunSuite {
     }
   }
 
+  private def createMockJob(): JobRecord = {
+    val jobId = JobId.createNew()
+    val sessionId = SessionId(("0000000" + Random.nextInt(65536).toHexString).takeRight(8))
+    val inputFileClient = File("input_" + Random.nextInt(100) + ".vcf")
+    val inputFileServer = File(jobId.string + ".vcf")
+    val outputFile = File(jobId.string + ".tsv")
+    val filter = ""
+    val format = "rareMETALS"
+    val submissionTime = System.currentTimeMillis()
+    val resultStatus = ResultStatus.createSubmitted(submissionTime, Seq.empty)
+    JobRecord(jobId, sessionId, inputFileClient, inputFileServer, outputFile, filter, format, resultStatus.statusType,
+      resultStatus.message, resultStatus.snagMessages, submissionTime, submissionTime)
+  }
+
   test("Store and retrieve records") {
     val testDir = File.newTemporaryDirectory()
     val workDir = testDir / "work"
     val dbFile = testDir / "eggtest"
-    val inputFileForId = (id: ResultId) => workDir / ("input_" + id.string + ".vcf")
-    val outputFileForId = (id: ResultId) => workDir / (id.string + ".tsv")
+    val inputFileForId = (id: JobId) => workDir / ("input_" + id.string + ".vcf")
+    val outputFileForId = (id: JobId) => workDir / (id.string + ".tsv")
     val db = EggDb(dbFile, inputFileForId, outputFileForId)
-    var jobIds: Set[ResultId] = Set.empty
+    var jobIds: Set[JobId] = Set.empty
     val nJobs = 5
     for(_ <- 0 until nJobs) {
-      val job = getValue(db.newSubmittedJob(None))
+      val job = createMockJob()
+      getValue(db.insertJob(job))
       val jobId = job.id
       jobIds += jobId
       val jobCopy = getValue(db.getJob(job.id))

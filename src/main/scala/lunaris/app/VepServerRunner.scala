@@ -9,7 +9,7 @@ import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
-import lunaris.vep.VepFileManager.ResultId
+import lunaris.vep.VepFileManager.JobId
 import lunaris.vep.{VepFileManager, VepFormData, VepJson, VepMasksManager, VepRunSettingsBox}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -89,9 +89,9 @@ object VepServerRunner {
                       }
                       onComplete(uploadFut) {
                         case Success(submissionResponse) =>
-                          println("Submission response: " + submissionResponse.resultId)
+                          println("Submission response: " + submissionResponse.jobId)
                           complete(
-                            HttpUtils.ResponseBuilder.fromPlainTextString(submissionResponse.resultId.toString)
+                            HttpUtils.ResponseBuilder.fromPlainTextString(submissionResponse.jobId.toString)
                           )
                         case Failure(ex) =>
                           println("Submission failed: " + ex.getMessage)
@@ -107,7 +107,7 @@ object VepServerRunner {
             },
             path("lunaris" / "predictor" / "status" / Remaining) { resultIdString =>
               get {
-                val status = vepFileManager.getStatus(ResultId(resultIdString))
+                val status = vepFileManager.getStatus(JobId(resultIdString))
                 complete(
                   HttpUtils.ResponseBuilder.fromJson(VepJson.resultStatusToJson(status))
                 )
@@ -117,7 +117,7 @@ object VepServerRunner {
               get {
                 val resultIdString =
                   if(rawString.endsWith(".tsv")) rawString.dropRight(4) else rawString
-                val resultId = ResultId(resultIdString)
+                val resultId = JobId(resultIdString)
                 val snagOrSource = for {
                   source <- vepFileManager.streamResults(resultId)
                 } yield source
