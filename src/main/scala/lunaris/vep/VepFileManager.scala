@@ -241,4 +241,6 @@ object VepFileManager {
         s"Failed on $successTimeStr, after $timeDiffStr: $message", snagMessages)
     }
   }
+
+  case class SessionId(string: String)
 }

@@ -6,7 +6,7 @@ import akka.util.ByteString
 import better.files.File
 import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.parsing.LunBoolExpressionParser
-import lunaris.vep.VepFileManager.ResultId
+import lunaris.vep.VepFileManager.SessionId
 import lunaris.vep.db.EggDb.JobRecord
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
@@ -15,7 +15,8 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 case class VepFormData(fileName: String,
                        job: JobRecord,
                        filter: LunBoolExpression,
-                       format: String)
+                       format: String,
+                       sessionId: SessionId)
 
 object VepFormData {
   def fromFields(fields: Map[String, FormField]): VepFormData = {
@@ -25,7 +26,8 @@ object VepFormData {
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
     val format = fields(FormField.Keys.format).asInstanceOf[FormatField].format
-    VepFormData(fileName, job, filter, format)
+    val sessionId = fields(FormField.Keys.session).asInstanceOf[SessionIdField].sessionId
+    VepFormData(fileName, job, filter, format, sessionId)
   }
 
   sealed trait FormField {
@@ -45,6 +47,10 @@ object VepFormData {
     override def name: String = FormField.Keys.format
   }
 
+  case class SessionIdField(sessionId: SessionId) extends FormField {
+    override def name: String = FormField.Keys.session
+  }
+
   case class IgnoredField(name: String) extends FormField
 
   object FormField {
@@ -53,6 +59,12 @@ object VepFormData {
       val filter: String = "filter"
       val inputFile: String = "inputFile"
       val format: String = "format"
+      val session: String = "session"
+    }
+
+    private def bodyPartToStringFut(bodyPart: Multipart.FormData.BodyPart)(
+      implicit actorSystem: ActorSystem, executionContext: ExecutionContextExecutor): Future[String] = {
+      bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String)
     }
 
     def bodyPartToFieldFut(bodyPart: Multipart.FormData.BodyPart, vepFileManager: VepFileManager)(
@@ -60,14 +72,16 @@ object VepFormData {
       implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
       bodyPart.name match {
         case Keys.filter =>
-          bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FilterField)
+          bodyPartToStringFut(bodyPart).map(FilterField)
         case Keys.inputFile =>
           val job = vepFileManager.createNewJob(bodyPart.filename.map(File(_)))
           vepFileManager.uploadFile(bodyPart.entity.dataBytes, job.inputFile).map { _ =>
             InputFileField(bodyPart.filename.get, job)
           }
         case Keys.format =>
-          bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String).map(FormatField)
+          bodyPartToStringFut(bodyPart).map(FormatField)
+        case Keys.session =>
+          bodyPartToStringFut(bodyPart).map(SessionId).map(SessionIdField)
         case unknownName: String =>
           bodyPart.entity.dataBytes.runFold(())((_, _) => ()).map(_ => IgnoredField(unknownName))
       }

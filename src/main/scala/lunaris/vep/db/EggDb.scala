@@ -1,7 +1,7 @@
 package lunaris.vep.db
 
 import better.files.File
-import lunaris.vep.VepFileManager.{ResultId, ResultStatus}
+import lunaris.vep.VepFileManager.{ResultId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb.{JobRecord, rightOrThrow}
 import musha.map.FunBuilder._
 import musha.sql.{Sql, SqlType}
@@ -12,7 +12,7 @@ import scala.collection.immutable.ArraySeq
 
 class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFileForId: ResultId => File) {
   private val musha = Musha(mushaConfig)
-  private val idCol = Sql.column("id", SqlType.Varchar(8)).bimap[ResultId](_.string, ResultId(_))
+  private val jobIdCol = Sql.column("id", SqlType.Varchar(8)).bimap[ResultId](_.string, ResultId(_))
   private val inputFileClientCol =
     Sql.column("input_file_client", SqlType.Varchar(256)).bimap[File](_.toString, File(_))
   private val inputFileCol = Sql.column("input_file", SqlType.Varchar(256)).bimap[File](_.toString, File(_))
@@ -22,18 +22,28 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
       .bimap[ResultStatus.Type](_.toString, ResultStatus.Type.stringToType)
   private val messageCol = Sql.column("message", SqlType.Varchar(128))
   private val messagesCol =
-    Sql.column("messages", SqlType.Clob).bimap[Seq[String]](messagesToString, stringToMessages)
+    Sql.column("messages", SqlType.Clob).bimap[Seq[String]](stringsToString, stringToStrings)
+
+  private val sessionIdCol = Sql.column("session", SqlType.Varchar(8)).bimap[SessionId](_.string, SessionId)
+  private val jobIdsCol =
+    Sql.column("jobs", SqlType.Clob).bimap[Seq[ResultId]](jobIdsToString, stringToJobIds)
+  private val filterCol = Sql.column("filter", SqlType.Clob)
+  private val outputFormatCol = Sql.column("format", SqlType.Varchar(10))
+
   private val cTimeCol = Sql.column("ctime", SqlType.BigInt)
   private val mTimeCol = Sql.column("mtime", SqlType.BigInt)
+
   private val jobsTable =
-    Sql.table("files", idCol.asPrimaryKey, inputFileClientCol, inputFileCol, outputFileCol, statusTypeCol,
+    Sql.table("jobs", jobIdCol.asPrimaryKey, inputFileClientCol, inputFileCol, outputFileCol, statusTypeCol,
       messageCol, messagesCol, cTimeCol, mTimeCol)
+  private val sessionsTable =
+    Sql.table("sessions", sessionIdCol.asPrimaryKey, jobIdsCol, filterCol, outputFormatCol, cTimeCol, mTimeCol)
 
-  createTableIfNotExist()
+  createTablesIfNotExist()
 
-  private def messagesToString(messages: Seq[String]): String = messages.mkString("\n")
+  private def stringsToString(strings: Seq[String]): String = strings.mkString("\n")
 
-  private def stringToMessages(string: String): Seq[String] = {
+  private def stringToStrings(string: String): Seq[String] = {
     if (string.isEmpty) {
       Seq.empty
     } else {
@@ -41,8 +51,14 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
     }
   }
 
-  def createTableIfNotExist(): Unit = {
-    rightOrThrow(musha.runUpdate(MushaQuery.update(Sql.createTableIfNotExists(jobsTable))))
+  private def jobIdsToString(jobIds: Seq[ResultId]): String = stringsToString(jobIds.map(_.string))
+
+  private def stringToJobIds(string: String): Seq[ResultId] = stringToStrings(string).map(ResultId.apply)
+
+  def createTablesIfNotExist(): Unit = {
+    Seq(jobsTable, sessionsTable).foreach { table =>
+      rightOrThrow(musha.runUpdate(MushaQuery.update(Sql.createTableIfNotExists(table))))
+    }
   }
 
   def newSubmittedJob(inputFileClientOpt: Option[File]): Either[Snag, JobRecord] = {
@@ -56,7 +72,7 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
     val statusType = submittedStatus.statusType
     val message = submittedStatus.message
     val sql = Sql.insert(
-      jobsTable, idCol.withValue(id), inputFileClientCol.withValue(inputFileClient),
+      jobsTable, jobIdCol.withValue(id), inputFileClientCol.withValue(inputFileClient),
       inputFileCol.withValue(inputFile), outputFileCol.withValue(outputFile), statusTypeCol.withValue(statusType),
       messageCol.withValue(message), messagesCol.withValue(messages), cTimeCol.withValue(time),
       mTimeCol.withValue(time)
@@ -70,7 +86,7 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
   def updateJobStatus(id: ResultId, status: ResultStatus): Either[Snag, Unit] = {
     val mTime = System.currentTimeMillis()
     val sql = Sql.merge(
-      jobsTable, idCol.withValue(id), statusTypeCol.withValue(status.statusType),
+      jobsTable, jobIdCol.withValue(id), statusTypeCol.withValue(status.statusType),
       messageCol.withValue(status.message), messagesCol.withValue(status.snagMessages), mTimeCol.withValue(mTime)
     )
     val query = MushaQuery.update(sql)
@@ -78,17 +94,17 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
   }
 
   private val rowMapper =
-    (idCol.get & inputFileClientCol.get & inputFileCol.get & outputFileCol.get & statusTypeCol.get & messageCol.get
+    (jobIdCol.get & inputFileClientCol.get & inputFileCol.get & outputFileCol.get & statusTypeCol.get & messageCol.get
       & messagesCol.get & cTimeCol.get & mTimeCol.get) (JobRecord)
 
   def getJob(id: ResultId): Either[Snag, JobRecord] = {
-    val sql = Sql.select(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
+    val sql = Sql.select(jobsTable, Sql.Equals(jobIdCol.sqlColumn, id.string))
     val query = MushaQuery.singleResult(sql)(rowMapper)
     musha.runSingleResultQuery(query)
   }
 
   def getJobOpt(id: ResultId): Either[Snag, Option[JobRecord]] = {
-    val sql = Sql.select(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
+    val sql = Sql.select(jobsTable, Sql.Equals(jobIdCol.sqlColumn, id.string))
     val query = MushaQuery.optionalResult(sql)(rowMapper)
     musha.runOptionalResultQuery(query)
   }
@@ -106,7 +122,7 @@ class EggDb(mushaConfig: MushaConfig, inputFileForId: ResultId => File, outputFi
   }
 
   def deleteJob(id: ResultId): Either[Snag, Unit] = {
-    val sql = Sql.delete(jobsTable, Sql.Equals(idCol.sqlColumn, id.string))
+    val sql = Sql.delete(jobsTable, Sql.Equals(jobIdCol.sqlColumn, id.string))
     val query = MushaQuery.update(sql)
     musha.runUpdate(query) match {
       case Left(snag) => Left(snag)
@@ -150,4 +166,6 @@ object EggDb {
     def status: ResultStatus = ResultStatus(statusType, message, messages)
   }
 
+  case class SessionRecord(id: SessionId, jobIds: Seq[ResultId], filter: String, format: String, cTime: Long,
+                           mTime: Long)
 }

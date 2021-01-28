@@ -32,12 +32,17 @@ function fourHexDigits(num) {
     return ("000" + num.toString(16)).substr(-4);
 }
 
+function isWellFormedSessionId(id) {
+    const sessionIdRegex = /^[0-9a-f]{8}$/;
+    return id.match(sessionIdRegex);
+}
+
 function initSession() {
     let sessionId;
     const queryParts = window.location.search.substring(1).split("&");
     queryParts.forEach ( queryPart => {
         [key, value] = queryPart.split("=");
-        if(key === "session") {
+        if(key === "session" && isWellFormedSessionId(value)) {
             sessionId = value;
         }
     })
@@ -45,10 +50,10 @@ function initSession() {
         sessionId =
             fourHexDigits((new Date).getTime() % 65536) + fourHexDigits(Math.floor(Math.random() * 65537));
     }
-    document.getElementById("sessionId").innerHTML = sessionId;
+    const sessionIdAreaContent = "Session id is <b>" + sessionId + "</b>.";
+    document.getElementById("session_id_area").innerHTML = sessionIdAreaContent;
     lunarisVariantPredictor.sessionId = sessionId;
 }
-
 
 setInterval(updatePendingStatuses, 300);
 
@@ -62,6 +67,7 @@ function submit() {
     formData.append("filter", codeMirror.getValue());
     formData.append("inputFile", inputFile);
     formData.append("format", getOutputFormat());
+    formData.append("session", lunarisVariantPredictor.sessionId);
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
         .then((response) => {
             removeTemporaryStatus();
