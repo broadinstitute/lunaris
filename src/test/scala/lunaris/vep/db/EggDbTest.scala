@@ -19,7 +19,7 @@ class EggDbTest extends AnyFunSuite {
 
   private def createMockJob(): JobRecord = {
     val jobId = JobId.createNew()
-    val sessionId = SessionId(("0000000" + Random.nextInt(65536).toHexString).takeRight(8))
+    val sessionId = SessionId.createNew()
     val inputFileClient = File("input_" + Random.nextInt(100) + ".vcf")
     val inputFileServer = File(jobId.string + ".vcf")
     val outputFile = File(jobId.string + ".tsv")
@@ -42,7 +42,9 @@ class EggDbTest extends AnyFunSuite {
     val nJobs = 5
     for(_ <- 0 until nJobs) {
       val job = createMockJob()
+      assert(getValue(db.getSessionOpt(job.sessionId)).isEmpty)
       getValue(db.insertJob(job))
+      assert(getValue(db.getSessionOpt(job.sessionId)).nonEmpty)
       val jobId = job.id
       jobIds += jobId
       val jobCopy = getValue(db.getJob(job.id))

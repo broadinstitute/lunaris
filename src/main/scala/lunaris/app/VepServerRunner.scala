@@ -9,7 +9,7 @@ import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{HttpUtils, SnagJson}
-import lunaris.vep.VepFileManager.JobId
+import lunaris.vep.VepFileManager.{JobId, SessionId}
 import lunaris.vep.{VepFileManager, VepFormData, VepJson, VepMasksManager, VepRunSettingsBox}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -110,6 +110,14 @@ object VepServerRunner {
                 val status = vepFileManager.getStatus(JobId(resultIdString))
                 complete(
                   HttpUtils.ResponseBuilder.fromJson(VepJson.resultStatusToJson(status))
+                )
+              }
+            },
+            path("lunaris" / "predictor" / "session" / Remaining) { sessionIdString =>
+              get {
+                val session = vepFileManager.getSession(SessionId(sessionIdString))
+                complete(
+                  HttpUtils.ResponseBuilder.fromJson(VepJson.snagOrSessionOptEncoder(session))
                 )
               }
             },

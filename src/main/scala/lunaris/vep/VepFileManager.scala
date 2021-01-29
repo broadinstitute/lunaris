@@ -14,7 +14,7 @@ import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
 import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
-import lunaris.vep.db.EggDb.JobRecord
+import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -160,6 +160,12 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
     }
   }
 
+  def getSession(sessionId: SessionId): Either[Snag, Option[SessionRecord]] = {
+    val snagOrSessionOpt = eggDb.getSessionOpt(sessionId)
+    snagOrSessionOpt.left.foreach(reportSnag)
+    snagOrSessionOpt
+  }
+
   def streamResults(resultId: JobId): Either[Snag, Source[ByteString, NotUsed]] = {
     val outputFile = outputFilePathForId(resultId)
     try {
@@ -172,20 +178,26 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
 
 object VepFileManager {
 
+  def fourHexDigits(num: Long): String = ("000" + num.toHexString).takeRight(4)
+
+  private def positiveRandomLong(): Long = {
+    val raw = Random.nextLong()
+    if(raw < 0) raw + Long.MaxValue else raw
+  }
+
+  def eightHexDigits(): String = fourHexDigits(System.currentTimeMillis()) + fourHexDigits(positiveRandomLong())
+
   final case class JobId(string: String) {
     override def toString: String = string
   }
 
   object JobId {
-    private def fourHexDigits(num: Long): String = ("000" + num.toHexString).takeRight(4)
-
     private def positiveRandomLong(): Long = {
       val raw = Random.nextLong()
       if(raw < 0) raw + Long.MaxValue else raw
     }
 
-    def createNew(): JobId =
-      JobId(fourHexDigits(System.currentTimeMillis()) + fourHexDigits(positiveRandomLong()))
+    def createNew(): JobId = JobId(eightHexDigits())
   }
 
   case class ResultStatus(statusType: ResultStatus.Type, message: String, snagMessages: Seq[String])
@@ -248,4 +260,8 @@ object VepFileManager {
   }
 
   case class SessionId(string: String)
+
+  object SessionId {
+    def createNew(): SessionId = SessionId(eightHexDigits())
+  }
 }

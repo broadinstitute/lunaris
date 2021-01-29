@@ -25,7 +25,8 @@ class EggDb(mushaConfig: MushaConfig) {
   private val messagesCol =
     Sql.column("messages", SqlType.Clob).bimap[Seq[String]](stringsToString, stringToStrings)
 
-  private val sessionIdCol = Sql.column("session", SqlType.Varchar(8)).bimap[SessionId](_.string, SessionId)
+  private val sessionIdCol =
+    Sql.column("session", SqlType.Varchar(8)).bimap[SessionId](_.string, SessionId(_))
   private val jobIdsCol =
     Sql.column("jobs", SqlType.Clob).bimap[Seq[JobId]](jobIdsToString, stringToJobIds)
 
@@ -35,7 +36,7 @@ class EggDb(mushaConfig: MushaConfig) {
   private val mTimeCol = Sql.column("mtime", SqlType.BigInt)
 
   private val jobsTable =
-    Sql.table("jobs", jobIdCol.asPrimaryKey, inputFileClientCol, inputFileCol, outputFileCol, filterCol,
+    Sql.table("jobs", jobIdCol.asPrimaryKey, sessionIdCol, inputFileClientCol, inputFileCol, outputFileCol, filterCol,
       outputFormatCol, statusTypeCol, messageCol, messagesCol, cTimeCol, mTimeCol)
   private val sessionsTable =
     Sql.table("sessions", sessionIdCol.asPrimaryKey, jobIdsCol, filterCol, outputFormatCol, cTimeCol, mTimeCol)
@@ -71,11 +72,12 @@ class EggDb(mushaConfig: MushaConfig) {
 
   private def insertIntoJobTable(job: JobRecord): Either[Snag, Unit] = {
     val sql = Sql.insert(
-      jobsTable, jobIdCol.withValue(job.id), inputFileClientCol.withValue(job.inputFileClient),
-      inputFileCol.withValue(job.inputFileServer), outputFileCol.withValue(job.outputFile),
-      filterCol.withValue(job.filter), outputFormatCol.withValue(job.outputFormat),
-      statusTypeCol.withValue(job.statusType), messageCol.withValue(job.message),
-      messagesCol.withValue(job.messages), cTimeCol.withValue(job.ctime), mTimeCol.withValue(job.mTime)
+      jobsTable, jobIdCol.withValue(job.id), sessionIdCol.withValue(job.sessionId),
+      inputFileClientCol.withValue(job.inputFileClient), inputFileCol.withValue(job.inputFileServer),
+      outputFileCol.withValue(job.outputFile), filterCol.withValue(job.filter),
+      outputFormatCol.withValue(job.outputFormat), statusTypeCol.withValue(job.statusType),
+      messageCol.withValue(job.message), messagesCol.withValue(job.messages), cTimeCol.withValue(job.ctime),
+      mTimeCol.withValue(job.mTime)
     )
     val query = MushaQuery.update(sql)
     musha.runUpdate(query).filterOrElse(_ > 0, Snag("Insert of new record failed")).map(_ => ())
@@ -85,16 +87,14 @@ class EggDb(mushaConfig: MushaConfig) {
     for {
       sessionOpt <- getSessionOpt(job.sessionId)
       _ <- {
-        sessionOpt match {
+        val session = sessionOpt match {
           case None =>
-            val session =
-              SessionRecord(job.sessionId, Seq(job.id), job.filter, job.outputFormat, job.ctime, job.mTime)
-            insertSession(session)
+            SessionRecord(job.sessionId, Seq(job.id), job.filter, job.outputFormat, job.ctime, job.mTime)
           case Some(session) =>
-            val jobIdsOld = session.jobIds
-            val jobIdsNew = jobIdsOld :+ job.id
-            updateSession(session.copy(jobIds = jobIdsNew))
+            session.copy(jobIds = session.jobIds :+ job.id, filter = job.filter, format = job.outputFormat,
+              mTime = job.mTime)
         }
+        mergeSession(session)
       }
     } yield ()
   }
@@ -155,14 +155,15 @@ class EggDb(mushaConfig: MushaConfig) {
 
   private val rowToSession: ResultSet => SessionRecord =
     (sessionIdCol.get & jobIdsCol.get & filterCol.get & outputFormatCol.get & cTimeCol.get
-      & mTimeCol.get)(SessionRecord)
+      & mTimeCol.get) (SessionRecord)
 
-  def insertSession(session: SessionRecord): Either[Snag, Unit] = {
-    ???
-  }
-
-  def updateSession(session: SessionRecord): Either[Snag, Unit] = {
-    ???
+  private def mergeSession(session: SessionRecord): Either[Snag, Int] = {
+    val sql =
+      Sql.merge(sessionsTable, sessionIdCol.withValue(session.id), jobIdsCol.withValue(session.jobIds),
+        filterCol.withValue(session.filter), outputFormatCol.withValue(session.format),
+        cTimeCol.withValue(session.cTime), mTimeCol.withValue(session.mTime))
+    val query = MushaQuery.update(sql)
+    musha.runUpdate(query)
   }
 
   def getSessionOpt(id: SessionId): Either[Snag, Option[SessionRecord]] = {
@@ -204,4 +205,5 @@ object EggDb {
 
   case class SessionRecord(id: SessionId, jobIds: Seq[JobId], filter: String, format: String, cTime: Long,
                            mTime: Long)
+
 }

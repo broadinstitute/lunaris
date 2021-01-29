@@ -85,7 +85,7 @@ object VepFormData {
         case Keys.format =>
           bodyPartToStringFut(bodyPart).map(FormatField)
         case Keys.session =>
-          bodyPartToStringFut(bodyPart).map(SessionId).map(SessionIdField)
+          bodyPartToStringFut(bodyPart).map(SessionId(_)).map(SessionIdField)
         case unknownName: String =>
           bodyPart.entity.dataBytes.runFold(())((_, _) => ()).map(_ => IgnoredField(unknownName))
       }

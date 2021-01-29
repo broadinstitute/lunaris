@@ -1,7 +1,6 @@
 package musha
 
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
-import musha.MushaQuery.RowCount
 import org.broadinstitute.yootilz.core.snag.Snag
 import org.h2.Driver
 

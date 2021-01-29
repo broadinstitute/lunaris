@@ -50,9 +50,39 @@ function initSession() {
         sessionId =
             fourHexDigits((new Date).getTime() % 65536) + fourHexDigits(Math.floor(Math.random() * 65537));
     }
-    const sessionIdAreaContent = "Session id is <b>" + sessionId + "</b>.";
-    document.getElementById("session_id_area").innerHTML = sessionIdAreaContent;
+    setSessionId(sessionId);
+}
+
+function setSessionId(sessionId) {
+    document.getElementById("session_id_area").innerText = sessionId;
     lunarisVariantPredictor.sessionId = sessionId;
+}
+
+function loadSession(sessionId) {
+    fetch("/lunaris/predictor/session/" + sessionId)
+        .then((response) => response.json())
+        .then((session) => {
+            if(session.error) {
+                alert("Error:\n" + session.message);
+                window.log(session.report);
+            } else if(session.found) {
+                setSessionId(sessionId);
+                alert(JSON.stringify(session));
+            } else {
+                alert("Unknown session " + sessionId + ".");
+            }
+        });
+}
+
+function promptAndLoadSession() {
+    const sessionId = prompt("Please enter session id.");
+    if(sessionId) {
+        if(isWellFormedSessionId(sessionId)) {
+            loadSession(sessionId);
+        } else {
+            alert(sessionId + " is not a well formed session id.");
+        }
+    }
 }
 
 setInterval(updatePendingStatuses, 300);
@@ -280,3 +310,4 @@ function setMask() {
             codeMirror.setValue(mask);
         });
 }
+
