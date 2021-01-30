@@ -51,6 +51,7 @@ function initSession() {
             fourHexDigits((new Date).getTime() % 65536) + fourHexDigits(Math.floor(Math.random() * 65537));
     }
     setSessionId(sessionId);
+    setEmptySubmissionArea();
 }
 
 function setSessionId(sessionId) {
@@ -67,7 +68,15 @@ function loadSession(sessionId) {
                 window.log(session.report);
             } else if(session.found) {
                 setSessionId(sessionId);
-                alert(JSON.stringify(session));
+                // TODO: set filter
+                // TODO: set format
+                setEmptySubmissionArea();
+                session.jobs.forEach(job => {
+                    const id = job.id;
+                    const path = job.inputFile;
+                    const inputFileName = path.substring(path.lastIndexOf("/") + 1);
+                    addStatusEntry(inputFileName, id);
+                });
             } else {
                 alert("Unknown session " + sessionId + ".");
             }
@@ -83,6 +92,12 @@ function promptAndLoadSession() {
             alert(sessionId + " is not a well formed session id.");
         }
     }
+}
+
+function setEmptySubmissionArea() {
+    const submissionArea = document.getElementById("submission_area");
+    submissionArea.innerHTML =
+        "<span id=\"statusUpdatesPlaceholder\">(Submission status updates will appear here)</span>";
 }
 
 setInterval(updatePendingStatuses, 300);
@@ -108,8 +123,6 @@ function submit() {
         })
         .then((id) => {
             addStatusEntry(inputFile.name, id);
-            lunarisVariantPredictor.inputFileNames[id] = inputFile.name;
-            lunarisVariantPredictor.idsPending.push(id);
             getStatus(id);
         }).catch(showCouldNotSubmit);
 }
@@ -166,6 +179,8 @@ function showCouldNotSubmit(message) {
 }
 
 function addStatusEntry(inputFileName, id) {
+    lunarisVariantPredictor.inputFileNames[id] = inputFileName;
+    lunarisVariantPredictor.idsPending.push(id);
     const divNode = document.createElement("div");
     const pNode = document.createElement("p");
     divNode.appendChild(pNode);
