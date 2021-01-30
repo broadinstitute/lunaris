@@ -2,7 +2,7 @@ package lunaris.vep
 
 import io.circe.{Encoder, Json}
 import lunaris.vep.VepFileManager.ResultStatus
-import lunaris.vep.db.EggDb.SessionRecord
+import lunaris.vep.db.EggDb.{JobIdClientFile, SessionRecord}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object VepJson {
@@ -17,11 +17,16 @@ object VepJson {
     "snagMessages" -> Json.fromValues(status.snagMessages.map(Json.fromString))
   )
 
+  implicit val jobIdClientFileEncoder: Encoder[JobIdClientFile] = (jobIdClientFile: JobIdClientFile) => Json.obj(
+    "id" -> Json.fromString(jobIdClientFile.id.string),
+    "inputFile" -> Json.fromString(jobIdClientFile.clientFile.toString)
+  )
+
   implicit val sessionEncoder: Encoder[SessionRecord] = (session: SessionRecord) => Json.obj(
     "found" -> Json.fromBoolean(true),
     "error" -> Json.fromBoolean(false),
     "id" -> Json.fromString(session.id.string),
-    "jobIds" -> Json.fromValues(session.jobIds.map(_.string).map(Json.fromString)),
+    "jobs" -> Json.fromValues(session.jobIdsAndFiles.map(jobIdClientFileEncoder(_))),
     "filter" -> Json.fromString(session.filter),
     "format" -> Json.fromString(session.format),
     "ctime" -> Json.fromLong(session.cTime),
