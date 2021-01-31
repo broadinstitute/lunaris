@@ -68,8 +68,12 @@ function loadSession(sessionId) {
                 window.log(session.report);
             } else if(session.found) {
                 setSessionId(sessionId);
-                // TODO: set filter
-                // TODO: set format
+                if(session.filter) {
+                    setMask(session.filter);
+                }
+                if(session.format) {
+                    setOutputFormat(session.format);
+                }
                 setEmptySubmissionArea();
                 session.jobs.forEach(job => {
                     const id = job.id;
@@ -312,17 +316,29 @@ function getMaskSelectNode() {
     return document.getElementById("masks");
 }
 
-function getOutputFormat() {
-    return document.getElementById("formats").value;
+function getOutputFormatNode() {
+    return document.getElementById("formats")
 }
 
-function setMask() {
+function setOutputFormat(format) {
+    getOutputFormatNode().value = format;
+}
+
+function getOutputFormat() {
+    return getOutputFormatNode().value;
+}
+
+function setMask(mask) {
+    codeMirror.setValue(mask);
+}
+
+function setPredefinedMask() {
     const maskSelectNode = getMaskSelectNode();
     const maskName = maskSelectNode.value;
     fetch("/lunaris/predictor/masks/" + maskName)
         .then((response) => response.text())
         .then((mask) => {
-            codeMirror.setValue(mask);
+            setMask(mask);
         });
 }
 
