@@ -46,12 +46,14 @@ function initSession() {
             sessionId = value;
         }
     })
-    if(sessionId === undefined) {
+    if(sessionId) {
+        loadSession(sessionId);
+    } else {
         sessionId =
             fourHexDigits((new Date).getTime() % 65536) + fourHexDigits(Math.floor(Math.random() * 65537));
+        setSessionId(sessionId);
+        setEmptySubmissionArea();
     }
-    setSessionId(sessionId);
-    setEmptySubmissionArea();
 }
 
 function setSessionId(sessionId) {
