@@ -103,14 +103,4 @@ object MushaQuery {
       statement.executeUpdate(sql.sqlString)
     }
   }
-
-  def rowCount(sql: Sql.SelectCountRows): RowCount = new RowCount(sql)
-
-  class RowCount(override val sql: Sql.SelectCountRows) extends MushaQuery[Long] {
-    override def apply(statement: Statement): Long = {
-      val resultSet = statement.executeQuery(sql.sqlString)
-      resultSet.next()
-      resultSet.getLong(1)
-    }
-  }
 }

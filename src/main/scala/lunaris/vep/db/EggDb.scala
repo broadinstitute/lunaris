@@ -141,11 +141,7 @@ class EggDb(mushaConfig: MushaConfig) {
     musha.runQuery(query)(_.foreach(jobConsumer))
   }
 
-  def countJobs(): Either[Snag, Long] = {
-    val sql = Sql.countRows(jobsTable)
-    val query = MushaQuery.rowCount(sql)
-    musha.runCountRows(query)
-  }
+  def countJobs(): Either[Snag, Long] = musha.runCountRows(jobsTable)
 
   def deleteJob(id: JobId): Either[Snag, Unit] = {
     val sql = Sql.delete(jobsTable, Sql.Equals(jobIdCol.sqlColumn, id.string))

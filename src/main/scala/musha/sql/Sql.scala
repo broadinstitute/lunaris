@@ -2,10 +2,16 @@ package musha.sql
 
 import musha.SqlCodec
 
+import java.sql.Statement
+
 sealed trait Sql extends SqlElement {
 }
 
 object Sql {
+
+  sealed trait SqlStatementFunction[A] extends Sql with (Statement => A) {
+    override def apply(statement: Statement): A
+  }
 
   private def build(strings: String*): String = strings.filter(_.nonEmpty).mkString(" ") + ";"
 
@@ -74,8 +80,14 @@ object Sql {
     override def sqlString: String = s"DELETE FROM ${table.name} WHERE ${filter.sqlString};"
   }
 
-  case class SelectCountRows(table: SqlTable) extends Sql {
+  case class SelectCountRows(table: SqlTable) extends SqlStatementFunction[Long] {
     override def sqlString: String = s"SELECT COUNT(*) FROM ${table.name};"
+
+    override def apply(statement: Statement): Long = {
+      val resultSet = statement.executeQuery(sqlString)
+      resultSet.next()
+      resultSet.getLong(1)
+    }
   }
 
   def table(name: String, columns: SqlCodec[_, _]*): SqlTable = SqlTable(name, columns.map(_.sqlColumn))

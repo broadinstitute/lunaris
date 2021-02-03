@@ -84,7 +84,8 @@ function loadSession(sessionId) {
                     addStatusEntry(inputFileName, id);
                 });
             } else {
-                alert("Unknown session " + sessionId + ".");
+                alert("Unknown session " + sessionId +
+                    ".\nNote that sessions are only saved when something is submitted.");
             }
         });
 }
