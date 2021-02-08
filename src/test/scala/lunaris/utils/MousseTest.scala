@@ -4,12 +4,13 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class MousseTest extends AnyFunSuite {
   test("Get some longs") {
-    val mousse = Mousse(8)
+    val mousse = Mousse()
+    val random = mousse.asRandom
     for(_ <- 1 to 1000000) {
-      mousse.nextLong()
+      random.nextLong()
     }
     for(i <- 1 to 20) {
-      println(Seq.fill(10)(mousse.nextLong().toHexString).mkString(" "))
+      println(Seq.fill(10)(random.nextLong().toHexString).mkString(" "))
     }
   }
 }
