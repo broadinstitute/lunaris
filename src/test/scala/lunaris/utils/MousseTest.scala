@@ -2,6 +2,8 @@ package lunaris.utils
 
 import org.scalatest.funsuite.AnyFunSuite
 
+import scala.util.Random
+
 class MousseTest extends AnyFunSuite {
   private val max: Double = Long.MaxValue.toDouble
 
@@ -38,16 +40,27 @@ class MousseTest extends AnyFunSuite {
     }
   }
 
-  test("Get some longs") {
+  private val epsilon: Double = 1e-3
+
+  private def assertCloseEnough(name: String, value: Double, expected: Double): Unit = {
+    assert(Math.abs(value - expected) < epsilon, s" - $name is $value, which is too far from $expected.")
+  }
+
+  private def assertRandom(random: Random, nSample: Int): Unit = {
+    val stats = new Stats
+    for (_ <- 1 to nSample) {
+      stats.add(random.nextLong())
+    }
+    assertCloseEnough("mean", stats.mean, 0.0)
+    assertCloseEnough("variance", stats.variance, 1.0/3.0)
+    assertCloseEnough("two-point autocorrelation", stats.autoCorr2, 0.0)
+    assertCloseEnough("three-point autocorrelation", stats.autoCorr3, 0.0)
+  }
+
+  test("Sample Mousse") {
     val mousse = Mousse()
     val random = mousse.asRandom
-    val stats = new Stats
-    for (_ <- 1 to 10) {
-      for(_ <- 1 to 500000) {
-        stats.add(random.nextLong())
-      }
-      println(s"mean = ${stats.mean}, variance = ${stats.variance}, " +
-        s"autocorr2 = ${stats.autoCorr2}, autocorr3 = ${stats.autoCorr3}")
-    }
+    val nSample = 5000000
+    assertRandom(random, nSample)
   }
 }
