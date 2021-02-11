@@ -15,6 +15,7 @@ val configV = "1.4.0"
 val hikariCpV = "3.4.5"
 val h2V = "1.4.200"
 val logbackV = "1.2.3"
+val sendGridV = "4.7.1"
 
 lazy val mainDeps = Seq(
   "org.broadinstitute" %% "yootilz-core" % yootilzV,
@@ -31,7 +32,8 @@ lazy val mainDeps = Seq(
   "com.typesafe" % "config" % configV,
   "com.zaxxer" % "HikariCP" % hikariCpV,
   "com.h2database"  %  "h2"                % h2V,
-  "ch.qos.logback"  %  "logback-classic"   % logbackV
+  "ch.qos.logback"  %  "logback-classic"   % logbackV,
+  "com.sendgrid" % "sendgrid-java" % sendGridV
 )
 
 lazy val testDeps = Set(

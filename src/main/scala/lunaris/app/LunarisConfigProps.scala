@@ -31,6 +31,9 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val vepCacheDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.cacheDir")
   val vepPluginsDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.pluginsDir")
   val vepDbNSFPFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.dbNSFPFile")
+  val emailKeyId: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyId")
+  val emailKeyEncrypted: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyEncrypted")
+
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {
@@ -60,11 +63,19 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
     } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, vepDataFields, vepRunSettings)
   }
 
+  def toEmailSettings: Either[Snag, EmailSettings] = {
+    for {
+      emailKeyId <- emailKeyId.get
+      emailKeyEncrypted <- emailKeyEncrypted.get
+    } yield EmailSettings(emailKeyId, emailKeyEncrypted)
+  }
+
   def toVepServerSettings: Either[Snag, VepServerSettings] = {
     for {
       serverSettings <- toServerSettings
       vepSettings <- toVepSettings
-    } yield VepServerSettings(serverSettings, vepSettings)
+      emailSettings <- toEmailSettings
+    } yield VepServerSettings(serverSettings, vepSettings, emailSettings)
   }
 }
 

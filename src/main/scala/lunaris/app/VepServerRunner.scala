@@ -8,9 +8,9 @@ import akka.stream.Materializer
 import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
-import lunaris.utils.{HttpUtils, SnagJson}
+import lunaris.utils.{Crypt, HttpUtils, SnagJson}
 import lunaris.vep.VepFileManager.{JobId, SessionId}
-import lunaris.vep.{VepFileManager, VepFormData, VepJson, VepMasksManager, VepRunSettingsBox}
+import lunaris.vep.{EmailManager, VepFileManager, VepFormData, VepJson, VepMasksManager, VepRunSettingsBox}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -18,6 +18,10 @@ import scala.io.StdIn
 import scala.util.{Failure, Success}
 
 object VepServerRunner {
+  private def askForEncryptionKey(): String = {
+    print("Please enter key to decode encrypted properties: ")
+    StdIn.readLine()
+  }
   def run(vepServerSettings: VepServerSettings): Unit = {
     val serverSettings = vepServerSettings.serverSettings
     val host = serverSettings.webInterface
@@ -25,6 +29,13 @@ object VepServerRunner {
     val vepSettings = vepServerSettings.vepSettings
     VepRunSettingsBox.setVepRunSettings(vepSettings.runSettings)
     val resourceConfig = ResourceConfig.empty
+    val emailSettings = vepServerSettings.emailSettings
+    val encryptionKey = askForEncryptionKey()
+    val crypt = new Crypt(encryptionKey)
+    val emailApiKey = crypt.decrypt(emailSettings.keyEncrypted)
+    val emailManager = EmailManager(emailSettings, emailApiKey)
+    println("Sending an email message")
+    println(emailManager.sendTestMessage())
     val vepFileManager = new VepFileManager(vepSettings, resourceConfig)
     vepFileManager.foldersExistOrSnag() match {
       case Left(snag) =>
