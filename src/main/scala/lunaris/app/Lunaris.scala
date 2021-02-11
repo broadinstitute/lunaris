@@ -40,6 +40,8 @@ object Lunaris {
                   case Right(vepServerSettings) =>
                     VepServerRunner.run(vepServerSettings)
                 }
+              case LunarisMode.Encrypt =>
+                EncryptRunner.run()
             }
           case Left(snag) =>
             println("Invalid invocation")

@@ -12,7 +12,9 @@ object LunarisMode {
 
   case object Vep extends LunarisMode
 
-  val all: Set[LunarisMode] = Set(Batch, Server, Vep)
+  case object Encrypt extends LunarisMode
+
+  val all: Set[LunarisMode] = Set(Batch, Server, Vep, Encrypt)
 
   def parse(string: String): Either[Snag, LunarisMode] = {
     all.find(_.toString == string) match {

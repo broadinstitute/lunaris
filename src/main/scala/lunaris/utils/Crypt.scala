@@ -4,7 +4,7 @@ import lunaris.utils.Crypt.{RandomIntIter, shiftString}
 
 import scala.util.Random
 
-case class Crypt(key: String) {
+final case class Crypt(key: String) {
 
   private def shift(string: String, isForward: Boolean): String = {
     val intIter = new RandomIntIter(Mousse(key).asRandom, isForward)

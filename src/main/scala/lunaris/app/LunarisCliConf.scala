@@ -49,6 +49,10 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val varId = opt[String](descr = "Name of column with variant id")
   }
   addSubcommand(vep)
+  val encrypt = new Subcommand("encrypt") {
+    banner("Encrypt property to be used in Lunaris configuration.")
+  }
+  addSubcommand(encrypt)
   requireSubcommand()
   verify()
 
@@ -81,6 +85,8 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
         configPropsBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
         configPropsBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
         configPropsBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
+      case List(this.encrypt) =>
+        configPropsBox.modify(_.mode.set(LunarisMode.Encrypt))
     }
     configPropsBox.value
   }
