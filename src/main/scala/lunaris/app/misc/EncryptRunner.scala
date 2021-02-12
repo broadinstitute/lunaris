@@ -1,4 +1,4 @@
-package lunaris.app
+package lunaris.app.misc
 
 import lunaris.utils.Crypt
 

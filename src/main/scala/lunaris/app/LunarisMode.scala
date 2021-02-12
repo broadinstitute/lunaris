@@ -1,10 +1,10 @@
 package lunaris.app
 
-import org.broadinstitute.yootilz.core.snag.Snag
+import lunaris.utils.FiniteNamed
 
 sealed trait LunarisMode
 
-object LunarisMode {
+object LunarisMode extends FiniteNamed[LunarisMode] {
 
   case object Batch extends LunarisMode
 
@@ -12,17 +12,9 @@ object LunarisMode {
 
   case object Vep extends LunarisMode
 
-  case object Encrypt extends LunarisMode
+  case object Misc extends LunarisMode
 
-  val all: Set[LunarisMode] = Set(Batch, Server, Vep, Encrypt)
+  override val all: Set[LunarisMode] = Set(Batch, Server, Vep, Misc)
 
-  def parse(string: String): Either[Snag, LunarisMode] = {
-    all.find(_.toString == string) match {
-      case None =>
-        Left(Snag(s"Unknown mode $string. Needs to be either of: ${all.map(_.toString).mkString(", ")}."))
-      case Some(mode) =>
-        Right(mode)
-    }
-  }
-
+  override val genericName: String = "mode"
 }

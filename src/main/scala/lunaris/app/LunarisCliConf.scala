@@ -1,8 +1,8 @@
 package lunaris.app
 
 import scala.language.reflectiveCalls
-
 import better.files.File
+import lunaris.app.misc.LunarisMiscellaneousMode
 import lunaris.io.InputId
 import lunaris.utils.BuilderBox
 import org.rogach.scallop.{ScallopConf, Subcommand}
@@ -49,10 +49,18 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val varId = opt[String](descr = "Name of column with variant id")
   }
   addSubcommand(vep)
-  val encrypt = new Subcommand("encrypt") {
-    banner("Encrypt property to be used in Lunaris configuration.")
+  val misc = new Subcommand("misc") {
+    banner("Miscellaneous")
+    val encrypt = new Subcommand("encrypt") {
+      banner("Encrypt property to be used in Lunaris configuration.")
+    }
+    addSubcommand(encrypt)
+    val email = new Subcommand("email") with RequestFile {
+      banner("Send a test email message.")
+    }
+    addSubcommand(email)
   }
-  addSubcommand(encrypt)
+  addSubcommand(misc)
   requireSubcommand()
   verify()
 
@@ -85,8 +93,14 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
         configPropsBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
         configPropsBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
         configPropsBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
-      case List(this.encrypt) =>
-        configPropsBox.modify(_.mode.set(LunarisMode.Encrypt))
+      case List(this.misc, miscMode) =>
+        configPropsBox.modify(_.mode.set(LunarisMode.Misc))
+        miscMode match {
+          case this.misc.email =>
+            configPropsBox.modify(_.miscMode.set(LunarisMiscellaneousMode.Email))
+          case this.misc.encrypt =>
+            configPropsBox.modify(_.miscMode.set(LunarisMiscellaneousMode.Encrypt))
+        }
     }
     configPropsBox.value
   }

@@ -2,12 +2,11 @@ package lunaris.app
 
 import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
-
 import com.typesafe.config.{Config, ConfigFactory}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.{InputId, ResourceConfig}
 import lunaris.utils.{ConfigProps, SnagUtils}
-import lunaris.utils.ConfigProps.{FileField, InputIdField, IntField, LunarisModeField, StringField}
+import lunaris.utils.ConfigProps.{FileField, InputIdField, IntField, LunarisMiscModeField, LunarisModeField, StringField}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigProps] {
@@ -33,7 +32,7 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val vepDbNSFPFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.dbNSFPFile")
   val emailKeyId: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyId")
   val emailKeyEncrypted: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyEncrypted")
-
+  val miscMode: LunarisMiscModeField[LunarisConfigProps] = LunarisMiscModeField(this, "lunaris.misc.mode")
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {

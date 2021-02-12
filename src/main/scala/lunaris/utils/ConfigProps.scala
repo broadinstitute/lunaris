@@ -3,6 +3,7 @@ package lunaris.utils
 import better.files.File
 import com.typesafe.config.{Config, ConfigValue, ConfigValueFactory, ConfigValueType}
 import lunaris.app.LunarisMode
+import lunaris.app.misc.LunarisMiscellaneousMode
 import lunaris.io.InputId
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -156,6 +157,17 @@ object ConfigProps {
       LunarisMode.parse(configValue.unwrapped().asInstanceOf[String])
 
     override def wrapValue(mode: LunarisMode): ConfigValue = ConfigValueFactory.fromAnyRef(mode.toString)
+  }
+
+  case class LunarisMiscModeField[B <: ConfigProps[B]](configProps: B, path: String)
+    extends PrimitiveValueField[B, LunarisMiscellaneousMode] {
+    override def configValueType: ConfigValueType = ConfigValueType.STRING
+
+    override def unwrapValue(configValue: ConfigValue): Either[Snag, LunarisMiscellaneousMode] =
+      LunarisMiscellaneousMode.parse(configValue.unwrapped().asInstanceOf[String])
+
+    override def wrapValue(mode: LunarisMiscellaneousMode): ConfigValue =
+      ConfigValueFactory.fromAnyRef(mode.toString)
   }
 
 }

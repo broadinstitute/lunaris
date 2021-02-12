@@ -12,6 +12,7 @@ import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.transform.RecordProcessor
 import lunaris.streams.utils.RecordStreamTypes.Record
+import lunaris.utils.SnagUtils
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 
@@ -89,11 +90,7 @@ object IndexedRecordReader extends tools.Tool {
                   }
               })
             private val snagOrRecordEtor = snagOrRecordEtorDisp.a
-            private val recordEtor = snagOrRecordEtor match {
-              case Left(snag) =>
-                throw new SnagException(snag)
-              case Right(recordEtor) => recordEtor
-            }
+            private val recordEtor = SnagUtils.throwIfSnag(snagOrRecordEtor)
 
             def nextRecord(): Option[Record] = {
               recordEtor.next() match {

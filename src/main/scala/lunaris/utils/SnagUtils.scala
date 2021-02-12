@@ -1,10 +1,16 @@
 package lunaris.utils
 
-import org.broadinstitute.yootilz.core.snag.Snag
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import scala.util.control.NonFatal
 
 object SnagUtils {
+  def throwIfSnag[A](snagOrA: Either[Snag, A]): A = {
+    snagOrA match {
+      case Left(snag) => throw new SnagException(snag)
+      case Right(a) => a
+    }
+  }
 
   def tryOrSnag[T](gen: => T): Either[Snag, T] = {
     try {

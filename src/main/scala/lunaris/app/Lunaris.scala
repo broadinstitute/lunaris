@@ -1,6 +1,6 @@
 package lunaris.app
 
-import lunaris.io.ResourceConfig
+import lunaris.app.misc.MiscellaneousRunner
 
 import scala.language.reflectiveCalls
 
@@ -40,8 +40,8 @@ object Lunaris {
                   case Right(vepServerSettings) =>
                     VepServerRunner.run(vepServerSettings)
                 }
-              case LunarisMode.Encrypt =>
-                EncryptRunner.run()
+              case LunarisMode.Misc =>
+                MiscellaneousRunner.run(configProps)
             }
           case Left(snag) =>
             println("Invalid invocation")
