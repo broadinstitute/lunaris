@@ -97,6 +97,7 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
         configPropsBox.modify(_.mode.set(LunarisMode.Misc))
         miscMode match {
           case this.misc.email =>
+            copyUniversalOptions(configPropsBox, this.misc.email)
             configPropsBox.modify(_.miscMode.set(LunarisMiscellaneousMode.Email))
           case this.misc.encrypt =>
             configPropsBox.modify(_.miscMode.set(LunarisMiscellaneousMode.Encrypt))
