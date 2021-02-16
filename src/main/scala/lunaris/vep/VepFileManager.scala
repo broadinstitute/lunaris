@@ -6,7 +6,7 @@ import akka.stream.scaladsl.{FileIO, Source}
 import akka.stream.{IOResult, Materializer}
 import akka.util.ByteString
 import better.files.File
-import lunaris.app.{VepDataFieldsSettings, VepSettings}
+import lunaris.app.{EmailSettings, VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
@@ -15,20 +15,22 @@ import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
-import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
+import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfig) {
+final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSettings, emailApiKey: String,
+                           resourceConfig: ResourceConfig) {
 
-  val inputsFolder: File = vepSettings.inputsFolder
-  val resultsFolder: File = vepSettings.resultsFolder
-  val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
-  val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
-  val dbFile: File = vepSettings.runSettings.workDir / "db" / "egg"
-  val eggDb: EggDb = EggDb(dbFile, inputFilePathForId, outputFilePathForId)
+  private val inputsFolder: File = vepSettings.inputsFolder
+  private val resultsFolder: File = vepSettings.resultsFolder
+  private val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
+  private val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
+  private val dbFile: File = vepSettings.runSettings.workDir / "db" / "egg"
+  private val eggDb: EggDb = EggDb(dbFile, inputFilePathForId, outputFilePathForId)
+  private val emailManager: EmailManager = new EmailManager(emailSettings, emailApiKey)
 
   def reportSnag(snag: Snag): Unit = {
     println(snag.report)
@@ -127,11 +129,17 @@ class VepFileManager(val vepSettings: VepSettings, resourceConfig: ResourceConfi
         val successTime = System.currentTimeMillis()
         val snagMessages = runResult.snags.map(_.message)
         updateStatus(jobId, ResultStatus.createSucceeded(submissionTime, successTime, snagMessages))
+        formData.emailOpt.foreach { email =>
+          emailManager.sendJobResultMessage(email, submissionTime, successTime, jobId, formData.sessionId, runResult)
+        }
       case Failure(exception) =>
         val failTime = System.currentTimeMillis()
         val snag = Snag(exception)
         println(snag.report)
         updateStatus(jobId, ResultStatus.createFailed(submissionTime, failTime, snag.message, Seq(snag.message)))
+        formData.emailOpt.foreach { email =>
+          emailManager.sendJobSnagMessage(email, submissionTime, failTime, formData.sessionId, snag)
+        }
     }
     queryFuture
   }
@@ -192,11 +200,6 @@ object VepFileManager {
   }
 
   object JobId {
-    private def positiveRandomLong(): Long = {
-      val raw = Random.nextLong()
-      if(raw < 0) raw + Long.MaxValue else raw
-    }
-
     def createNew(): JobId = JobId(eightHexDigits())
   }
 
@@ -259,7 +262,9 @@ object VepFileManager {
     }
   }
 
-  case class SessionId(string: String)
+  final case class SessionId(string: String) {
+    override def toString: String = string
+  }
 
   object SessionId {
     def createNew(): SessionId = SessionId(eightHexDigits())

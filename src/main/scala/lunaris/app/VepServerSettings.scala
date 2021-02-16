@@ -1,5 +1,6 @@
 package lunaris.app
 
-case class VepServerSettings(serverSettings: ServerSettings, vepSettings: VepSettings, emailSettings: EmailSettings) {
+final case class VepServerSettings(serverSettings: ServerSettings, vepSettings: VepSettings,
+                                   emailSettings: EmailSettings) {
 
 }

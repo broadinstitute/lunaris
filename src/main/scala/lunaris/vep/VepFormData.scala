@@ -17,7 +17,8 @@ case class VepFormData(jobId: JobId,
                        filterString: String,
                        filter: LunBoolExpression,
                        format: String,
-                       sessionId: SessionId)
+                       sessionId: SessionId,
+                       emailOpt: Option[String])
 
 object VepFormData {
   def fromFields(fields: Map[String, FormField]): VepFormData = {
@@ -29,7 +30,8 @@ object VepFormData {
     val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
     val format = fields(FormField.Keys.format).asInstanceOf[FormatField].format
     val sessionId = fields(FormField.Keys.session).asInstanceOf[SessionIdField].sessionId
-    VepFormData(jobId, inputFileClient, inputFileServer, filterString, filter, format, sessionId)
+    val emailOpt = fields.get(FormField.Keys.email).map(_.asInstanceOf[EmailField]).map(_.email)
+    VepFormData(jobId, inputFileClient, inputFileServer, filterString, filter, format, sessionId, emailOpt)
   }
 
   sealed trait FormField {
@@ -53,6 +55,10 @@ object VepFormData {
     override def name: String = FormField.Keys.session
   }
 
+  case class EmailField(email: String) extends FormField {
+    override def name: String = FormField.Keys.email
+  }
+
   case class IgnoredField(name: String) extends FormField
 
   object FormField {
@@ -62,6 +68,7 @@ object VepFormData {
       val inputFile: String = "inputFile"
       val format: String = "format"
       val session: String = "session"
+      val email: String = "email"
     }
 
     private def bodyPartToStringFut(bodyPart: Multipart.FormData.BodyPart)(
@@ -86,6 +93,8 @@ object VepFormData {
           bodyPartToStringFut(bodyPart).map(FormatField)
         case Keys.session =>
           bodyPartToStringFut(bodyPart).map(SessionId(_)).map(SessionIdField)
+        case Keys.email =>
+          bodyPartToStringFut(bodyPart).map(EmailField)
         case unknownName: String =>
           bodyPart.entity.dataBytes.runFold(())((_, _) => ()).map(_ => IgnoredField(unknownName))
       }

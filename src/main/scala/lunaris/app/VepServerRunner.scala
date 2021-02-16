@@ -33,10 +33,7 @@ object VepServerRunner {
     val encryptionKey = askForEncryptionKey()
     val crypt = new Crypt(encryptionKey)
     val emailApiKey = crypt.decrypt(emailSettings.keyEncrypted)
-    val emailManager = EmailManager(emailSettings, emailApiKey)
-    println("Sending an email message")
-    println(emailManager.sendTestMessage())
-    val vepFileManager = new VepFileManager(vepSettings, resourceConfig)
+    val vepFileManager = new VepFileManager(vepSettings, emailSettings, emailApiKey, resourceConfig)
     vepFileManager.foldersExistOrSnag() match {
       case Left(snag) =>
         println("Unable to establish storage for inputs and results.")

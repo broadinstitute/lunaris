@@ -109,8 +109,37 @@ function setEmptySubmissionArea() {
 
 setInterval(updatePendingStatuses, 300);
 
+function isValidEmail(string) {
+    if(!string || string.trim().length === 0) {
+        return false;
+    }
+    const parts = string.split("@");
+    if(parts.length !== 2) {
+        return false;
+    }
+    const [user, domain] = parts;
+    const domainParts = domain.split("\.");
+    return user && user.trim().length > 0 && domainParts.length > 1 &&
+        domainParts.every(domainPart => domainPart.trim().length > 0);
+}
+
 function submit() {
     const inputFile = document.getElementById("inputfile").files[0];
+    let email;
+    let userDeclinedEmail;
+    while(!userDeclinedEmail && !email) {
+        userDeclinedEmail = !confirm("Would you like an email when the job completes?");
+        if(!userDeclinedEmail) {
+            const emailInput =
+                prompt("Please enter your email:", lunarisVariantPredictor.email ?? "");
+            if(isValidEmail(emailInput)) {
+                email = emailInput;
+                lunarisVariantPredictor.email = email;
+            } else {
+                alert(emailInput + " is not a valid email.");
+            }
+        }
+    }
 
     addTemporaryStatus(inputFile);
 
@@ -120,6 +149,9 @@ function submit() {
     formData.append("inputFile", inputFile);
     formData.append("format", getOutputFormat());
     formData.append("session", lunarisVariantPredictor.sessionId);
+    if(email) {
+        formData.append("email", email);
+    }
     fetch("/lunaris/predictor/upload", {method: "POST", body: formData})
         .then((response) => {
             removeTemporaryStatus();

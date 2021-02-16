@@ -14,8 +14,15 @@ object EmailRunner {
     val apiKey = crypt.decrypt(emailSettings.keyEncrypted)
     val emailManager = new EmailManager(emailSettings, apiKey)
     println("Now sending email")
-    val result = emailManager.sendTestMessage()
-    println("Sent email. Result is:")
-    println(result)
+    emailManager.sendTestMessage() match {
+      case Left(snag) =>
+        println("We hit a snag!")
+        println(snag.report)
+      case Right(response) =>
+        println("Sent email. Result is:")
+        println("HTTP " + response.getStatusCode)
+        println(response.getHeaders)
+        println(response.getBody)
+    }
   }
 }
