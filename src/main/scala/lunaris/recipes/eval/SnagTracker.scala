@@ -2,7 +2,7 @@ package lunaris.recipes.eval
 
 import org.broadinstitute.yootilz.core.snag.Snag
 
-class SnagTracker(val listeners: Seq[Snag => Unit], val nSnagsMax: Int = 100) {
+final class SnagTracker(val listeners: Seq[Snag => Unit], val nSnagsMax: Int = 100) {
   private var snagsBuilderPrevious = Seq.newBuilder[Snag]
   private var snagsBuilderCurrent = Seq.newBuilder[Snag]
   private var nSnagsInCurrent = 0

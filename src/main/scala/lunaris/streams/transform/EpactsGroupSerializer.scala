@@ -1,7 +1,7 @@
 package lunaris.streams.transform
 
 import akka.stream.scaladsl.Source
-import lunaris.recipes.eval.SnagTracker
+import lunaris.recipes.eval.{RunTracker, SnagTracker}
 import lunaris.recipes.values.RecordStreamWithMeta
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.DedupLilo
@@ -57,9 +57,9 @@ final class EpactsGroupSerializer(override val groupIdFields: Seq[String])
 
   val nBufferedGroupsMax: Int = 10
 
-  override def recordsToLines(records: RecordStreamWithMeta, snagTracker: SnagTracker):
+  override def recordsToLines(records: RecordStreamWithMeta, runTracker: RunTracker):
   Source[String, RecordStreamWithMeta.Meta] = {
-    val grouper = new Grouper(nBufferedGroupsMax)(snagTracker)
+    val grouper = new Grouper(nBufferedGroupsMax)(runTracker.snagTracker)
     val wrappedSource = records.source.map(Some(_)).concat(Source.single(None))
     wrappedSource.statefulMapConcat(() => grouper.process)
   }

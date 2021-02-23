@@ -56,13 +56,14 @@ object JoinRecords extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerMaker.WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = {
         Some(new RecordStreamWorker {
-          override def getStreamBox(context: LunRunContext, snagTracker: SnagTracker): LunWorker.StreamBox = {
+          override def getStreamBox(context: LunRunContext, runTracker: RunTracker): LunWorker.StreamBox = {
             val snagOrStreams =
-              EitherSeqUtils.sequence(fromWorkers.map(_.getStreamBox(context, snagTracker).snagOrStream))
+              EitherSeqUtils.sequence(fromWorkers.map(_.getStreamBox(context, runTracker).snagOrStream))
             val snagOrStream = snagOrStreams.flatMap { streams =>
               RecordStreamWithMeta.Meta.sequence(streams.map(_.meta)).map { meta =>
                 val stream =
-                  RecordStreamJoiner.join(meta, streams.map(_.source))(_.joinWith(_))(snagTracker.trackSnag)
+                  RecordStreamJoiner.join(meta, streams.map(_.source))(_.joinWith(_))(
+                    runTracker.snagTracker.trackSnag)
                 RecordStreamWithMeta(meta, stream)
               }
             }

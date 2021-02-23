@@ -10,7 +10,7 @@ import lunaris.app.{EmailSettings, VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
-import lunaris.recipes.eval.{LunCompiler, LunRunContext, SnagTracker}
+import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker}
 import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
@@ -122,7 +122,8 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
           LunRunContext(Materializer(actorSystem), resourceConfig)
         }
         val snagTracker = SnagTracker.briefConsolePrinting
-        runnable.executeAsync(context, snagTracker)
+        val runTracker = RunTracker(snagTracker)
+        runnable.executeAsync(context, runTracker)
     }.flatten
     queryFuture.onComplete {
       case Success(runResult) =>

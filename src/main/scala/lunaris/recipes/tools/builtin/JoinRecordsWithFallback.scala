@@ -8,7 +8,7 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.streams.transform.{MafForVepCalculator, RecordStreamJoinerWithFallback}
+import lunaris.streams.transform.RecordStreamJoinerWithFallback
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.EitherSeqUtils
 import lunaris.vep.{VepRunSettingsBox, VepRunner}
@@ -81,12 +81,12 @@ object JoinRecordsWithFallback extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
         Some {
-          (context: LunRunContext, snagTracker: SnagTracker) => {
+          (context: LunRunContext, runTracker: RunTracker) => {
             val snagOrStream =
               for {
-                driverStream <- driverWorker.getStreamBox(context, snagTracker).snagOrStream
+                driverStream <- driverWorker.getStreamBox(context, runTracker).snagOrStream
                 dataStreams <-
-                  EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context, snagTracker).snagOrStream))
+                  EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context, runTracker).snagOrStream))
                 metaJoined <- Meta.sequence(driverStream.meta +: dataStreams.map(_.meta))
               } yield {
                 val fallback = fallbackGenerator.createFallback()
@@ -96,7 +96,7 @@ object JoinRecordsWithFallback extends Tool {
                 } {
                   fallback
                 } {
-                  (snag: Snag) => snagTracker.trackSnag(snag)
+                  (snag: Snag) => runTracker.snagTracker.trackSnag(snag)
                 }
                 RecordStreamWithMeta(metaJoined, sourceJoined)
               }

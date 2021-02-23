@@ -1,11 +1,11 @@
 package lunaris.recipes.tools.builtin
 
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, SnagTracker, WorkerMaker}
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.{eval, tools}
+import lunaris.recipes.eval._
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
+import lunaris.recipes.{eval, tools}
 import lunaris.streams.transform.MafForVepCalculator
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -46,8 +46,8 @@ object CalculateMaf extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] = {
         Some[RecordStreamWorker] {
-          (context: LunRunContext, snagTracker: SnagTracker) => {
-            val snagOrStream = fromWorker.getStreamBox(context, snagTracker).snagOrStream.map { fromStream =>
+          (context: LunRunContext, runTracker: RunTracker) => {
+            val snagOrStream = fromWorker.getStreamBox(context, runTracker).snagOrStream.map { fromStream =>
               val sourceWithMaf = fromStream.source.map(MafForVepCalculator.addMaf)
               RecordStreamWithMeta(fromStream.meta, sourceWithMaf)
             }

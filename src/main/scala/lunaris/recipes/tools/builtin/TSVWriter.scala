@@ -74,7 +74,7 @@ object TSVWriter extends Tool {
           .map(_.getOrElse("")).mkString("\t")
       }
 
-      private def getLineStream(recordStream: RecordStreamWithMeta, snagTracker: SnagTracker):
+      private def getLineStream(recordStream: RecordStreamWithMeta, runTracker: RunTracker):
       Source[String, RecordStreamWithMeta.Meta] = {
         val meta = recordStream.meta
         Source.single(headerLine(meta.objectType)).concatMat(recordStream.source

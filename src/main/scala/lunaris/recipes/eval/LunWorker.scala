@@ -31,6 +31,6 @@ object LunWorker {
   }
 
   trait RecordStreamWorker extends LunWorker {
-    def getStreamBox(context: LunRunContext, snagTracker: SnagTracker): StreamBox
+    def getStreamBox(context: LunRunContext, runTracker: RunTracker): StreamBox
   }
 }

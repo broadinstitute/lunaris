@@ -1,7 +1,7 @@
 package lunaris.streams.transform
 
 import akka.stream.scaladsl.Source
-import lunaris.recipes.eval.SnagTracker
+import lunaris.recipes.eval.RunTracker
 import lunaris.recipes.values.RecordStreamWithMeta
 import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -30,7 +30,7 @@ trait GroupSerializer {
     }
   }
 
-  def recordsToLines(recordStream: RecordStreamWithMeta, snagTracker: SnagTracker):
+  def recordsToLines(recordStream: RecordStreamWithMeta, runTracker: RunTracker):
   Source[String, RecordStreamWithMeta.Meta]
 }
 

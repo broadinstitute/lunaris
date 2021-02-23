@@ -1,7 +1,7 @@
 package lunaris.streams.transform
 
 import akka.stream.scaladsl.{Keep, Source}
-import lunaris.recipes.eval.SnagTracker
+import lunaris.recipes.eval.RunTracker
 import lunaris.recipes.values.RecordStreamWithMeta
 import lunaris.streams.utils.RecordStreamTypes.Record
 
@@ -16,10 +16,10 @@ class RareMetalsGroupSerializer(override val groupIdFields: Seq[String]) extends
     stringOpt.getOrElse(default)
   }
 
-  private def recordToDataLine(record: Record, snagTracker: SnagTracker): Seq[String] = {
+  private def recordToDataLine(record: Record, runTracker: RunTracker): Seq[String] = {
     getGroupId(record) match {
       case Left(snag) =>
-        snagTracker.trackSnag(snag)
+        runTracker.snagTracker.trackSnag(snag)
         Seq.empty
       case Right(groupId) =>
         val chrom = record.locus.chrom
@@ -33,10 +33,10 @@ class RareMetalsGroupSerializer(override val groupIdFields: Seq[String]) extends
     }
   }
 
-  override def recordsToLines(records: RecordStreamWithMeta, snagTracker: SnagTracker):
+  override def recordsToLines(records: RecordStreamWithMeta, runTracker: RunTracker):
   Source[String, RecordStreamWithMeta.Meta] = {
     Source.single(rareMetalsHeaderLine).concatMat(records.source
-      .mapConcat(recordToDataLine(_, snagTracker)))(Keep.right)
+      .mapConcat(recordToDataLine(_, runTracker)))(Keep.right)
   }
 }
 

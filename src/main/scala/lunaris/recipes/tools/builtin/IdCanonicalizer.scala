@@ -1,10 +1,10 @@
 package lunaris.recipes.tools.builtin
 
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
-import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, SnagTracker, WorkerMaker}
-import lunaris.recipes.{eval, tools}
+import lunaris.recipes.eval._
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta, RecordUtils}
+import lunaris.recipes.{eval, tools}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object IdCanonicalizer extends tools.Tool {
@@ -55,9 +55,9 @@ object IdCanonicalizer extends tools.Tool {
     override def finalizeAndShip(): WorkerMaker.WorkerBox = new WorkerMaker.WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Some[RecordStreamWorker] =
       Some[RecordStreamWorker] {
-        (context: LunRunContext, snagTracker: SnagTracker) => {
+        (context: LunRunContext, runTracker: RunTracker) => {
           val snagOrStream = {
-            fromWorker.getStreamBox(context, snagTracker).snagOrStream.map { fromStream =>
+            fromWorker.getStreamBox(context, runTracker).snagOrStream.map { fromStream =>
               val mappedSource = fromStream.source.mapConcat { record =>
                 val snagOrRecord = for {
                   ref <- RecordUtils.getString(record, refField)
@@ -69,7 +69,7 @@ object IdCanonicalizer extends tools.Tool {
                 } yield recordNew
                 snagOrRecord match {
                   case Left(snag) =>
-                    snagTracker.trackSnag(snag)
+                    runTracker.snagTracker.trackSnag(snag)
                     Seq()
                   case Right(record) =>
                     Seq(record)

@@ -58,7 +58,7 @@ object JSONWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      private def toLineSource(recordSource: RecordStreamWithMeta, snagTracker: SnagTracker):
+      private def toLineSource(recordSource: RecordStreamWithMeta, runTracker: RunTracker):
       Source[String, RecordStreamWithMeta.Meta] = {
         val recordJsonStringStream = recordSource.source.map(Some(_))
           .concat(Source(Seq(None)))

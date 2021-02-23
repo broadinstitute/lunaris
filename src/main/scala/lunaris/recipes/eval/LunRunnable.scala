@@ -14,9 +14,9 @@ import scala.collection.immutable.Iterable
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 trait LunRunnable {
-  def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult]
+  def executeAsync(context: LunRunContext, runTracker: RunTracker): Future[RunResult]
 
-  def getStream(context: LunRunContext, snagTracker: SnagTracker):
+  def getStream(context: LunRunContext, runTracker: RunTracker):
   Either[Snag, Source[String, RecordStreamWithMeta.Meta]]
 }
 
@@ -40,26 +40,28 @@ object LunRunnable {
   }
 
   object NoOpRunnable extends LunRunnable {
-    override def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult] =
+    override def executeAsync(context: LunRunContext, runTracker: RunTracker): Future[RunResult] =
       Future(RunResult.create)(context.materializer.executionContext)
 
-    override def getStream(context: LunRunContext, snagTracker: SnagTracker):
+    override def getStream(context: LunRunContext, runTracker: RunTracker):
     Either[Snag, Source[String, RecordStreamWithMeta.Meta]] =
       Left(Snag("Cannot get a stream from a NoOpRunnable."))
   }
 
   case class CompositeRunnable(runnables: Iterable[LunRunnable]) extends LunRunnable {
-    override def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult] = {
-      val unitFuts = runnables.map(_.executeAsync(context, snagTracker))
-      Future.foldLeft(unitFuts)(RunResult(snagTracker.buildSeq()))(_ ++ _)(context.materializer.executionContext)
+    override def executeAsync(context: LunRunContext, runTracker: RunTracker): Future[RunResult] = {
+      val unitFuts = runnables.map(_.executeAsync(context, runTracker))
+      Future.foldLeft(unitFuts)(RunResult(runTracker.snagTracker.buildSeq()))(_ ++ _)(
+        context.materializer.executionContext
+      )
     }
 
-    override def getStream(context: LunRunContext, snagTracker: SnagTracker):
+    override def getStream(context: LunRunContext, runTracker: RunTracker):
     Either[Snag, Source[String, RecordStreamWithMeta.Meta]] = {
       if (runnables.isEmpty) {
         Left(Snag("No streams available"))
       } else if (runnables.size == 1) {
-        runnables.head.getStream(context, snagTracker)
+        runnables.head.getStream(context, runTracker)
       } else {
         Left(Snag("Don't know how to combine multiple output streams."))
       }
@@ -67,24 +69,25 @@ object LunRunnable {
   }
 
   class TextWriter(fromWorker: RecordStreamWorker, outputIdOpt: Option[OutputId])(
-    recordsToLines: (RecordStreamWithMeta, SnagTracker) => Source[String, RecordStreamWithMeta.Meta]
+    recordsToLines: (RecordStreamWithMeta, RunTracker) => Source[String, RecordStreamWithMeta.Meta]
   )
   extends LunRunnable {
     private def writeRecords(stream: RecordStreamWithMeta,
                              context: LunRunContext,
-                             snagTracker: SnagTracker)(
+                             runTracker: RunTracker)(
                               writer: String => Unit
                             )(implicit executor: ExecutionContext): Future[RunResult] = {
-      recordsToLines(stream, snagTracker).runWith(Sink.foreach(writer))(context.materializer)
-        .map(_ => RunResult(snagTracker.buildSeq()))
+      recordsToLines(stream, runTracker).runWith(Sink.foreach(writer))(context.materializer)
+        .map(_ => RunResult(runTracker.snagTracker.buildSeq()))
     }
 
 
-    override def executeAsync(context: LunRunContext, snagTracker: SnagTracker): Future[RunResult] = {
+    override def executeAsync(context: LunRunContext, runTracker: RunTracker): Future[RunResult] = {
       implicit val executionContext: ExecutionContextExecutor = context.materializer.executionContext
-      fromWorker.getStreamBox(context, snagTracker).snagOrStream match {
+      fromWorker.getStreamBox(context, runTracker).snagOrStream match {
         case Left(snag) =>
           Future {
+            val snagTracker = runTracker.snagTracker
             snagTracker.trackSnag(snag)
             RunResult(snagTracker.buildSeq())
           }
@@ -94,18 +97,18 @@ object LunRunnable {
               val writeChannelDisp = file.newWriteChannelDisposable(context.resourceConfig)
               val channel = writeChannelDisp.a
               val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
-              val doneFut = writeRecords(recordStreamWithMeta, context, snagTracker)(writer.println)
+              val doneFut = writeRecords(recordStreamWithMeta, context, runTracker)(writer.println)
               doneFut.onComplete(_ => writer.close())
               doneFut
-            case None => writeRecords(recordStreamWithMeta, context, snagTracker)(println)
+            case None => writeRecords(recordStreamWithMeta, context, runTracker)(println)
           }
       }
     }
 
-    override def getStream(context: LunRunContext, snagTracker: SnagTracker):
+    override def getStream(context: LunRunContext, runTracker: RunTracker):
     Either[Snag, Source[String, RecordStreamWithMeta.Meta]] = {
-      fromWorker.getStreamBox(context,snagTracker).snagOrStream.map { recordStream =>
-        recordsToLines(recordStream, snagTracker)
+      fromWorker.getStreamBox(context, runTracker).snagOrStream.map { recordStream =>
+        recordsToLines(recordStream, runTracker)
       }
     }
   }
