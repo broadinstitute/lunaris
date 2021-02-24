@@ -97,6 +97,10 @@ object JoinRecordsWithFallback extends Tool {
                   fallback
                 } {
                   (snag: Snag) => runTracker.snagTracker.trackSnag(snag)
+                } {
+                  dataRecordId => runTracker.statsTracker.postMessage(s"Cache hit for $dataRecordId")
+                } {
+                  fallbackRecordId => runTracker.statsTracker.postMessage(s"Cache miss for $fallbackRecordId")
                 }
                 RecordStreamWithMeta(metaJoined, sourceJoined)
               }

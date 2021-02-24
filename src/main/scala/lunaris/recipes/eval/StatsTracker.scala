@@ -2,7 +2,7 @@ package lunaris.recipes.eval
 
 import lunaris.recipes.eval.StatsTracker.Stats
 
-final class StatsTracker {
+final class StatsTracker(consumer: String => Unit) {
   private var statsByName: Map[String, Stats] = Map.empty
 
   def addStats(name: String, cats: Seq[String]): Unit = {
@@ -11,8 +11,10 @@ final class StatsTracker {
 
   def getStats(name: String): Option[Stats] = statsByName.get(name)
 
+  def postMessage(message: String): Unit = consumer(message)
+
   def report(): Unit = {
-    println("Stats:")
+    consumer("Stats:")
     for((name, stats) <- statsByName) {
       val totalCount = stats.getTotalCount
       val catsString = stats.cats.map { cat =>
@@ -21,9 +23,19 @@ final class StatsTracker {
         val percentString = (100*fCat).toString.take(5)
         s"$nCat $cat ($percentString%)"
       }.mkString(", ")
-      println(s"$totalCount $name: $catsString")
+      consumer(s"$totalCount $name: $catsString")
     }
-    println("(done with stats)")
+    consumer("(done with stats)")
+  }
+
+  val nMessagesMax: Long = 100
+  var messageCount: Long = 0
+
+  def maybePostMessage(message: String): Unit = {
+    if(messageCount < nMessagesMax) {
+      postMessage(message)
+      messageCount += 1
+    }
   }
 
   var reportLastTime: Long = System.currentTimeMillis()
@@ -39,7 +51,7 @@ final class StatsTracker {
 }
 
 object StatsTracker {
-  def apply(): StatsTracker = new StatsTracker
+  def apply(consumer: String => Unit): StatsTracker = new StatsTracker(consumer)
 
   final class Stats(val cats: Seq[String]) {
     private var totalCount: Long = 0

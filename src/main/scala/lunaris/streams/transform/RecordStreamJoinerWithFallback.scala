@@ -9,6 +9,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 object RecordStreamJoinerWithFallback {
   type Joiner = (Record, Record) => Either[Snag, Record]
   type Fallback = Record => Either[Snag, Record]
+  type IdReporter = String => Unit
 
   sealed trait SourceId
 
@@ -16,7 +17,8 @@ object RecordStreamJoinerWithFallback {
 
   case class DataSourceId(i: Int) extends SourceId
 
-  class MergedTaggedRecordProcessor(nDataSources: Int)(joiner: Joiner)(fallback: Fallback)(snagLogger: SnagLogger) {
+  class MergedTaggedRecordProcessor(nDataSources: Int)(joiner: Joiner)(fallback: Fallback)(snagLogger: SnagLogger)(
+  dataIdReporter: IdReporter)(fallbackIdReporter: IdReporter) {
 
     case class GotLastOf(gotLastOfDriver: Boolean, gotLastsOfData: Seq[Boolean]) {
       def addEndOf(sourceId: SourceId): GotLastOf = {
@@ -93,6 +95,7 @@ object RecordStreamJoinerWithFallback {
             var foundData: Boolean = false
             for (dataRecordsForSource <- dataRecordsRemaining) {
               dataRecordsForSource.get(id).foreach { dataRecord =>
+                dataIdReporter(dataRecord.id)
                 snagOrJoinedRecord = for {
                   joinedRecord <- snagOrJoinedRecord
                   joinedRecordNew <- joiner(joinedRecord, dataRecord)
@@ -102,6 +105,7 @@ object RecordStreamJoinerWithFallback {
             }
             if (!foundData) {
               snagOrJoinedRecord = snagOrJoinedRecord.flatMap(fallback)
+              snagOrJoinedRecord.foreach ( record => fallbackIdReporter(record.id) )
             }
             snagOrJoinedRecord match {
               case Left(snag) => snagLogger(snag)
@@ -133,6 +137,7 @@ object RecordStreamJoinerWithFallback {
               while (snagOrJoinedRecord.isRight && (!encounteredJoiningObstacle) && iDataSource < nDataSources) {
                 dataRecordsRemaining(iDataSource).get(id) match {
                   case Some(dataRecord) =>
+                    dataIdReporter(dataRecord.id)
                     snagOrJoinedRecord = for {
                       joinedRecord <- snagOrJoinedRecord
                       joinedRecordNew <- joiner(joinedRecord, dataRecord)
@@ -148,6 +153,7 @@ object RecordStreamJoinerWithFallback {
               if (!encounteredJoiningObstacle) {
                 if (!foundData) {
                   snagOrJoinedRecord = snagOrJoinedRecord.flatMap(fallback)
+                  snagOrJoinedRecord.foreach(record => fallbackIdReporter(record.id))
                 }
                 driverRecordsRemaining = driverRecordsRemaining.tail
                 dataRecordsRemaining = dataRecordsRemaining.map(_ - id)
@@ -194,14 +200,17 @@ object RecordStreamJoinerWithFallback {
   def joinWithFallback(meta: Meta,
                        driverSource: RecordSource,
                        dataSources: Seq[RecordSource]
-                      )(joiner: Joiner)(fallBack: Fallback)(snagLogger: SnagLogger): RecordSource = {
+                      )(joiner: Joiner)(fallBack: Fallback)(snagLogger: SnagLogger)(
+    dataIdReporter: IdReporter)(fallbackIdReporter: IdReporter): RecordSource = {
     val driverSourceById = Map[SourceId, RecordSource](DriverSourceId -> driverSource)
     val dataSourcesById = dataSources.zipWithIndex.map {
       case (dataSource, i) => (DataSourceId(i), dataSource)
     }.toMap
     val sourcesById: Map[SourceId, RecordSource] = driverSourceById ++ dataSourcesById
     val mergedTaggedSource = RecordTaggedSortedMerger.merge(sourcesById, meta.chroms)
-    val mergedTaggedRecordProcessor = new MergedTaggedRecordProcessor(dataSources.size)(joiner)(fallBack)(snagLogger)
+    val mergedTaggedRecordProcessor =
+      new MergedTaggedRecordProcessor(dataSources.size)(joiner)(fallBack)(snagLogger)(dataIdReporter)(
+        fallbackIdReporter)
     mergedTaggedSource.statefulMapConcat(() => mergedTaggedRecordProcessor.processItem).mapMaterializedValue(_ => meta)
   }
 }

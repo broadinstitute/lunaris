@@ -10,13 +10,14 @@ import lunaris.app.{EmailSettings, VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
-import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker}
+import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
 import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
 import org.broadinstitute.yootilz.core.snag.Snag
 
+import java.io.PrintStream
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
@@ -77,7 +78,11 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
 
   def outputFileNameForId(resultId: JobId): String = resultId.string + ".tsv"
 
+  def logFileNameForId(resultId: JobId): String = resultId.string + ".log"
+
   def outputFilePathForId(resultId: JobId): File = resultsFolder / outputFileNameForId(resultId)
+
+  def logFilePathForId(resultId: JobId): File = resultsFolder / logFileNameForId(resultId)
 
   def uploadFile(stream: Source[ByteString, Any], inputFile: File)(
     implicit actorSystem: ActorSystem
@@ -121,8 +126,10 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
         val context = {
           LunRunContext(Materializer(actorSystem), resourceConfig)
         }
+        val out = new PrintStream(logFilePathForId(jobId).newFileOutputStream(append = true))
         val snagTracker = SnagTracker.briefConsolePrinting
-        val runTracker = RunTracker(snagTracker)
+        val statsTracker = StatsTracker(out.println)
+        val runTracker = RunTracker(snagTracker, statsTracker)
         runnable.executeAsync(context, runTracker)
     }.flatten
     queryFuture.onComplete {
