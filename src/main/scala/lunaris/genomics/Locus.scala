@@ -1,5 +1,5 @@
 package lunaris.genomics
 
-case class Locus(chrom: String, region: Region) {
+final case class Locus(chrom: String, region: Region) {
 
 }

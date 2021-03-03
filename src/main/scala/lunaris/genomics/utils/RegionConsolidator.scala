@@ -6,12 +6,12 @@ import scala.collection.mutable
 
 object RegionConsolidator {
 
-  val defaultNimGapSize: Int = 1000000
+  val defaultMinGapSize: Int = 1000000
 
-  def newBuilderForSorted(minGapSize: Int = defaultNimGapSize): ConsolidatedBuilderForSorted =
+  def newBuilderForSorted(minGapSize: Int = defaultMinGapSize): ConsolidatedBuilderForSorted =
     new ConsolidatedBuilderForSorted(minGapSize)
 
-  class ConsolidatedBuilderForSorted(val minGapSize: Int= defaultNimGapSize ) {
+  class ConsolidatedBuilderForSorted(val minGapSize: Int= defaultMinGapSize ) {
     private var regionsBuildersByChrom: Map[String, mutable.Builder[Region, Seq[Region]]] = Map()
     private var currentLocusOpt: Option[Locus] = None
 
