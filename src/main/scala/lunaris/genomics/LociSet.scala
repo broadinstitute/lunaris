@@ -33,6 +33,8 @@ final class LociSet(private val limitsByChrom: Map[String, Array[Int]]) {
     }
     iMin % 2 == 1
   }
+
+  def size: Int = limitsByChrom.values.map(_.length / 2).sum
 }
 
 object LociSet {
