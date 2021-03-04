@@ -15,10 +15,10 @@ final class LociSetTest extends AnyFunSuite{
       val lociSet = builder.result()
       assert(lociSet.size == nRegionsConsolidated)
       for(posContained <- posListContained) {
-        assert(lociSet.contains(Variant(chrom, posContained, "A", "C")))
+        assert(lociSet.contains(chrom, posContained))
       }
       for(posNotContained <- posListNotContained) {
-        assert(!lociSet.contains(Variant(chrom, posNotContained, "A", "C")))
+        assert(!lociSet.contains(chrom, posNotContained))
       }
     }
   }

@@ -3,14 +3,27 @@ package lunaris.genomics
 import lunaris.utils.SortedMergedBuffer
 
 final class LociSet(private val limitsByChrom: Map[String, Array[Int]]) {
-  def contains(variant: Variant): Boolean = {
-    limitsByChrom.get(variant.chrom) match {
-      case Some(limits) => regionsContainPos(limits, variant.pos)
+  def contains(chrom: String, pos: Int): Boolean = {
+    limitsByChrom.get(chrom) match {
+      case Some(limits) => regionsContainPos(limits, pos)
       case None => false
     }
   }
 
-  @inline private def regionsContainPos(limits: Array[Int], pos: Int): Boolean = {
+  def coversLocus(locus: Locus): Boolean = {
+    limitsByChrom.get(locus.chrom) match {
+      case Some(limits) => regionsCoverRegion(limits, locus.region)
+      case None => false
+    }
+  }
+  def overlapsLocus(locus: Locus): Boolean = {
+    limitsByChrom.get(locus.chrom) match {
+      case Some(limits) => regionsOverlapRegion(limits, locus.region)
+      case None => false
+    }
+  }
+
+  @inline private def findIPos(limits: Array[Int], pos: Int): Int = {
     var iMin: Int = 0
     var iMax: Int = limits.length
     while (iMin < iMax) {
@@ -31,7 +44,36 @@ final class LociSet(private val limitsByChrom: Map[String, Array[Int]]) {
         }
       }
     }
-    iMin % 2 == 1
+    iMin
+  }
+
+  @inline private def regionsContainPos(limits: Array[Int], pos: Int): Boolean = {
+    val iPos = findIPos(limits, pos)
+    iPos % 2 == 1
+  }
+
+  @inline private def regionsCoverRegion(limits: Array[Int], region: Region): Boolean = {
+    val begin = region.begin
+    val end = region.end
+    if(end > begin + 1) {
+      val iBegin = findIPos(limits, begin)
+      val iEnd = findIPos(limits, end)
+      (iBegin % 2 == 1) && (iBegin == iEnd)
+    } else {
+      regionsContainPos(limits, begin)
+    }
+  }
+
+  @inline private def regionsOverlapRegion(limits: Array[Int], region: Region): Boolean = {
+    val begin = region.begin
+    val end = region.end
+    if(end > begin + 1) {
+      val iBegin = findIPos(limits, begin)
+      val iEnd = findIPos(limits, end)
+      (iBegin % 2 == 1) || (iBegin != iEnd)
+    } else {
+      regionsContainPos(limits, begin)
+    }
   }
 
   def size: Int = limitsByChrom.values.map(_.length / 2).sum
