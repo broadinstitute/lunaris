@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-image=lunaris-variant-mask-server:1.7.7
+image=lunaris-variant-mask-server:1.7.8
 lunaris_vep_dir=$HOME/lunaris/vep
 inputs_dir=$lunaris_vep_dir/inputs
 results_dir=$lunaris_vep_dir/results
@@ -19,11 +19,13 @@ echo "Done building image ${image}, now running command."
 if [[ "$1" = "prod" ]] || [[ "$1" = "dev" ]]; then
   if [[ "$1" = "prod" ]]; then
     port=80
+    db_name="egg"
   elif [[ "$1" = "dev" ]]; then
     port=8080
+    db_name="egg_dev"
   fi
   echo "Launching the server in $1 mode on port $port."
-  cmd="lunaris vep --config-file configs/lunarisVepDocker.conf"
+  cmd="lunaris vep --db-name $db_name --config-file configs/lunarisVepDocker.conf"
   echo $cmd
   sudo docker run -p $port:8080 -v $inputs_dir:/mnt/inputs -v $results_dir:/mnt/results -v $aux_dir:/mnt/aux \
     -v $data_dir:/mnt/data -v $work_dir:/mnt/work -v $cache_dir:/opt/vep/.vep -it ${image} ${cmd}

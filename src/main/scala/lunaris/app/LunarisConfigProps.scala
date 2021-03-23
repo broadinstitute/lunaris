@@ -34,6 +34,7 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val emailKeyEncrypted: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyEncrypted")
   val miscMode: LunarisMiscModeField[LunarisConfigProps] = LunarisMiscModeField(this, "lunaris.misc.mode")
   val exonsFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.exonsFile")
+  val dbName: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.dbName")
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {
@@ -77,7 +78,8 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       serverSettings <- toServerSettings
       vepSettings <- toVepSettings
       emailSettings <- toEmailSettings
-    } yield VepServerSettings(serverSettings, vepSettings, emailSettings)
+      dbName <- dbName.get
+    } yield VepServerSettings(serverSettings, vepSettings, emailSettings, dbName)
   }
 }
 
@@ -86,6 +88,7 @@ object LunarisConfigProps {
   object FallbackValues {
     val webInterface: String = "0.0.0.0"
     val port: Int = 8080
+    val dbName: String = "egg"
   }
 
   def empty: LunarisConfigProps = LunarisConfigProps(ConfigFactory.empty())
@@ -114,6 +117,7 @@ object LunarisConfigProps {
     empty
       .webInterface.set(FallbackValues.webInterface)
       .port.set(FallbackValues.port)
+      .dbName.set(FallbackValues.dbName)
   }
 
   def allProps(args: Seq[String], resourceConfig: ResourceConfig = ResourceConfig.empty):

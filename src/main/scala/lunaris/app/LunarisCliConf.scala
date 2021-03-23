@@ -46,6 +46,7 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
     val dataFile = opt[String](descr = "File with variant data")
     val indexFile =
       opt[String](descr = "Index file for variant data (if absent, it will be data file plus .tbi")
+    val dbName = opt[String](descr = "Name of DB for job statuses etc")
     val varId = opt[String](descr = "Name of column with variant id")
   }
   addSubcommand(vep)
@@ -93,6 +94,7 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
         configPropsBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
         configPropsBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
         configPropsBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
+        configPropsBox.modifyForeach(this.vep.dbName.toOption)(_.dbName.set(_))
       case List(this.misc, miscMode) =>
         configPropsBox.modify(_.mode.set(LunarisMode.Misc))
         miscMode match {
