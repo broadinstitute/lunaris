@@ -22,14 +22,14 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSettings, emailApiKey: String,
-                           resourceConfig: ResourceConfig) {
+final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSettings, dbName: String,
+                           emailApiKey: String, resourceConfig: ResourceConfig) {
 
   private val inputsFolder: File = vepSettings.inputsFolder
   private val resultsFolder: File = vepSettings.resultsFolder
   private val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
   private val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
-  private val dbFile: File = vepSettings.runSettings.workDir / "db" / "egg"
+  private val dbFile: File = vepSettings.runSettings.workDir / "db" / dbName
   private val eggDb: EggDb = EggDb(dbFile, inputFilePathForId, outputFilePathForId)
   private val emailManager: EmailManager = new EmailManager(emailSettings, emailApiKey)
 
