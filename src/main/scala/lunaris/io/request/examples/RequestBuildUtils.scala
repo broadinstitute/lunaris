@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.builtin.{CalculateMaf, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -119,6 +119,15 @@ object RequestBuildUtils {
       ToolCall(CalculateMaf, Map(
         CalculateMaf.Params.Keys.from -> RefArg(CalculateMaf.Params.from, from)
       ))
+
+    def findRecordsNotInData(driver: String, data: String): ToolCall = {
+      ToolCall(FindRecordsNotInData, Map(
+        JoinRecordsWithFallback.Params.Keys.driver -> RefArg(JoinRecordsWithFallback.Params.driver, driver),
+        JoinRecordsWithFallback.Params.Keys.data -> RefArg(JoinRecordsWithFallback.Params.data, data)),
+      )
+    }
+
+
   }
 
 }
