@@ -80,9 +80,37 @@ object RecordStreamComplementFilter {
         }
       }
 
-      def flushPastLocus(): (Buffer, Seq[Record]) = ???
+      def flushPastLocus(): (Buffer, Seq[Record]) = {
+        if(buffersByLocus.size > 1) {
+          val bufferForPastLocus = buffersByLocus.head
+          val driversPassed = bufferForPastLocus.drivers.filter { driver =>
+            !bufferForPastLocus.dataRecords.exists(_.contains(driver.id))
+          }
+          val bufferNew = copy(buffersByLocus = buffersByLocus.tail)
+          (bufferNew, driversPassed)
+        } else {
+          (this, Seq.empty)
+        }
+      }
 
-      def flushCompleted(): (Buffer, Seq[Record]) = ???
+      def flushCompleted(): (Buffer, Seq[Record]) = {
+        buffersByLocus.headOption match {
+          case Some(bufferForLocus) =>
+            val gotLastOfAllData = gotLastOf.gotLastsOfData.forall(identity)
+            if(gotLastOfAllData) {
+              val driversPassed = bufferForLocus.drivers.filter { driver =>
+                !bufferForLocus.dataRecords.exists( _.contains(driver.id))
+              }
+              val bufferForLocusNew = bufferForLocus.copy(drivers = Seq.empty)
+              val bufferNew = copy(buffersByLocus = Seq(bufferForLocusNew))
+              (bufferNew, driversPassed)
+            } else {
+              (this, Seq.empty)
+            }
+          case None =>
+            (this, Seq.empty)
+        }
+      }
 
       def join(): (Buffer, Seq[Record]) = {
         val (bufferMinusPastLocus, joinedFromPastLocus) = flushPastLocus()
