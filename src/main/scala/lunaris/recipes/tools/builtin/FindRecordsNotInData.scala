@@ -20,7 +20,7 @@ object FindRecordsNotInData extends Tool {
       val data: String = "data"
     }
     val driver: Tool.RefParam = Tool.RefParam(Keys.driver, LunType.RecordStreamType, isRequired = true)
-    val data: Tool.RefParam = Tool.RefParam(Keys.data, LunType.RecordStreamType, isRequired = true)
+    val data: Tool.RefParam = Tool.RefParam(Keys.data, LunType.ArrayType(LunType.RecordStreamType), isRequired = true)
   }
   override def params: Seq[Tool.Param] = Seq(Params.driver, Params.data)
 
@@ -29,19 +29,22 @@ object FindRecordsNotInData extends Tool {
   override def newToolInstance(args: Map[String, ToolCall.Arg]): Either[Snag, ToolInstance] = {
     for {
       driver <- ToolArgUtils.asRef(Params.Keys.driver, args)
-      data <- ToolArgUtils.asRef(Params.Keys.data, args)
-    } yield ToolInstance(driver, data)
+      datas <- ToolArgUtils.asRefs(Params.Keys.data, args)
+    } yield ToolInstance(driver, datas)
   }
 
-  case class ToolInstance(driver: String, data: String) extends tools.ToolInstance {
+  case class ToolInstance(driver: String, datas: Seq[String]) extends tools.ToolInstance {
     override def refs: Map[String, String] = {
-      Map(Params.Keys.driver -> driver, Params.Keys.data -> data)
+      val dataRefs = datas.zipWithIndex.collect {
+        case (ref, index) => (Params.Keys.data + index, ref)
+      }.toMap
+      Map(Params.Keys.driver -> driver) ++ dataRefs
     }
 
     override def newWorkerMaker(context: LunCompileContext, workers: Map[String, LunWorker]):
     Either[Snag, eval.WorkerMaker] = {
-      ToolInstanceUtils.newWorkerMaker2(Params.Keys.driver, Params.Keys.data, workers) {
-        (driverWorker, dataWorker) => new WorkerMaker(driverWorker, Seq(dataWorker))
+      ToolInstanceUtils.newWorkerMaker1Set(Params.Keys.driver, Seq(Params.Keys.data), workers) {
+        (driverWorker, dataWorkers) => new WorkerMaker(driverWorker, dataWorkers)
       }
     }
   }

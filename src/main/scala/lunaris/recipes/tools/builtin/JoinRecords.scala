@@ -2,7 +2,7 @@ package lunaris.recipes.tools.builtin
 
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval._
-import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
+import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
 import lunaris.streams.transform.RecordStreamJoiner
@@ -34,19 +34,13 @@ object JoinRecords extends tools.Tool {
   case class ToolInstance(from: Seq[String]) extends tools.ToolInstance {
     override def refs: Map[String, String] = {
       from.zipWithIndex.collect {
-        case (ref, index) => ("from" + index, ref)
+        case (ref, index) => (Params.Keys.from + index, ref)
       }.toMap
     }
 
     override def newWorkerMaker(context: LunCompileContext,
-                                workers: Map[String, LunWorker]): Either[Snag, WorkerMaker] = {
-      EitherSeqUtils.traverse(from) { ref =>
-        workers.get(ref) match {
-          case Some(fromWorker: RecordStreamWorker) => Right(fromWorker)
-          case Some(_) => Left(Snag(s"Reference $ref for '${Params.Keys.from}' is not the correct type."))
-          case None => Left(Snag(s"No value available for reference $ref for ${Params.Keys.from}."))
-        }
-      }.map(new WorkerMaker(_))
+                                workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
+      ToolInstanceUtils.newWorkerMakerSet(from, workers)(new WorkerMaker(_))
     }
   }
 
