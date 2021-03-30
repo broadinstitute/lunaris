@@ -2,8 +2,8 @@ package lunaris.io.request.examples
 
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
-import lunaris.recipes.tools.ToolCall.{RefArg, ValueArg}
-import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.tools.ToolCall.{RefArg, RefArrayArg, ValueArg}
+import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecords, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -67,10 +67,16 @@ object RequestBuildUtils {
       ))
     }
 
-    def joinRecordsWithFallback(driver: String, data: String, fallback: StringValue): ToolCall = {
+    def joinRecords(from: Seq[String]): ToolCall = {
+      ToolCall(JoinRecords, Map(
+        JoinRecords.Params.Keys.from -> RefArrayArg(JoinRecords.Params.from, from)
+      ))
+    }
+
+    def joinRecordsWithFallback(driver: String, data: Seq[String], fallback: StringValue): ToolCall = {
       ToolCall(JoinRecordsWithFallback, Map(
         JoinRecordsWithFallback.Params.Keys.driver -> RefArg(JoinRecordsWithFallback.Params.driver, driver),
-        JoinRecordsWithFallback.Params.Keys.data -> RefArg(JoinRecordsWithFallback.Params.data, data),
+        JoinRecordsWithFallback.Params.Keys.data -> RefArrayArg(JoinRecordsWithFallback.Params.data, data),
         JoinRecordsWithFallback.Params.Keys.fallback -> ValueArg(JoinRecordsWithFallback.Params.fallback, fallback),
       ))
     }
@@ -120,10 +126,10 @@ object RequestBuildUtils {
         CalculateMaf.Params.Keys.from -> RefArg(CalculateMaf.Params.from, from)
       ))
 
-    def findRecordsNotInData(driver: String, data: String): ToolCall = {
+    def findRecordsNotInData(driver: String, data: Seq[String]): ToolCall = {
       ToolCall(FindRecordsNotInData, Map(
-        JoinRecordsWithFallback.Params.Keys.driver -> RefArg(JoinRecordsWithFallback.Params.driver, driver),
-        JoinRecordsWithFallback.Params.Keys.data -> RefArg(JoinRecordsWithFallback.Params.data, data)),
+        FindRecordsNotInData.Params.Keys.driver -> RefArg(FindRecordsNotInData.Params.driver, driver),
+        FindRecordsNotInData.Params.Keys.data -> RefArrayArg(FindRecordsNotInData.Params.data, data)),
       )
     }
 

@@ -47,26 +47,36 @@ object VepRequestBuilder {
     object Keys {
       val readDriver: String = "readDriver"
       val canonicalizeDriver: String = "canonicalizeDriver"
-      val readData: String = "readData"
-      val canonicalizeData: String = "canonicalizeData"
+
+      def readData(i: Int): String = s"readData$i"
+
+      def canonicalizeData(i: Int): String = s"canonicalizeData$i"
+
       val join: String = "join"
       val calculateMaf: String = "calculateMaf"
       val filter: String = "filter"
       val write: String = "write"
     }
-
-    Request(requestId,
-      regions,
-      Recipe(Map(
-        Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue),
-        Keys.canonicalizeDriver -> ToolCalls.idCanonicalizer(Keys.readDriver, refFieldVcf, altFieldVcf, idFieldNew),
-        Keys.readData -> ToolCalls.indexedObjectReader(dataFile, indexFileOpt, idField),
-        Keys.canonicalizeData -> ToolCalls.idCanonicalizer(Keys.readData, refField, altField, idFieldNew),
-        Keys.join -> ToolCalls.joinRecordsWithFallback(Keys.canonicalizeDriver, Keys.canonicalizeData, fallbackValue),
-        Keys.calculateMaf -> ToolCalls.calculateMaf(Keys.join),
-        Keys.filter -> ToolCalls.filter(Keys.calculateMaf, filterValue),
-        Keys.write -> ToolCalls.groupFileWriter(Keys.filter, outputFileValue, outputFileFormatValue)
-      ))
+    val dataFiles = Seq(dataFile)
+    val indexFileOpts = Seq(indexFileOpt)
+    val idFields = Seq(idField)
+    val indices = Seq(0)
+    val dataToolCalls = indices.map { i =>
+      Map(
+        Keys.readData(i) -> ToolCalls.indexedObjectReader(dataFiles(i), indexFileOpts(i), idFields(i)),
+        Keys.canonicalizeData(i) -> ToolCalls.idCanonicalizer(Keys.readData(i), refField, altField, idFieldNew),
+      )
+    }.fold(Map.empty)(_ ++ _)
+    val otherToolCalls = Map(
+      Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue),
+      Keys.canonicalizeDriver -> ToolCalls.idCanonicalizer(Keys.readDriver, refFieldVcf, altFieldVcf, idFieldNew),
+      Keys.join ->
+        ToolCalls.joinRecordsWithFallback(Keys.canonicalizeDriver, indices.map(Keys.canonicalizeData), fallbackValue),
+      Keys.calculateMaf -> ToolCalls.calculateMaf(Keys.join),
+      Keys.filter -> ToolCalls.filter(Keys.calculateMaf, filterValue),
+      Keys.write -> ToolCalls.groupFileWriter(Keys.filter, outputFileValue, outputFileFormatValue)
     )
+    val toolCalls = dataToolCalls ++ otherToolCalls
+    Request(requestId, regions, Recipe(toolCalls))
   }
 }
