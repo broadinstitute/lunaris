@@ -2,6 +2,7 @@ package lunaris.vep
 
 import better.files.File
 import lunaris.app.VepDataFieldsSettings
+import lunaris.data.BlockGzippedWithIndex
 import lunaris.expressions.LunBoolExpression
 import lunaris.genomics.Region
 import lunaris.io.request.Request
@@ -18,11 +19,10 @@ object VepRequestBuilder {
                    chroms: Seq[String],
                    regions: Map[String, Seq[Region]],
                    driverFileName: String,
-                   dataFileName: String,
+                   dataFilesWithIndices: Seq[BlockGzippedWithIndex],
                    outputFile: File,
                    outFileFormat: String,
                    filter: LunBoolExpression,
-                   indexFileNameOpt: Option[String],
                    dataFields: VepDataFieldsSettings): Request = {
 
     val requestId = "lunaris_vep_" + resultId.toString
@@ -30,8 +30,6 @@ object VepRequestBuilder {
     val fallbackString = "vep"
 
     val driverFile: FileValue = FileValue(driverFileName)
-    val dataFile: FileValue = FileValue(dataFileName)
-    val indexFileOpt: Option[FileValue] = indexFileNameOpt.map(FileValue)
     val idField: StringValue = StringValue(dataFields.varId)
     val refField: StringValue = StringValue(dataFields.ref)
     val altField: StringValue = StringValue(dataFields.alt)
@@ -57,16 +55,16 @@ object VepRequestBuilder {
       val filter: String = "filter"
       val write: String = "write"
     }
-    val dataFiles = Seq(dataFile)
-    val indexFileOpts = Seq(indexFileOpt)
-    val idFields = Seq(idField)
-    val indices = Seq(0)
-    val dataToolCalls = indices.map { i =>
-      Map(
-        Keys.readData(i) -> ToolCalls.indexedObjectReader(dataFiles(i), indexFileOpts(i), idFields(i)),
-        Keys.canonicalizeData(i) -> ToolCalls.idCanonicalizer(Keys.readData(i), refField, altField, idFieldNew),
-      )
+    val dataToolCalls = dataFilesWithIndices.zipWithIndex.collect {
+      case (dataFileWithIndex, i) =>
+        val dataFileValue = FileValue(dataFileWithIndex.data.toString)
+        val indexFileValue = FileValue(dataFileWithIndex.index.toString)
+        Map(
+          Keys.readData(i) -> ToolCalls.indexedObjectReader(dataFileValue, Some(indexFileValue), idField),
+          Keys.canonicalizeData(i) -> ToolCalls.idCanonicalizer(Keys.readData(i), refField, altField, idFieldNew),
+        )
     }.fold(Map.empty)(_ ++ _)
+    val indices = dataFilesWithIndices.indices
     val otherToolCalls = Map(
       Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue),
       Keys.canonicalizeDriver -> ToolCalls.idCanonicalizer(Keys.readDriver, refFieldVcf, altFieldVcf, idFieldNew),

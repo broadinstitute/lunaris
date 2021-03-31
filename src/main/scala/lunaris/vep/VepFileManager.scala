@@ -115,9 +115,8 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
       val regionsByChrom = chromsAndRegions.regions
       val request = {
         VepRequestBuilder.buildRequest(
-          jobId, chroms, regionsByChrom, inputFileServer.toString, dataFileWithIndex.data.toString,
-          outputFile, formData.format, formData.filter, Some(dataFileWithIndex.index.toString),
-          vepDataFields
+          jobId, chroms, regionsByChrom, inputFileServer.toString, Seq(dataFileWithIndex), outputFile,
+          formData.format, formData.filter, vepDataFields
         )
       }
       LunCompiler.compile(request)
