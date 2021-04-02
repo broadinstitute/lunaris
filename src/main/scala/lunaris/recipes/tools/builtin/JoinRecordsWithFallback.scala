@@ -1,5 +1,6 @@
 package lunaris.recipes.tools.builtin
 
+import akka.stream.Materializer
 import lunaris.app.VepRunSettings
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
@@ -35,13 +36,13 @@ object JoinRecordsWithFallback extends Tool {
   override def isFinal: Boolean = false
 
   sealed trait FallbackGenerator {
-    def createFallback(): Record => Either[Snag, Record]
+    def createFallback(materializer: Materializer): Record => Either[Snag, Record]
   }
 
   class VepFallbackGenerator(vepRunSettings: VepRunSettings) extends FallbackGenerator {
     private val vepRunner = VepRunner.createNewVepRunner(vepRunSettings)
-    override def createFallback(): Record => Either[Snag, Record] =
-      (record: Record) => vepRunner.processRecord(record)
+    override def createFallback(materializer: Materializer): Record => Either[Snag, Record] =
+      (record: Record) => vepRunner.processRecord(record)(materializer)
   }
 
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
@@ -92,7 +93,7 @@ object JoinRecordsWithFallback extends Tool {
                   EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context, runTracker).snagOrStream))
                 metaJoined <- Meta.sequence(driverStream.meta +: dataStreams.map(_.meta))
               } yield {
-                val fallback = fallbackGenerator.createFallback()
+                val fallback = fallbackGenerator.createFallback(context.materializer)
                 val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
                   driverStream.source, dataStreams.map(_.source)) {
                   _.joinWith(_)

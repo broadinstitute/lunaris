@@ -12,6 +12,7 @@ import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
 import lunaris.vep.VepFileManager.JobId
+import lunaris.vep.vcf.{VcfCore, VcfStreamVariantsReader}
 
 object VepRequestBuilder {
 
@@ -33,8 +34,8 @@ object VepRequestBuilder {
     val idField: StringValue = StringValue(dataFields.varId)
     val refField: StringValue = StringValue(dataFields.ref)
     val altField: StringValue = StringValue(dataFields.alt)
-    val refFieldVcf: StringValue = StringValue(VcfStreamVariantsReader.ColNames.ref)
-    val altFieldVcf: StringValue = StringValue(VcfStreamVariantsReader.ColNames.alt)
+    val refFieldVcf: StringValue = StringValue(VcfCore.ColNames.ref)
+    val altFieldVcf: StringValue = StringValue(VcfCore.ColNames.alt)
     val idFieldNew: StringValue = StringValue("idCanon")
     val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
     val fallbackValue: StringValue = StringValue(fallbackString)

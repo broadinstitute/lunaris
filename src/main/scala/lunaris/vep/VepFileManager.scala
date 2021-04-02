@@ -15,6 +15,7 @@ import lunaris.utils.DateUtils
 import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
+import lunaris.vep.vcf.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import java.io.PrintStream

@@ -1,10 +1,16 @@
 package lunaris.vep
 
+import akka.actor.ActorSystem
+import akka.stream.Materializer
 import lunaris.app.{LunarisConfigProps, VepSettings}
 import lunaris.io.InputId
+import lunaris.vep.vcf.VcfCore
 import org.scalatest.funsuite.AnyFunSuite
 
 class VepRunnerTest extends AnyFunSuite {
+
+  private val actorSystem = ActorSystem("test")
+  private implicit val materializer: Materializer = Materializer(actorSystem)
 
   private val configFile = InputId("configs/oliversBroadWindowsLaptop.conf")
   private val snagOrVepSettings = LunarisConfigProps.inputIdProps(configFile).flatMap(props => props.toVepSettings)
@@ -16,7 +22,8 @@ class VepRunnerTest extends AnyFunSuite {
     val filter = ""
     val info = ""
     val format = ""
-    val snagOrValues = vepRunner.calculateValues(id, chrom, pos, ref, alt, qual, filter, info, format)
+    val vcfRecord = VcfCore.VcfCoreRecord(chrom, pos, id, ref, alt, qual, filter, info, format)
+    val snagOrValues = vepRunner.calculateValues(vcfRecord)
     assert(snagOrValues.isRight, snagOrValues.left.toOption.map(_.message).getOrElse(""))
     val Right((headers, values)) = snagOrValues
     assert(headers.length == values.length)

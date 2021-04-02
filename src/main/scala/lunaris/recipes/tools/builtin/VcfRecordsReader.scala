@@ -8,7 +8,7 @@ import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.{eval, tools}
-import lunaris.vep.VcfStreamVariantsReader
+import lunaris.vep.vcf.{VcfCore, VcfStreamVariantsReader}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object VcfRecordsReader extends tools.Tool {
@@ -52,7 +52,7 @@ object VcfRecordsReader extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker] {
           (context: LunRunContext, runTracker: RunTracker) => {
-            val recordType = VcfStreamVariantsReader.vcfRecordType
+            val recordType = VcfCore.vcfRecordType
             val meta = Meta(recordType, chroms)
             val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
               .map(_.toRecord).mapMaterializedValue(_ => meta)

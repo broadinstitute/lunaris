@@ -1,16 +1,21 @@
 package lunaris.vep
 
-import java.io.PrintWriter
-import java.nio.charset.StandardCharsets
+import akka.stream.Materializer
+import akka.stream.scaladsl.Source
 import better.files.{File, Resource}
 import lunaris.app.VepRunSettings
-import lunaris.genomics.{LociSet, Locus, Region}
+import lunaris.genomics.LociSet
 import lunaris.io.{ExonsFileReader, FileInputId}
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.{IOUtils, SnagUtils}
+import lunaris.vep.vcf.VcfCore.VcfCoreRecord
+import lunaris.vep.vcf.VcfStreamVariantsWriter
+import lunaris.vep.vcf.VcfStreamVariantsWriter.VcfRecord
 import org.broadinstitute.yootilz.core.snag.Snag
 
+import java.io.PrintWriter
+import java.nio.charset.StandardCharsets
 import scala.sys.process._
 import scala.util.Random
 
@@ -48,7 +53,7 @@ class VepRunner(val runSettings: VepRunSettings) {
     }
   }
 
-  def processRecord(record: Record): Either[Snag, Record] = {
+  def processRecord(record: Record)(implicit materializer: Materializer): Either[Snag, Record] = {
     val id = record.id
     val chrom = record.locus.chrom
     val pos = record.locus.region.begin
@@ -61,7 +66,8 @@ class VepRunner(val runSettings: VepRunSettings) {
       ref <- refValue.asString
       altValue <- optToSnagOrValue(record.values.get("ALT"))("No value for ALT.")
       alt <- altValue.asString
-      result <- calculateJoined(record, id, chrom, pos, ref, alt, qual, filter, info, format)
+      vcfRecord = VcfCoreRecord(chrom, pos, id, ref, alt, qual, filter, info, format)
+      result <- calculateJoined(record, vcfRecord)
     } yield result
   }
 
@@ -72,7 +78,6 @@ class VepRunner(val runSettings: VepRunSettings) {
     val cacheDir = runSettings.cacheDir
     val pluginsDir = runSettings.pluginsDir
     val dbNsfp = runSettings.dbNSFPFile
-    // TODO remaining arguments
     val commandLine =
       s"bash $vepWrapperScriptFile $vepCmd $inputFile $cpus $fastaFile $cacheDir $pluginsDir $dbNsfp " +
         s"$outputFile $warningsFile"
@@ -88,15 +93,13 @@ class VepRunner(val runSettings: VepRunSettings) {
     result
   }
 
-  def calculateValues(id: String, chrom: String, pos: Int, ref: String, alt: String, qual: String, filter: String,
-                      info: String, format: String):
+  def calculateValues(vcfRecord: VcfRecord)(implicit materializer: Materializer):
   Either[Snag, (Array[String], Array[String])] = {
-    if(exonsSet.overlapsLocus(Locus(chrom, Region(pos, pos + ref.length)))) {
+    if (exonsSet.overlapsLocus(vcfRecord.toLocus)) {
       createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
         val inputFile = subRunDir / "input.vcf"
         inputFile.bufferedWriter(StandardCharsets.UTF_8).map(new PrintWriter(_)).foreach { printWriter =>
-          printWriter.println("#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT")
-          printWriter.println(s"$chrom\t$pos\t$id\t$ref\t$alt\t$qual\t$filter\t$info\t$format")
+          VcfStreamVariantsWriter.writeVcfRecords(Source.single(vcfRecord), printWriter)
         }
         val outputFile = subRunDir / "output.tsv"
         val warningsFile = subRunDir / "warnings"
@@ -127,23 +130,23 @@ class VepRunner(val runSettings: VepRunSettings) {
                 case Some(values) => Right((headers, values))
               }
             } else {
-              Left(Snag(s"vep produced no data line for variant $id"))
+              Left(Snag(s"vep produced no data line for variant ${vcfRecord.id}."))
             }
           } else {
-            Left(Snag(s"vep produced no header line for variant $id"))
+            Left(Snag(s"vep produced no header line for variant ${vcfRecord.id}."))
           }
         } else {
-          Left(Snag(s"vep return value was non-zero ($returnValue) for variant $id."))
+          Left(Snag(s"vep return value was non-zero ($returnValue) for variant ${vcfRecord.id}."))
         }
       }
     } else {
-      Left(Snag(s"$chrom:$pos:$ref:$alt is not in the exome."))
+      Left(Snag(s"${vcfRecord.toVariant.toCanonicalId} is not in the exome."))
     }
   }
 
-  def calculateJoined(record: Record, id: String, chrom: String, pos: Int, ref: String, alt: String, qual: String,
-                      filter: String, info: String, format: String): Either[Snag, Record] = {
-    calculateValues(id, chrom, pos, ref, alt, qual, filter, info, format).flatMap { headersAndValues =>
+  def calculateJoined(record: Record, vcfRecord: VcfRecord)(implicit materializer: Materializer):
+  Either[Snag, Record] = {
+    calculateValues(vcfRecord).flatMap { headersAndValues =>
       val (headers, values) = headersAndValues
       val valuesRecordType = {
         var typeTmp = record.lunType

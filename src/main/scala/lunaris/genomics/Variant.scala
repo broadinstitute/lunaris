@@ -2,6 +2,8 @@ package lunaris.genomics
 
 final case class Variant(chrom: String, pos: Int, ref: String, alt: String) {
   def toLocus: Locus = Locus(chrom, Region(pos, pos + ref.length))
+
+  def toCanonicalId: String = s"$chrom:$pos:$ref:$alt"
 }
 
 object Variant {
