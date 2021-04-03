@@ -1,5 +1,6 @@
 package lunaris.vep
 
+import akka.Done
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import better.files.{File, Resource}
@@ -16,6 +17,8 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 import java.io.PrintWriter
 import java.nio.charset.StandardCharsets
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.sys.process._
 import scala.util.Random
 
@@ -93,16 +96,23 @@ class VepRunner(val runSettings: VepRunSettings) {
     result
   }
 
+  def writeVepInputFile[M](inputFile: File, vcfRecords: Source[VcfRecord, M])(
+    implicit materializer: Materializer): Future[Done] = {
+    inputFile.bufferedWriter(StandardCharsets.UTF_8).map(new PrintWriter(_)) { printWriter =>
+      VcfStreamVariantsWriter.writeVcfRecords(vcfRecords, printWriter)
+    }
+  }
+
   def calculateValues(vcfRecord: VcfRecord)(implicit materializer: Materializer):
   Either[Snag, (Array[String], Array[String])] = {
     if (exonsSet.overlapsLocus(vcfRecord.toLocus)) {
       createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
+        val vcfRecords = Source.single(vcfRecord)
         val inputFile = subRunDir / "input.vcf"
-        inputFile.bufferedWriter(StandardCharsets.UTF_8).map(new PrintWriter(_)).foreach { printWriter =>
-          VcfStreamVariantsWriter.writeVcfRecords(Source.single(vcfRecord), printWriter)
-        }
+        val doneFut = writeVepInputFile(inputFile, vcfRecords)
         val outputFile = subRunDir / "output.tsv"
         val warningsFile = subRunDir / "warnings"
+        Await.ready(doneFut, Duration.Inf)  //  TODO async!
         val returnValue = runVep(inputFile, outputFile, warningsFile)
         if (returnValue == 0) {
           val lineIter = outputFile.lineIterator.dropWhile(_.startsWith("##"))
