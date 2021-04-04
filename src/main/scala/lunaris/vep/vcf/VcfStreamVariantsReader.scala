@@ -27,7 +27,7 @@ object VcfStreamVariantsReader {
 
   def readVcfRecords(source: Source[ByteString, Future[IOResult]]):
   Source[VcfCore.VcfCoreRecord, Future[IOResult]] = {
-    source.via(Framing.delimiter(ByteString("\n"), Int.MaxValue))
+    source.via(Framing.delimiter(ByteString("\n"), Int.MaxValue, allowTruncation = true))
       .map(_.utf8String)
       .filter(!_.startsWith("#"))
       .mapConcat { line =>
