@@ -1,7 +1,7 @@
 package lunaris.recipes.values
 
 import lunaris.expressions.LunExpression
-import lunaris.genomics.Locus
+import lunaris.genomics.{Locus, Region}
 import lunaris.io.{InputId, OutputId}
 import lunaris.utils.{EitherSeqUtils, NumberParser}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -212,9 +212,9 @@ object LunValue {
     }
 
     def joinWith(oRecord: RecordValue): Either[Snag, RecordValue] = {
-      if(id != oRecord.id) {
+      if (id != oRecord.id) {
         Left(Snag(s"Can only join objects with same id, but ${oRecord.id} is different from $id."))
-      } else if(locus != oRecord.locus) {
+      } else if (locus != oRecord.locus) {
         Left(Snag(s"Can only join objects with same locus, but ${oRecord.locus} is different from $locus."))
       } else {
         Right(RecordValue(id, locus, lunType.joinWith(oRecord.lunType), oRecord.values ++ values))
@@ -225,10 +225,18 @@ object LunValue {
       castTo(lunType.changeFieldTypesTo(types)).map(_.asInstanceOf[RecordValue])
 
     def addField(fieldName: String, value: LunValue, fieldType: LunType): Either[Snag, RecordValue] = {
-      if(lunType.fields.contains(fieldName)) {
+      if (lunType.fields.contains(fieldName)) {
         Left(Snag(s"Cannot add field $fieldName, because it already exists."))
       } else {
         Right(copy(values = values + (fieldName -> value), lunType = lunType.addField(fieldName, fieldType)))
+      }
+    }
+
+    def addFieldIFNotExists(fieldName: String, value: LunValue, fieldType: LunType): RecordValue = {
+      if (lunType.fields.contains(fieldName)) {
+        this
+      } else {
+        copy(values = values + (fieldName -> value), lunType = lunType.addField(fieldName, fieldType))
       }
     }
 
@@ -251,6 +259,43 @@ object LunValue {
         recordWithNewField <- addField(idFieldNew, LunValue.PrimitiveValue.StringValue(idNew), LunType.StringType)
         recordNew <- recordWithNewField.changeIdFieldTo(idFieldNew)
       } yield recordNew
+    }
+  }
+
+  object RecordValue {
+    def apply(idCol: String, id: String, chromCol: String, chrom: String, startCol: String, start: Int,
+              endCol: String, end: Int): RecordValue = {
+      val recordType = LunType.RecordType(idCol, chromCol, startCol, endCol)
+      val locus = Locus(chrom, Region(start, end))
+      val values =
+        if (startCol == endCol) {
+          Map(
+            idCol -> LunValue.PrimitiveValue.StringValue(id),
+            chromCol -> LunValue.PrimitiveValue.StringValue(chrom),
+            startCol -> LunValue.PrimitiveValue.IntValue(start)
+          )
+        } else {
+          Map(
+            idCol -> LunValue.PrimitiveValue.StringValue(id),
+            chromCol -> LunValue.PrimitiveValue.StringValue(chrom),
+            startCol -> LunValue.PrimitiveValue.IntValue(start),
+            endCol -> LunValue.PrimitiveValue.IntValue(end)
+          )
+        }
+      RecordValue(id, locus, recordType, values)
+    }
+
+    def apply(idCol: String, id: String, chromCol: String, chrom: String, posCol: String, pos: Int,
+              size: Int): RecordValue = {
+      val recordType = LunType.RecordType(idCol, chromCol, posCol, posCol)
+      val locus = Locus(chrom, Region(pos, pos + size))
+      val values =
+        Map(
+          idCol -> LunValue.PrimitiveValue.StringValue(id),
+          chromCol -> LunValue.PrimitiveValue.StringValue(chrom),
+          posCol -> LunValue.PrimitiveValue.IntValue(pos)
+        )
+      RecordValue(id, locus, recordType, values)
     }
   }
 
