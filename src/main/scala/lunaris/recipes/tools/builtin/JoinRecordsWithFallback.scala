@@ -36,13 +36,13 @@ object JoinRecordsWithFallback extends Tool {
   override def isFinal: Boolean = false
 
   sealed trait FallbackGenerator {
-    def createFallback(materializer: Materializer): Record => Either[Snag, Record]
+    def createFallback(snagLogger: Snag => (), materializer: Materializer): Record => Either[Snag, Record]
   }
 
   class VepFallbackGenerator(vepRunSettings: VepRunSettings) extends FallbackGenerator {
     private val vepRunner = VepRunner.createNewVepRunner(vepRunSettings)
-    override def createFallback(materializer: Materializer): Record => Either[Snag, Record] =
-      (record: Record) => vepRunner.processRecord(record)(materializer)
+    override def createFallback(snagLogger: Snag => (), materializer: Materializer): Record => Either[Snag, Record] =
+      (record: Record) => vepRunner.processRecord(record, snagLogger)(materializer)
   }
 
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
@@ -93,7 +93,7 @@ object JoinRecordsWithFallback extends Tool {
                   EitherSeqUtils.sequence(dataWorkers.map(_.getStreamBox(context, runTracker).snagOrStream))
                 metaJoined <- Meta.sequence(driverStream.meta +: dataStreams.map(_.meta))
               } yield {
-                val fallback = fallbackGenerator.createFallback(context.materializer)
+                val fallback = fallbackGenerator.createFallback(runTracker.snagTracker.trackSnag, context.materializer)
                 val sourceJoined = RecordStreamJoinerWithFallback.joinWithFallback(metaJoined,
                   driverStream.source, dataStreams.map(_.source)) {
                   _.joinWith(_)

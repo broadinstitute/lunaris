@@ -23,11 +23,10 @@ class VepRunnerTest extends AnyFunSuite {
     val info = ""
     val format = ""
     val vcfRecord = VcfCore.VcfCoreRecord(chrom, pos, id, ref, alt, qual, filter, info, format)
-    val snagOrValues = vepRunner.calculateValues(vcfRecord)
+    val snagOrValues = vepRunner.calculateValues(vcfRecord, snag => println(snag.message))
     assert(snagOrValues.isRight, snagOrValues.left.toOption.map(_.message).getOrElse(""))
-    val Right((headers, values)) = snagOrValues
-    assert(headers.length == values.length)
-    assert(headers.length > 33)
+    val Right(record) = snagOrValues
+    assert(record.values.size > 33)
   }
 
   test("Run vep for 1:69088:T:G") {

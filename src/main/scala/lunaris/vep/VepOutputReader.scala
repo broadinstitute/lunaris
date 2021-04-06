@@ -3,15 +3,15 @@ package lunaris.vep
 import akka.stream.scaladsl.{Framing, Source}
 import akka.util.ByteString
 import better.files.File
-import lunaris.genomics.{Locus, Region}
 import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.values.LunType.RecordType
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
-import lunaris.streams.utils.RecordStreamTypes.{RecordSource, Record}
+import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
 import lunaris.utils.NumberParser
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import java.nio.charset.StandardCharsets
+import scala.collection.immutable.ArraySeq
 
 object VepOutputReader {
 
@@ -123,14 +123,14 @@ object VepOutputReader {
         }
         recordTypeTmp
       }
-      ColIndices.fromHeaders(headers) match {
+      ColIndices.fromHeaders(ArraySeq.unsafeWrapArray(headers)) match {
         case Right(colIndices: ColIndices) =>
           val allRecords = FileInputId(inputFile).newStream(resourceConfig)
             .via(Framing.delimiter(ByteString("\n"), Int.MaxValue, allowTruncation = true))
             .map(_.utf8String)
             .map { line =>
               val valueStrings = line.split("\t")
-              val snagOrLocus = parseCoreRecord(colIndices, valueStrings)
+              val snagOrLocus = parseCoreRecord(colIndices, ArraySeq.unsafeWrapArray(valueStrings))
               snagOrLocus.left.foreach(snagLogger)
               val snagOrRecord = snagOrLocus.map { coreRecord =>
                 var recordTmp = coreRecord

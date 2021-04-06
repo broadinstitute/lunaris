@@ -2,12 +2,12 @@ package lunaris.vep
 
 import akka.Done
 import akka.stream.Materializer
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import better.files.{File, Resource}
 import lunaris.app.VepRunSettings
 import lunaris.genomics.LociSet
-import lunaris.io.{ExonsFileReader, FileInputId}
-import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.io.{ExonsFileReader, FileInputId, ResourceConfig}
+import lunaris.recipes.values.LunValue
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.{IOUtils, SnagUtils}
 import lunaris.vep.vcf.VcfCore.VcfCoreRecord
@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.sys.process._
-import scala.util.Random
+import scala.util.{Failure, Random, Success}
 
 class VepRunner(val runSettings: VepRunSettings) {
 
@@ -56,7 +56,8 @@ class VepRunner(val runSettings: VepRunSettings) {
     }
   }
 
-  def processRecord(record: Record)(implicit materializer: Materializer): Either[Snag, Record] = {
+  def processRecord(record: Record, snagLogger: Snag => ())(implicit materializer: Materializer):
+  Either[Snag, Record] = {
     val id = record.id
     val chrom = record.locus.chrom
     val pos = record.locus.region.begin
@@ -70,7 +71,7 @@ class VepRunner(val runSettings: VepRunSettings) {
       altValue <- optToSnagOrValue(record.values.get("ALT"))("No value for ALT.")
       alt <- altValue.asString
       vcfRecord = VcfCoreRecord(chrom, pos, id, ref, alt, qual, filter, info, format)
-      result <- calculateJoined(record, vcfRecord)
+      result <- calculateJoined(record, vcfRecord, snagLogger)
     } yield result
   }
 
@@ -87,7 +88,7 @@ class VepRunner(val runSettings: VepRunSettings) {
     commandLine.!
   }
 
-  val colNamePick: String = "PICK"
+  private val colNamePick: String = "PICK"
 
   private def createUseDiscardDir[T](dir: File)(user: File => T): T = {
     dir.createDirectory()
@@ -103,47 +104,30 @@ class VepRunner(val runSettings: VepRunSettings) {
     }
   }
 
-  def calculateValues(vcfRecord: VcfRecord)(implicit materializer: Materializer):
-  Either[Snag, (Array[String], Array[String])] = {
+  def calculateValues(vcfRecord: VcfRecord, snagLogger: Snag => ())(implicit materializer: Materializer):
+  Either[Snag, Record] = {
     if (exonsSet.overlapsLocus(vcfRecord.toLocus)) {
       createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
         val vcfRecords = Source.single(vcfRecord)
+        val chroms = Seq(vcfRecord.chrom)
         val inputFile = subRunDir / "input.vcf"
         val doneFut = writeVepInputFile(inputFile, vcfRecords)
         val outputFile = subRunDir / "output.tsv"
         val warningsFile = subRunDir / "warnings"
-        Await.ready(doneFut, Duration.Inf)  //  TODO async!
+        Await.ready(doneFut, Duration.Inf)  //  TODO do without Await
         val returnValue = runVep(inputFile, outputFile, warningsFile)
         if (returnValue == 0) {
-          val lineIter = outputFile.lineIterator.dropWhile(_.startsWith("##"))
-          if (lineIter.hasNext) {
-            val headerLineRaw = lineIter.next()
-            val headerLine = if (headerLineRaw.startsWith("#")) {
-              headerLineRaw.substring(1)
-            } else {
-              headerLineRaw
-            }
-            val headers = headerLine.split("\t")
-            var valuesOpt: Option[Array[String]] = None
-            val iPick = headers.indexOf(colNamePick)
-            if (iPick >= 0) {
-              val requiredPickValue = "1"
-              while (lineIter.hasNext && valuesOpt.isEmpty) {
-                val dataLine = lineIter.next()
-                val values = dataLine.split("\t")
-                if (values.length > iPick && values(iPick) == requiredPickValue) {
-                  valuesOpt = Some(values)
-                }
+          val records = VepOutputReader.read(inputFile, ResourceConfig.empty, chroms, snagLogger)
+          val recordSeqFut = records.runWith(Sink.collection[Record, Seq[Record]])
+          Await.ready(recordSeqFut, Duration.Inf)  //  TODO do without Await
+          recordSeqFut.value.get match {
+            case Failure(exception) =>
+              Left(Snag(exception))
+            case Success(recordSeq) =>
+              recordSeq.headOption match {
+                case Some(record) => Right(record)
+                case None => Left(Snag(s"VEP produced no output for ${vcfRecord.id}."))
               }
-              valuesOpt match {
-                case None => Left(Snag(s"vep produced no row with value $requiredPickValue for $colNamePick."))
-                case Some(values) => Right((headers, values))
-              }
-            } else {
-              Left(Snag(s"vep produced no data line for variant ${vcfRecord.id}."))
-            }
-          } else {
-            Left(Snag(s"vep produced no header line for variant ${vcfRecord.id}."))
           }
         } else {
           Left(Snag(s"vep return value was non-zero ($returnValue) for variant ${vcfRecord.id}."))
@@ -154,20 +138,10 @@ class VepRunner(val runSettings: VepRunSettings) {
     }
   }
 
-  def calculateJoined(record: Record, vcfRecord: VcfRecord)(implicit materializer: Materializer):
+  def calculateJoined(record: Record, vcfRecord: VcfRecord, snagLogger: Snag => ())(
+    implicit materializer: Materializer):
   Either[Snag, Record] = {
-    calculateValues(vcfRecord).flatMap { headersAndValues =>
-      val (headers, values) = headersAndValues
-      val valuesRecordType = {
-        var typeTmp = record.lunType
-        headers.foreach { header =>
-          typeTmp = typeTmp.addField(header, LunType.StringType)
-        }
-        typeTmp
-      }
-      val valuesValues = values.map(LunValue.PrimitiveValue.StringValue)
-      val valuesMap = headers.zip(valuesValues).toMap
-      val valuesRecord = LunValue.RecordValue(record.id, record.locus, valuesRecordType, valuesMap)
+    calculateValues(vcfRecord, snagLogger).flatMap { valuesRecord =>
       record.joinWith(valuesRecord)
     }
   }
