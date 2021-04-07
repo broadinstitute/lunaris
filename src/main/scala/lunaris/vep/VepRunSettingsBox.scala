@@ -1,6 +1,6 @@
 package lunaris.vep
 
-import lunaris.app.{VepRunSettings, VepSettings}
+import lunaris.app.VepRunSettings
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object VepRunSettingsBox {

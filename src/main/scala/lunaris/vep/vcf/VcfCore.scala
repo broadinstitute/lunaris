@@ -3,6 +3,7 @@ package lunaris.vep.vcf
 import lunaris.genomics.{Locus, Variant}
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.utils.RecordStreamTypes.Record
+import org.broadinstitute.yootilz.core.snag.Snag
 
 object VcfCore {
 
@@ -66,6 +67,17 @@ object VcfCore {
 
     def toLine: String =
       Seq(chrom, pos.toString, id, ref, alt, qual, filter, info, format).mkString("\t")
+  }
+
+  object VcfCoreRecord {
+    def fromRecord(record: Record, refColName: String, altColName: String): Either[Snag, VcfCoreRecord] = {
+      for {
+        refValue <- record.get(refColName)
+        ref <- refValue.asString
+        altValue <- record.get(altColName)
+        alt <- altValue.asString
+      } yield VcfCoreRecord(record.locus.chrom, record.locus.region.begin, record.id, ref, alt, "", "", "", "")
+    }
   }
 
 }
