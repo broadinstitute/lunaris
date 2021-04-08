@@ -4,13 +4,11 @@ import akka.stream.scaladsl.{Keep, Source}
 import lunaris.io.OutputId
 import lunaris.recipes.eval.LunRunnable.TextWriter
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
-import lunaris.recipes.eval.{LunCompileContext, LunWorker, RunTracker, WorkerMaker}
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
-import lunaris.recipes.{eval, tools}
+import lunaris.recipes.eval.{LunCompileContext, LunWorker, RunTracker, WorkerMaker}
 import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall, ToolInstanceUtils}
-import lunaris.recipes.values.LunType.RecordType
-import lunaris.recipes.values.LunValue.RecordValue
 import lunaris.recipes.values.{LunType, LunValue, LunValueJson, RecordStreamWithMeta}
+import lunaris.recipes.{eval, tools}
 import lunaris.vep.vcf.VcfCore
 import lunaris.vep.vcf.VcfCore.VcfCoreRecord
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -71,21 +69,8 @@ object VcfRecordsWriter extends Tool {
     override def finalizeAndShip(): WorkerBox = new WorkerBox {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
-      private def valueToString(value: LunValue): String = {
-        value match {
-          case primitiveValue: LunValue.PrimitiveValue => primitiveValue.value.toString
-          case _ => LunValueJson.valueEncoder.apply(value).noSpaces
-        }
-      }
-
-      private def dataLine(objectValue: RecordValue, meta: RecordStreamWithMeta.Meta): String = {
-        meta.objectType.fields.map(objectValue.values.get).map(_.map(valueToString))
-          .map(_.getOrElse("")).mkString("\t")
-      }
-
       private def getLineStream(recordStream: RecordStreamWithMeta, runTracker: RunTracker):
       Source[String, RecordStreamWithMeta.Meta] = {
-        val meta = recordStream.meta
         val vcfRecords = recordStream.source.mapConcat { record =>
           val snagOrVcfRecord = VcfCoreRecord.fromRecord(record, refCol, altCol)
           snagOrVcfRecord.left.foreach(runTracker.snagTracker.trackSnag)
