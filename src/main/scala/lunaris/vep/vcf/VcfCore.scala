@@ -30,7 +30,7 @@ object VcfCore {
     val info = "INFO"
     val format = "FORMAT"
     val seq = Seq(chrom, pos, id, ref, alt, qual, filter, info, format)
-    val headerLine: String = seq.mkString("\t")
+    val headerLine: String = seq.mkString("#", "\t", "")
   }
 
   val vcfRecordType: LunType.RecordType =
