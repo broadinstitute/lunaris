@@ -3,9 +3,10 @@ package lunaris.vep
 import akka.stream.scaladsl.{Framing, Source}
 import akka.util.ByteString
 import better.files.File
-import lunaris.io.{FileInputId, ResourceConfig}
+import lunaris.io.{FileInputId, InputId, ResourceConfig}
 import lunaris.recipes.values.LunType.RecordType
 import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
+import lunaris.streams.transform.HeaderRecordsParser
 import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
 import lunaris.utils.NumberParser
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
@@ -109,6 +110,8 @@ object VepOutputReader {
 
   def read(inputFile: File, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ()):
   RecordSource = {
+    val inputId = FileInputId(inputFile)
+    HeaderRecordsParser.parseRecords(inputId, resourceConfig, )
     val lineIter = inputFile.lineIterator(StandardCharsets.UTF_8).filter(!_.startsWith("##"))
     val recordTypeCore = LunType.RecordType(ColNames.id, ColNames.chrom, ColNames.pos, ColNames.pos)
     if (lineIter.hasNext) {

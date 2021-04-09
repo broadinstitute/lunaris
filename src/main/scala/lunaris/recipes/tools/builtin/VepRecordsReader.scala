@@ -2,16 +2,16 @@ package lunaris.recipes.tools.builtin
 
 import lunaris.io.InputId
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
-import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, RunTracker, WorkerMaker}
-import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
-import lunaris.recipes.values.RecordStreamWithMeta.Meta
-import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
+import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.{eval, tools}
-import lunaris.vep.vcf.{VcfCore, VcfStreamVariantsReader}
+import lunaris.recipes.tools.{Tool, ToolArgUtils, ToolCall}
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
+import lunaris.recipes.values.RecordStreamWithMeta.Meta
+import lunaris.vep.VepOutputReader
 import org.broadinstitute.yootilz.core.snag.Snag
 
-object VcfRecordsReader extends tools.Tool {
+object VepRecordsReader extends tools.Tool {
   override def resultType: LunType = LunType.RecordStreamType
 
   object Params {
@@ -51,16 +51,20 @@ object VcfRecordsReader extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker] {
           (context: LunRunContext, runTracker: RunTracker) => {
-            val recordType = VcfCore.vcfRecordType
-            val meta = Meta(recordType, chroms)
-            val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
-              .map(_.toRecord).mapMaterializedValue(_ => meta)
-            val stream = RecordStreamWithMeta(meta, source)
-            LunWorker.StreamBox(stream)
+//            VepOutputReader.read()
+//            val recordType = VcfCore.vcfRecordType
+//            val meta = Meta(recordType, chroms)
+//            val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
+//              .map(_.toRecord).mapMaterializedValue(_ => meta)
+//            val stream = RecordStreamWithMeta(meta, source)
+//            LunWorker.StreamBox(stream)
+            ???  //  TODO
           }
         }
 
       override def pickupRunnableOpt(): Option[LunRunnable] = None
     }
   }
+
+
 }
