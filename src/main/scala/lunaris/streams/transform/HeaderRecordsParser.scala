@@ -1,45 +1,21 @@
 package lunaris.streams.transform
 
-import akka.stream.{IOResult, Materializer}
 import akka.stream.scaladsl.{Framing, Sink, Source}
+import akka.stream.{IOResult, Materializer}
 import akka.util.ByteString
 import lunaris.io.{InputId, ResourceConfig}
-import lunaris.streams.utils.RecordStreamTypes.{Meta, Record, RecordSource}
+import lunaris.recipes.values.LunType
+import lunaris.recipes.values.RecordStreamWithMeta.Meta
+import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
 object HeaderRecordsParser {
 
-  class LineProcessor[H](isPreHeader: String => Boolean)
-                        (headerParser: String => Either[Snag, H])
-                        (recordParser: (H, String) => Either[Snag, Record])
-                        (snagLogger: Snag => ())
-    extends (String => Seq[Record]) {
-    var headerOpt: Option[H] = None
-
-    override def apply(line: String): Seq[Record] = {
-      headerOpt match {
-        case None =>
-          if(isPreHeader(line)) {
-            Seq()
-          } else {
-            headerParser(line) match {
-              case Left(snag) =>
-                snagLogger(Snag("Could not parse header line", snag))
-                throw new SnagException(snag)
-              case Right(header) =>
-                headerOpt = Some(header)
-                Seq()
-            }
-          }
-        case Some(header) =>
-          val snagOrRecord = recordParser(header, line)
-          snagOrRecord.left.foreach(snagLogger)
-          snagOrRecord.toSeq
-      }
-    }
-  }
+  type RecordParser = String => Either[Snag, Record]
+  type RecordParserGenerator = (LunType.RecordType, Array[String]) => Either[Snag, RecordParser]
 
   private def getLines(input: InputId, resourceConfig: ResourceConfig): Source[String, Future[IOResult]] = {
     input.newStream(resourceConfig)
@@ -47,34 +23,73 @@ object HeaderRecordsParser {
       .map(_.utf8String)
   }
 
-  def parseRecords[H](input: InputId, resourceConfig: ResourceConfig, meta: Meta)
-                     (isPreHeader: String => Boolean)
-                     (headerParser: String => Either[Snag, H])
-                     (recordParser: (H, String) => Either[Snag, Record])
+  private def checkCoreFields(cols: Array[String], coreFields: Seq[String]): Either[Snag, ()] = {
+    var snagOpt: Option[Snag] = None
+    val coreFieldsIter = coreFields.iterator
+    while (snagOpt.isEmpty && coreFieldsIter.hasNext) {
+      val coreField = coreFieldsIter.next()
+      if (!cols.contains(coreField)) {
+        snagOpt = Some(Snag(s"Missing column $coreField."))
+      }
+    }
+    snagOpt.fold[Either[Snag, ()]](Right(()))(Left(_))
+  }
+
+  private def parseHeaderLine(recordCoreType: LunType.RecordType, headerLine: String)
+                             (recordParserGenerator: RecordParserGenerator):
+  Either[Snag, (LunType.RecordType, RecordParser)] = {
+    val headerLineCleaned = if (headerLine.startsWith("#")) headerLine.substring(1) else headerLine
+    val cols = headerLineCleaned.split("\t")
+    checkCoreFields(cols, recordCoreType.fields) match {
+      case Left(snag) => Left(snag)
+      case Right(_) =>
+        var recordTypeTmp = recordCoreType
+        for (col <- cols) {
+          if (!recordTypeTmp.fields.contains(col)) {
+            recordTypeTmp = recordTypeTmp.addField(col, LunType.StringType)
+          }
+        }
+        recordParserGenerator(recordTypeTmp, cols).map(recordParser => (recordTypeTmp, recordParser))
+    }
+  }
+
+  private def getRecordType(input: InputId, resourceConfig: ResourceConfig)
+                           (recordCoreType: LunType.RecordType)
+                           (recordParserGenerator: RecordParserGenerator)
+                           (implicit materializer: Materializer):
+  Either[Snag, (LunType.RecordType, RecordParser)] = {
+    implicit val executionContext: ExecutionContext = materializer.executionContext
+    val headerLineOptFut = getLines(input, resourceConfig)
+      .filter(!_.startsWith("##"))
+      .take(1)
+      .runWith(Sink.collection[String, Seq[String]])
+      .map(_.headOption)
+    val headerLineOpt = Await.result(headerLineOptFut, Duration.Inf)
+    headerLineOpt match {
+      case Some(headerLine) => parseHeaderLine(recordCoreType, headerLine)(recordParserGenerator)
+      case None => Left(Snag(s"Missing header line in $input."))
+    }
+  }
+
+  def newRecordSource(input: InputId, resourceConfig: ResourceConfig, chroms: Seq[String])
+                     (recordCoreType: LunType.RecordType)
+                     (recordParserGenerator: RecordParserGenerator)
                      (snagLogger: Snag => ())
                      (implicit materializer: Materializer): RecordSource = {
     implicit val executionContext: ExecutionContextExecutor = materializer.executionContext
-    getLines(input, resourceConfig)
-      .filter(!isPreHeader(_))
-      .take(1)
-      .runWith(Sink.collection)
-      .map(_.headOption)
-      .map {
-        case None =>
-          val snag = Snag("Missing header line")
-          snagLogger(snag)
-          throw new SnagException(snag)
-        case Some(headerLine) =>
-
-      }
-
-    getLines(input, resourceConfig).flatMapPrefix()
-
-//    Source.future()
-
-
-    getLines(input, resourceConfig)
-      .statefulMapConcat(() => new LineProcessor[H](isPreHeader)(headerParser)(recordParser)(snagLogger))
-      .mapMaterializedValue(_ => meta)
+    getRecordType(input, resourceConfig)(recordCoreType)(recordParserGenerator) match {
+      case Left(snag) =>
+        Source.failed(SnagException(snag)).mapMaterializedValue(_ => Meta(recordCoreType, chroms))
+      case Right((recordType, recordParser)) =>
+        val meta = Meta(recordType, chroms)
+        getLines(input, resourceConfig)
+          .filter(!_.startsWith("#"))
+          .map(recordParser)
+          .mapConcat { snagOrRecord =>
+            snagOrRecord.left.foreach(snagLogger)
+            snagOrRecord.toSeq
+          }
+          .mapMaterializedValue(_ => meta)
+    }
   }
 }

@@ -111,7 +111,7 @@ object VepOutputReader {
   def read(inputFile: File, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ()):
   RecordSource = {
     val inputId = FileInputId(inputFile)
-    HeaderRecordsParser.parseRecords(inputId, resourceConfig, )
+//    HeaderRecordsParser.parseRecords(inputId, resourceConfig, )
     val lineIter = inputFile.lineIterator(StandardCharsets.UTF_8).filter(!_.startsWith("##"))
     val recordTypeCore = LunType.RecordType(ColNames.id, ColNames.chrom, ColNames.pos, ColNames.pos)
     if (lineIter.hasNext) {
