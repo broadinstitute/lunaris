@@ -1,18 +1,14 @@
 package lunaris.vep
 
-import akka.stream.scaladsl.{Framing, Source}
-import akka.util.ByteString
+import akka.stream.Materializer
+import akka.stream.scaladsl.Source
 import better.files.File
-import lunaris.io.{FileInputId, InputId, ResourceConfig}
-import lunaris.recipes.values.LunType.RecordType
-import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
+import lunaris.io.{FileInputId, ResourceConfig}
+import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.streams.transform.HeaderRecordsParser
 import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
 import lunaris.utils.NumberParser
-import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
-
-import java.nio.charset.StandardCharsets
-import scala.collection.immutable.ArraySeq
+import org.broadinstitute.yootilz.core.snag.Snag
 
 object VepOutputReader {
 
@@ -46,11 +42,6 @@ object VepOutputReader {
         iAlt <- indexOf(ColNames.alt, headers)
       } yield ColIndices(iId, iChrom, iPos, iRef, iAlt)
     }
-  }
-
-  private def failedRecordStream(recordType: RecordType, chroms: Seq[String], snag: Snag): RecordSource = {
-    val meta = RecordStreamWithMeta.Meta(recordType, chroms)
-    Source.failed(new SnagException(snag)).mapMaterializedValue(_ => meta)
   }
 
   private def pickNonEmptyValue(i: Int, values: Seq[String]): Either[Snag, String] = {
@@ -108,60 +99,28 @@ object VepOutputReader {
     }
   }
 
-  def read(inputFile: File, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ()):
+  def read(inputFile: File, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ())
+          (implicit materializer: Materializer):
   RecordSource = {
     val inputId = FileInputId(inputFile)
-//    HeaderRecordsParser.parseRecords(inputId, resourceConfig, )
-    val lineIter = inputFile.lineIterator(StandardCharsets.UTF_8).filter(!_.startsWith("##"))
     val recordTypeCore = LunType.RecordType(ColNames.id, ColNames.chrom, ColNames.pos, ColNames.pos)
-    if (lineIter.hasNext) {
-      val headerLineRaw = lineIter.next()
-      val headerLine = if (headerLineRaw.startsWith("#")) headerLineRaw.substring(1) else headerLineRaw
-      val headers = headerLine.split("\t")
-      val recordType = {
-        var recordTypeTmp = recordTypeCore
-        for (header <- headers) {
-          val colType = if (header == ColNames.pos) LunType.IntType else LunType.StringType
-          recordTypeTmp = recordTypeTmp.addField(header, colType)
+    val records = HeaderRecordsParser
+      .newRecordSource(inputId, resourceConfig, chroms)(recordTypeCore) { headers =>
+        ColIndices.fromHeaders(headers)
+      } { (recordType, index, values) =>
+        parseCoreRecord(index, values).map { coreRecord =>
+          var recordTmp = coreRecord
+          for (i <- 0 until Math.min(recordType.fields.length, values.length)) {
+            val lunValue = LunValue.PrimitiveValue.StringValue(values(i))
+            recordTmp = recordTmp.addFieldIFNotExists(recordType.fields(i), lunValue, LunType.StringType)
+          }
+          recordTmp
         }
-        recordTypeTmp
+      } {
+        snagLogger
       }
-      ColIndices.fromHeaders(ArraySeq.unsafeWrapArray(headers)) match {
-        case Right(colIndices: ColIndices) =>
-          val allRecords = FileInputId(inputFile).newStream(resourceConfig)
-            .via(Framing.delimiter(ByteString("\n"), Int.MaxValue, allowTruncation = true))
-            .map(_.utf8String)
-            .map { line =>
-              val valueStrings = line.split("\t")
-              val snagOrLocus = parseCoreRecord(colIndices, ArraySeq.unsafeWrapArray(valueStrings))
-              snagOrLocus.left.foreach(snagLogger)
-              val snagOrRecord = snagOrLocus.map { coreRecord =>
-                var recordTmp = coreRecord
-                for (i <- 0 until Math.min(headers.length, valueStrings.length)) {
-                  val lunValue = LunValue.PrimitiveValue.StringValue(valueStrings(i))
-                  recordTmp = recordTmp.addFieldIFNotExists(headers(i), lunValue, LunType.StringType)
-                }
-                recordTmp
-              }
-              snagOrRecord.left.foreach(snagLogger)
-              snagOrRecord
-            }
-            .collect {
-              case Right(record) => record
-            }
-          val recordOpts = allRecords.map(Some(_)) ++ Source.single(None)
-          val meta = RecordStreamWithMeta.Meta(recordType, chroms)
-          val recordPickerGenerator: () => RecordPicker = () => new RecordPicker(snagLogger)
-          recordOpts.statefulMapConcat(recordPickerGenerator).mapMaterializedValue(_ => meta)
-        case Left(snag) =>
-          snagLogger(snag)
-          failedRecordStream(recordTypeCore, chroms, snag)
-      }
-    } else {
-      val snag = Snag(s"File $inputFile has no header line")
-      snagLogger(snag)
-      failedRecordStream(recordTypeCore, chroms, snag)
-    }
+    val recordOpts = records.map(Some(_)) ++ Source.single(None)
+    val recordPickerGenerator: () => RecordPicker = () => new RecordPicker(snagLogger)
+    recordOpts.statefulMapConcat(recordPickerGenerator)
   }
-
 }

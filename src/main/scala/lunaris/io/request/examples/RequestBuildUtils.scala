@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, RefArrayArg, ValueArg}
-import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecords, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, TSVWriter, VcfRecordsReader}
+import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecords, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, RestrictToRegions, TSVWriter, VcfRecordsReader, VcfRecordsWriter}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -129,8 +129,24 @@ object RequestBuildUtils {
     def findRecordsNotInData(driver: String, data: Seq[String]): ToolCall = {
       ToolCall(FindRecordsNotInData, Map(
         FindRecordsNotInData.Params.Keys.driver -> RefArg(FindRecordsNotInData.Params.driver, driver),
-        FindRecordsNotInData.Params.Keys.data -> RefArrayArg(FindRecordsNotInData.Params.data, data)),
-      )
+        FindRecordsNotInData.Params.Keys.data -> RefArrayArg(FindRecordsNotInData.Params.data, data)
+      ))
+    }
+
+    def restrictToRegions(from: String, regionsFile: FileValue): ToolCall = {
+      ToolCall(RestrictToRegions, Map(
+        RestrictToRegions.Params.Keys.from -> RefArg(RestrictToRegions.Params.from, from),
+        RestrictToRegions.Params.Keys.regionsFile -> ValueArg(RestrictToRegions.Params.regionsFile, regionsFile)
+      ))
+    }
+
+    def vcfRecordsWriter(from: String, file: FileValue, refCol: StringValue, altCol: StringValue): ToolCall = {
+      ToolCall(VcfRecordsWriter, Map(
+        VcfRecordsWriter.Params.Keys.from -> RefArg(VcfRecordsWriter.Params.from, from),
+        VcfRecordsWriter.Params.Keys.file -> ValueArg(VcfRecordsWriter.Params.from, file),
+        VcfRecordsWriter.Params.Keys.refCol -> ValueArg(VcfRecordsWriter.Params.refCol, refCol),
+        VcfRecordsWriter.Params.Keys.altCol -> ValueArg(VcfRecordsWriter.Params.altCol, altCol)
+      ))
     }
   }
 

@@ -14,9 +14,6 @@ import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Futu
 
 object HeaderRecordsParser {
 
-  type RecordParser = String => Either[Snag, Record]
-  type RecordParserGenerator = (LunType.RecordType, Array[String]) => Either[Snag, RecordParser]
-
   private def getLines(input: InputId, resourceConfig: ResourceConfig): Source[String, Future[IOResult]] = {
     input.newStream(resourceConfig)
       .via(Framing.delimiter(ByteString("\n"), Int.MaxValue, allowTruncation = true))
@@ -35,9 +32,9 @@ object HeaderRecordsParser {
     snagOpt.fold[Either[Snag, ()]](Right(()))(Left(_))
   }
 
-  private def parseHeaderLine(recordCoreType: LunType.RecordType, headerLine: String)
-                             (recordParserGenerator: RecordParserGenerator):
-  Either[Snag, (LunType.RecordType, RecordParser)] = {
+  private def parseHeaderLine[I](recordCoreType: LunType.RecordType, headerLine: String)
+                                (indexer: Seq[String] => Either[Snag, I]):
+  Either[Snag, (LunType.RecordType, I)] = {
     val headerLineCleaned = if (headerLine.startsWith("#")) headerLine.substring(1) else headerLine
     val cols = headerLineCleaned.split("\t")
     checkCoreFields(cols, recordCoreType.fields) match {
@@ -49,15 +46,15 @@ object HeaderRecordsParser {
             recordTypeTmp = recordTypeTmp.addField(col, LunType.StringType)
           }
         }
-        recordParserGenerator(recordTypeTmp, cols).map(recordParser => (recordTypeTmp, recordParser))
+        indexer(cols).map(index => (recordTypeTmp, index))
     }
   }
 
-  private def getRecordType(input: InputId, resourceConfig: ResourceConfig)
-                           (recordCoreType: LunType.RecordType)
-                           (recordParserGenerator: RecordParserGenerator)
-                           (implicit materializer: Materializer):
-  Either[Snag, (LunType.RecordType, RecordParser)] = {
+  private def getRecordType[I](input: InputId, resourceConfig: ResourceConfig)
+                              (recordCoreType: LunType.RecordType)
+                              (indexer: Seq[String] => Either[Snag, I])
+                              (implicit materializer: Materializer):
+  Either[Snag, (LunType.RecordType, I)] = {
     implicit val executionContext: ExecutionContext = materializer.executionContext
     val headerLineOptFut = getLines(input, resourceConfig)
       .filter(!_.startsWith("##"))
@@ -66,25 +63,27 @@ object HeaderRecordsParser {
       .map(_.headOption)
     val headerLineOpt = Await.result(headerLineOptFut, Duration.Inf)
     headerLineOpt match {
-      case Some(headerLine) => parseHeaderLine(recordCoreType, headerLine)(recordParserGenerator)
+      case Some(headerLine) => parseHeaderLine(recordCoreType, headerLine)(indexer)
       case None => Left(Snag(s"Missing header line in $input."))
     }
   }
 
-  def newRecordSource(input: InputId, resourceConfig: ResourceConfig, chroms: Seq[String])
-                     (recordCoreType: LunType.RecordType)
-                     (recordParserGenerator: RecordParserGenerator)
-                     (snagLogger: Snag => ())
-                     (implicit materializer: Materializer): RecordSource = {
+  def newRecordSource[I](input: InputId, resourceConfig: ResourceConfig, chroms: Seq[String])
+                        (recordCoreType: LunType.RecordType)
+                        (indexer: Seq[String] => Either[Snag, I])
+                        (recordParser: (LunType.RecordType, I, Seq[String]) => Either[Snag, Record])
+                        (snagLogger: Snag => ())
+                        (implicit materializer: Materializer): RecordSource = {
     implicit val executionContext: ExecutionContextExecutor = materializer.executionContext
-    getRecordType(input, resourceConfig)(recordCoreType)(recordParserGenerator) match {
+    getRecordType(input, resourceConfig)(recordCoreType)(indexer) match {
       case Left(snag) =>
         Source.failed(SnagException(snag)).mapMaterializedValue(_ => Meta(recordCoreType, chroms))
-      case Right((recordType, recordParser)) =>
+      case Right((recordType, index)) =>
         val meta = Meta(recordType, chroms)
         getLines(input, resourceConfig)
           .filter(!_.startsWith("#"))
-          .map(recordParser)
+          .map(_.split("\t"))
+          .map(recordParser(recordType, index, _))
           .mapConcat { snagOrRecord =>
             snagOrRecord.left.foreach(snagLogger)
             snagOrRecord.toSeq

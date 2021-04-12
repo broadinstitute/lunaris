@@ -7,7 +7,7 @@ import scala.io.StdIn
 object EncryptRunner {
   def run(): Unit = {
     print("Enter key to use for encryption: ")
-    val key = StdIn.readLine
+    val key = StdIn.readLine()
     print("Enter property value to encrypt: ")
     val property = StdIn.readLine()
     val encryptedProperty = Crypt(key).encrypt(property)
