@@ -7,6 +7,8 @@ import lunaris.io.InputId
 import lunaris.vep.vcf.VcfCore
 import org.scalatest.funsuite.AnyFunSuite
 
+import java.net.InetAddress
+
 class VepRunnerTest extends AnyFunSuite {
 
   private val actorSystem = ActorSystem("test")
@@ -29,13 +31,23 @@ class VepRunnerTest extends AnyFunSuite {
     assert(record.values.size > 33)
   }
 
+  private val devHostName = "GP7E3-45D"
+
+  private def cancelIfOnDevWhereVepDoesNotRun(): Unit = {
+    if(InetAddress.getLocalHost.getHostName == devHostName) {
+      cancel(s"Skipping test since VEP does not run on $devHostName.")
+    }
+  }
+
   test("Run vep for 1:69088:T:G") {
+    cancelIfOnDevWhereVepDoesNotRun()
     assert(snagOrVepSettings.isRight, snagOrVepSettings.left.toOption.getOrElse(""))
     val vepSettings = snagOrVepSettings.toOption.get
     runVep(vepSettings, "1", 69088, "T", "G")
   }
 
   test("Run vep for 1:69088:T:GG") {
+    cancelIfOnDevWhereVepDoesNotRun()
     assert(snagOrVepSettings.isRight, snagOrVepSettings.left.toOption.getOrElse(""))
     val vepSettings = snagOrVepSettings.toOption.get
     runVep(vepSettings, "1", 69088, "T", "GG")

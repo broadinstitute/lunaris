@@ -8,6 +8,7 @@ import lunaris.genomics.Region
 import lunaris.io.request.Request
 import lunaris.io.request.examples.RequestBuildUtils.ToolCalls
 import lunaris.recipes.Recipe
+import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
@@ -17,25 +18,85 @@ import lunaris.vep.vcf.VcfCore
 case class VepRequestBuilder(resultId: JobId,
                              chroms: Seq[String],
                              regions: Map[String, Seq[Region]],
-                             driverFileName: String) {
+                             driverFileName: String,
+                             exomeFileName: String,
+                             dataFields: VepDataFieldsSettings,
+                             dataFilesWithIndices: Seq[BlockGzippedWithIndex],
+                             cacheMissesFileName: String,
+                             cacheFileName: String,
+                             filter: LunBoolExpression,
+                             outputFile: File,
+                             outFileFormat: String) {
   val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
   val driverFile: FileValue = FileValue(driverFileName)
+  val exomesFile: FileValue = FileValue(exomeFileName)
+  val idField: StringValue = StringValue(dataFields.varId)
+  val refField: StringValue = StringValue(dataFields.ref)
+  val altField: StringValue = StringValue(dataFields.alt)
+  val idFieldNew: StringValue = StringValue("idCanon")
+  val cacheMissesFile: FileValue = FileValue(cacheMissesFileName)
+  val cacheFile: FileValue = FileValue(cacheFileName)
+  val filterValue: ExpressionValue = ExpressionValue(filter)
+  val outputFileValue: FileValue = FileValue(outputFile.toString())
+  val outputFileFormatValue: StringValue = StringValue(outFileFormat)
+
+  object Keys {
+    val readDriver: String = "readDriver"
+    val restrictToExome: String = "restrictToExome"
+    val canonicalizeDriver: String = "canonicalizeDriver"
+    val readDatas: Seq[String] = dataFilesWithIndices.indices.map("readData" + _)
+    val canonicalizeDatas: Seq[String] = dataFilesWithIndices.indices.map("canonicalizeData" + _)
+    val cacheMisses: String = "cacheMisses"
+    val writeCacheMisses: String = "writeCacheMisses"
+    val readCache: String = "readCache"
+    val pickFromCache: String = "pickFromCache"
+    val join: String = "join"
+    val calculateMaf: String = "calculateMaf"
+    val filter: String = "filter"
+    val write: String = "write"
+  }
+
+  private def dataToolCalls(): Map[String, ToolCall] = {
+    dataFilesWithIndices.zip(Keys.readDatas).zip(Keys.canonicalizeDatas).collect {
+      case ((dataFileWithIndex, readDataKey), canonicalizeDataKey) =>
+        val dataFileValue = FileValue(dataFileWithIndex.data.toString)
+        val indexFileValue = FileValue(dataFileWithIndex.index.toString)
+        Map(
+          readDataKey -> ToolCalls.indexedObjectReader(dataFileValue, Some(indexFileValue), idField),
+          canonicalizeDataKey -> ToolCalls.idCanonicalizer(readDataKey, refField, altField, idFieldNew)
+        )
+    }.fold(Map.empty)(_ ++ _)
+  }
+
+  private def initialToolCalls(): Map[String, ToolCall] = {
+    Map(
+      Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue),
+      Keys.restrictToExome -> ToolCalls.restrictToRegions(Keys.readDriver, exomesFile),
+      Keys.canonicalizeDriver -> ToolCalls.idCanonicalizer(Keys.restrictToExome, refField, altField, idFieldNew)
+    ) ++ dataToolCalls()
+  }
 
   def buildPhaseOneRequest(): Request = {
-    object Keys {
-      val readDriver: String = "readDriver"
-      val restrictToExome: String = "restrictToExome"
-    }
     val requestId = "lunaris_vep_phase_one_" + resultId.toString
-    val toolCalls = Map(
-      Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue)
-    )
+    val toolCalls = {
+      initialToolCalls() ++ Map(
+        Keys.cacheMisses -> ToolCalls.findRecordsNotInData(Keys.canonicalizeDriver, Keys.canonicalizeDatas),
+        Keys.writeCacheMisses -> ToolCalls.vcfRecordsWriter(Keys.cacheMisses, cacheMissesFile, refField, altField)
+      )
+    }
     Request(requestId, regions, Recipe(toolCalls))
   }
 
   def buildPhaseTwoRequest(): Request = {
     val requestId = "lunaris_vep_phase_two_" + resultId.toString
-    val toolCalls = ???
+    val toolCalls =
+      initialToolCalls() ++ Map(
+        Keys.readCache -> ToolCalls.vcfRecordsReader(cacheFile, chromsValue),
+        Keys.join -> ToolCalls.joinRecords(Keys.canonicalizeDriver +: Keys.canonicalizeDatas :+ Keys.readCache),
+        Keys.calculateMaf -> ToolCalls.calculateMaf(Keys.join),
+        Keys.filter -> ToolCalls.filter(Keys.calculateMaf, filterValue),
+        Keys.write -> ToolCalls.groupFileWriter(Keys.filter, outputFileValue, outputFileFormatValue)
+      )
     Request(requestId, regions, Recipe(toolCalls))
   }
 }
