@@ -12,19 +12,45 @@ import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
 import lunaris.vep.VepFileManager.JobId
-import lunaris.vep.vcf.{VcfCore, VcfStreamVariantsReader}
+import lunaris.vep.vcf.VcfCore
+
+case class VepRequestBuilder(resultId: JobId,
+                             chroms: Seq[String],
+                             regions: Map[String, Seq[Region]],
+                             driverFileName: String) {
+  val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
+  val driverFile: FileValue = FileValue(driverFileName)
+
+  def buildPhaseOneRequest(): Request = {
+    object Keys {
+      val readDriver: String = "readDriver"
+      val restrictToExome: String = "restrictToExome"
+    }
+    val requestId = "lunaris_vep_phase_one_" + resultId.toString
+    val toolCalls = Map(
+      Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue)
+    )
+    Request(requestId, regions, Recipe(toolCalls))
+  }
+
+  def buildPhaseTwoRequest(): Request = {
+    val requestId = "lunaris_vep_phase_two_" + resultId.toString
+    val toolCalls = ???
+    Request(requestId, regions, Recipe(toolCalls))
+  }
+}
 
 object VepRequestBuilder {
 
-  def buildRequest(resultId: JobId,
-                   chroms: Seq[String],
-                   regions: Map[String, Seq[Region]],
-                   driverFileName: String,
-                   dataFilesWithIndices: Seq[BlockGzippedWithIndex],
-                   outputFile: File,
-                   outFileFormat: String,
-                   filter: LunBoolExpression,
-                   dataFields: VepDataFieldsSettings): Request = {
+  def buildRequestOld(resultId: JobId,
+                      chroms: Seq[String],
+                      regions: Map[String, Seq[Region]],
+                      driverFileName: String,
+                      dataFilesWithIndices: Seq[BlockGzippedWithIndex],
+                      outputFile: File,
+                      outFileFormat: String,
+                      filter: LunBoolExpression,
+                      dataFields: VepDataFieldsSettings): Request = {
 
     val requestId = "lunaris_vep_" + resultId.toString
 
