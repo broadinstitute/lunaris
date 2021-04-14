@@ -1,8 +1,8 @@
 package lunaris.vep.db
 
 import better.files.File
-import lunaris.vep.VepFileManager
-import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
+import lunaris.vep.VepJobManager
+import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb.JobRecord
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 import org.scalatest.funsuite.AnyFunSuite
@@ -37,7 +37,7 @@ class EggDbTest extends AnyFunSuite {
     val dbFile = testDir / "eggtest"
     val inputFileForId = (id: JobId) => workDir / ("input_" + id.string + ".vcf")
     val outputFileForId = (id: JobId) => workDir / (id.string + ".tsv")
-    val db = EggDb(dbFile, inputFileForId, outputFileForId)
+    val db = EggDb(dbFile)
     var jobIds: Set[JobId] = Set.empty
     val nJobs = 5
     for(_ <- 0 until nJobs) {
@@ -49,7 +49,7 @@ class EggDbTest extends AnyFunSuite {
       jobIds += jobId
       val jobCopy = getValue(db.getJob(job.id))
       assert(job == jobCopy)
-      val status = VepFileManager.ResultStatus.createSucceeded(job.ctime, System.currentTimeMillis(), Seq.empty)
+      val status = VepJobManager.ResultStatus.createSucceeded(job.ctime, System.currentTimeMillis(), Seq.empty)
       getValue(db.updateJobStatus(job.id, status))
       val jobUpdated = getValue(db.getJob(job.id))
       assert(job != jobUpdated)

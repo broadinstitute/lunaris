@@ -1,7 +1,7 @@
 package lunaris.vep.db
 
 import better.files.File
-import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
+import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb.{JobIdClientFile, JobRecord, SessionRecord, rightOrThrow}
 import musha.map.FunBuilder._
 import musha.sql.{Sql, SqlType}
@@ -196,7 +196,7 @@ object EggDb {
     val password = "armeritter"
   }
 
-  def apply(dbFile: File, inputFileForId: JobId => File, outputFileForId: JobId => File): EggDb = {
+  def apply(dbFile: File): EggDb = {
     new EggDb(MushaConfig(dbFile, Defaults.user, Defaults.password))
   }
 

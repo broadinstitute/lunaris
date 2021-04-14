@@ -24,14 +24,14 @@ import scala.util.{Failure, Random, Success}
 
 class VepRunner(val runSettings: VepRunSettings) {
 
-  val vepWrapperScriptResourceShortName: String = "vepWrapper.sh"
-  val vepWrapperScriptResourceFullName: String = "lunaris/vep/" + vepWrapperScriptResourceShortName
+  private val vepWrapperScriptResourceShortName: String = "vepWrapper.sh"
+  private val vepWrapperScriptResourceFullName: String = "lunaris/vep/" + vepWrapperScriptResourceShortName
 
-  val vepWorkDir: File = runSettings.workDir
-  val vepWrapperScriptFile: File = vepWorkDir / vepWrapperScriptResourceShortName
-  val vepRunDir: File = vepWorkDir / "run"
+  private val vepWorkDir: File = runSettings.workDir
+  private val vepWrapperScriptFile: File = vepWorkDir / vepWrapperScriptResourceShortName
+  private val vepRunDir: File = runSettings.runDir
 
-  val exonsFile: File = runSettings.exonsFile
+  private val exonsFile: File = runSettings.exonsFile
 
   {
     vepWorkDir.createDirectoryIfNotExists(createParents = true)
@@ -88,8 +88,6 @@ class VepRunner(val runSettings: VepRunSettings) {
     commandLine.!
   }
 
-  private val colNamePick: String = "PICK"
-
   private def createUseDiscardDir[T](dir: File)(user: File => T): T = {
     dir.createDirectory()
     val result = user(dir)
@@ -106,35 +104,31 @@ class VepRunner(val runSettings: VepRunSettings) {
 
   def calculateValues(vcfRecord: VcfRecord, snagLogger: Snag => ())(implicit materializer: Materializer):
   Either[Snag, Record] = {
-    if (exonsSet.overlapsLocus(vcfRecord.toLocus)) {
-      createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
-        val vcfRecords = Source.single(vcfRecord)
-        val chroms = Seq(vcfRecord.chrom)
-        val inputFile = subRunDir / "input.vcf"
-        val doneFut = writeVepInputFile(inputFile, vcfRecords)
-        val outputFile = subRunDir / "output.tsv"
-        val warningsFile = subRunDir / "warnings"
-        Await.ready(doneFut, Duration.Inf)  //  TODO do without Await
-        val returnValue = runVep(inputFile, outputFile, warningsFile)
-        if (returnValue == 0) {
-          val records = VepOutputReader.read(inputFile, ResourceConfig.empty, chroms, snagLogger)
-          val recordSeqFut = records.runWith(Sink.collection[Record, Seq[Record]])
-          Await.ready(recordSeqFut, Duration.Inf)  //  TODO do without Await
-          recordSeqFut.value.get match {
-            case Failure(exception) =>
-              Left(Snag(exception))
-            case Success(recordSeq) =>
-              recordSeq.headOption match {
-                case Some(record) => Right(record)
-                case None => Left(Snag(s"VEP produced no output for ${vcfRecord.id}."))
-              }
-          }
-        } else {
-          Left(Snag(s"vep return value was non-zero ($returnValue) for variant ${vcfRecord.id}."))
+    createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
+      val vcfRecords = Source.single(vcfRecord)
+      val chroms = Seq(vcfRecord.chrom)
+      val inputFile = subRunDir / "input.vcf"
+      val doneFut = writeVepInputFile(inputFile, vcfRecords)
+      val outputFile = subRunDir / "output.tsv"
+      val warningsFile = subRunDir / "warnings"
+      Await.ready(doneFut, Duration.Inf) //  TODO do without Await
+      val returnValue = runVep(inputFile, outputFile, warningsFile)
+      if (returnValue == 0) {
+        val records = VepOutputReader.read(inputFile, ResourceConfig.empty, chroms, snagLogger)
+        val recordSeqFut = records.runWith(Sink.collection[Record, Seq[Record]])
+        Await.ready(recordSeqFut, Duration.Inf) //  TODO do without Await
+        recordSeqFut.value.get match {
+          case Failure(exception) =>
+            Left(Snag(exception))
+          case Success(recordSeq) =>
+            recordSeq.headOption match {
+              case Some(record) => Right(record)
+              case None => Left(Snag(s"VEP produced no output for ${vcfRecord.id}."))
+            }
         }
+      } else {
+        Left(Snag(s"vep return value was non-zero ($returnValue) for variant ${vcfRecord.id}."))
       }
-    } else {
-      Left(Snag(s"${vcfRecord.toVariant.toCanonicalId} is not in the exome."))
     }
   }
 

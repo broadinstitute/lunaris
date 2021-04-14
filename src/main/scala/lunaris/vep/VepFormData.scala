@@ -6,7 +6,7 @@ import akka.util.ByteString
 import better.files.File
 import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.parsing.LunBoolExpressionParser
-import lunaris.vep.VepFileManager.{JobId, SessionId}
+import lunaris.vep.VepJobManager.{JobId, SessionId}
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -76,7 +76,7 @@ object VepFormData {
       bodyPart.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map(_.utf8String)
     }
 
-    def bodyPartToFieldFut(bodyPart: Multipart.FormData.BodyPart, vepFileManager: VepFileManager)(
+    def bodyPartToFieldFut(bodyPart: Multipart.FormData.BodyPart, vepFileManager: VepJobManager)(
       implicit actorSystem: ActorSystem): Future[FormField] = {
       implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
       bodyPart.name match {
@@ -85,7 +85,7 @@ object VepFormData {
         case Keys.inputFile =>
           val jobId = JobId.createNew()
           val inputFileClient = File(bodyPart.filename.get)
-          val inputFileServer = vepFileManager.inputFilePathForId(jobId)
+          val inputFileServer = vepFileManager.vepFolders.vepJobFiles(jobId).inputFile
           vepFileManager.uploadFile(bodyPart.entity.dataBytes, inputFileServer).map { _ =>
             InputFileField(jobId, inputFileClient, inputFileServer)
           }

@@ -5,7 +5,7 @@ import com.sendgrid.helpers.mail.Mail
 import com.sendgrid.helpers.mail.objects.{Content, Email}
 import lunaris.app.EmailSettings
 import lunaris.recipes.eval.LunRunnable.RunResult
-import lunaris.vep.VepFileManager.{JobId, SessionId}
+import lunaris.vep.VepJobManager.{JobId, SessionId}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import java.util.Date

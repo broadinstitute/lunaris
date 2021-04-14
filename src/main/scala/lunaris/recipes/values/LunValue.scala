@@ -1,5 +1,6 @@
 package lunaris.recipes.values
 
+import better.files.File
 import lunaris.expressions.LunExpression
 import lunaris.genomics.{Locus, Region}
 import lunaris.io.{InputId, OutputId}
@@ -91,6 +92,10 @@ object LunValue {
           case _ => Left(snagCannotCastTo(newType))
         }
       }
+    }
+
+    object FileValue {
+      def apply(file: File): FileValue = FileValue(file.toString())
     }
 
     case class IntValue(value: Long) extends LunTypedPrimitiveValue[Long] {

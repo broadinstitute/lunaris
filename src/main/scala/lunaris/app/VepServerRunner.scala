@@ -9,8 +9,8 @@ import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{Crypt, HttpUtils, SnagJson}
-import lunaris.vep.VepFileManager.{JobId, SessionId}
-import lunaris.vep.{EmailManager, VepFileManager, VepFormData, VepJson, VepMasksManager, VepRunSettingsBox}
+import lunaris.vep.VepJobManager.{JobId, SessionId}
+import lunaris.vep.{VepFormData, VepJobManager, VepJson, VepMasksManager, VepRunSettingsBox}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -34,8 +34,8 @@ object VepServerRunner {
     val encryptionKey = askForEncryptionKey()
     val crypt = new Crypt(encryptionKey)
     val emailApiKey = crypt.decrypt(emailSettings.keyEncrypted)
-    val vepFileManager = new VepFileManager(vepSettings, emailSettings, dbName, emailApiKey, resourceConfig)
-    vepFileManager.foldersExistOrSnag() match {
+    val vepFileManager = new VepJobManager(vepSettings, emailSettings, dbName, emailApiKey, resourceConfig)
+    vepFileManager.vepFolders.foldersExistOrSnag() match {
       case Left(snag) =>
         println("Unable to establish storage for inputs and results.")
         println(snag.message)

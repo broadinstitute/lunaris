@@ -12,23 +12,23 @@ import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
-import lunaris.vep.VepFileManager.JobId
+import lunaris.vep.VepJobManager.JobId
 import lunaris.vep.vcf.VcfCore
 
-case class VepRequestBuilder(resultId: JobId,
+case class VepRequestBuilder(jobId: JobId,
+                             jobFiles: VepJobFiles,
                              chroms: Seq[String],
                              regions: Map[String, Seq[Region]],
-                             driverFileName: String,
-                             exomeFileName: String,
+                             exomeFileName: String,  //  TODO: make File
                              dataFields: VepDataFieldsSettings,
                              dataFilesWithIndices: Seq[BlockGzippedWithIndex],
-                             cacheMissesFileName: String,
-                             cacheFileName: String,
+                             cacheMissesFileName: String,  //  TODO get from jobFiles
+                             cacheFileName: String,  //  TODO get from jobFiles
                              filter: LunBoolExpression,
-                             outputFile: File,
+                             outputFile: File,  //  TODO get from jobFiles
                              outFileFormat: String) {
   val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
-  val driverFile: FileValue = FileValue(driverFileName)
+  val driverFile: FileValue = FileValue(jobFiles.inputFile)
   val exomesFile: FileValue = FileValue(exomeFileName)
   val idField: StringValue = StringValue(dataFields.varId)
   val refField: StringValue = StringValue(dataFields.ref)
@@ -77,7 +77,7 @@ case class VepRequestBuilder(resultId: JobId,
   }
 
   def buildPhaseOneRequest(): Request = {
-    val requestId = "lunaris_vep_phase_one_" + resultId.toString
+    val requestId = "lunaris_vep_phase_one_" + jobId.toString
     val toolCalls = {
       initialToolCalls() ++ Map(
         Keys.cacheMisses -> ToolCalls.findRecordsNotInData(Keys.canonicalizeDriver, Keys.canonicalizeDatas),
@@ -88,7 +88,7 @@ case class VepRequestBuilder(resultId: JobId,
   }
 
   def buildPhaseTwoRequest(): Request = {
-    val requestId = "lunaris_vep_phase_two_" + resultId.toString
+    val requestId = "lunaris_vep_phase_two_" + jobId.toString
     val toolCalls =
       initialToolCalls() ++ Map(
         Keys.readCache -> ToolCalls.vcfRecordsReader(cacheFile, chromsValue),

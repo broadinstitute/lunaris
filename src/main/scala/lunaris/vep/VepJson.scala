@@ -1,7 +1,7 @@
 package lunaris.vep
 
 import io.circe.{Encoder, Json}
-import lunaris.vep.VepFileManager.ResultStatus
+import lunaris.vep.VepJobManager.ResultStatus
 import lunaris.vep.db.EggDb.{JobIdClientFile, SessionRecord}
 import org.broadinstitute.yootilz.core.snag.Snag
 

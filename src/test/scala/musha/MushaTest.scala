@@ -1,7 +1,7 @@
 package musha
 
 import better.files.File
-import lunaris.vep.VepFileManager
+import lunaris.vep.VepJobManager
 import musha.map.FieldExtractors._
 import musha.map.FunBuilder._
 import musha.sql._
@@ -74,7 +74,7 @@ class MushaTest extends AnyFunSuite {
     val filesTable = Sql.table("files", idColumn, inputFileColumn, outputFileColumn)
     runCreateTable(musha, filesTable)
     runShowTables(musha)
-    val jobId = VepFileManager.JobId.createNew()
+    val jobId = VepJobManager.JobId.createNew()
     val inputFile = File("input.vcf")
     val outputFile = File(jobId.string + ".tsv")
     runInsert(musha, filesTable, idColumn.withValue(jobId.string), inputFileColumn.withValue(inputFile.toString),

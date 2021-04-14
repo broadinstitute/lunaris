@@ -12,7 +12,7 @@ import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
 import lunaris.utils.DateUtils
-import lunaris.vep.VepFileManager.{JobId, ResultStatus, SessionId}
+import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
 import lunaris.vep.vcf.VcfStreamVariantsReader
@@ -23,67 +23,27 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
-final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSettings, dbName: String,
-                           emailApiKey: String, resourceConfig: ResourceConfig) {
+final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSettings, dbName: String,
+                          emailApiKey: String, resourceConfig: ResourceConfig) {
 
-  private val inputsFolder: File = vepSettings.inputsFolder
-  private val resultsFolder: File = vepSettings.resultsFolder
+  val vepFolders: VepFolders = VepFolders(vepSettings)
   private val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
   private val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
   private val dbFile: File = vepSettings.runSettings.workDir / "db" / dbName
-  private val eggDb: EggDb = EggDb(dbFile, inputFilePathForId, outputFilePathForId)
+  private val eggDb: EggDb = EggDb(dbFile)
   private val emailManager: EmailManager = new EmailManager(emailSettings, emailApiKey)
+  private val exonsFile: File = vepSettings.runSettings.exonsFile
 
   def reportSnag(snag: Snag): Unit = {
     println(snag.report)
   }
 
-  def updateStatus(resultId: JobId, resultStatus: ResultStatus): Unit = {
-    eggDb.updateJobStatus(resultId, resultStatus) match {
+  def updateStatus(jobId: JobId, resultStatus: ResultStatus): Unit = {
+    eggDb.updateJobStatus(jobId, resultStatus) match {
       case Left(snag) => reportSnag(snag)
       case _ => ()
     }
   }
-
-  def folderOrSnag(folder: File, folderNick: String): Either[Snag, File] = {
-    if (folder.exists && !folder.isDirectory) {
-      Left(Snag(s"$folder should be folder, but is not."))
-    } else if (!folder.exists) {
-      folder.createDirectories()
-      if (folder.exists) {
-        Right(folder)
-      } else {
-        Left(Snag(s"Failed to create $folderNick $folder"))
-      }
-    } else {
-      Right(resultsFolder)
-    }
-  }
-
-  def resultsFolderOrSnag(): Either[Snag, File] = folderOrSnag(resultsFolder, "results folder")
-
-  def inputsFolderOrSnag(): Either[Snag, File] = folderOrSnag(inputsFolder, "inputs folder")
-
-  def foldersExistOrSnag(): Either[Snag, Unit] = {
-    for {
-      _ <- inputsFolderOrSnag()
-      _ <- resultsFolderOrSnag()
-    } yield ()
-  }
-
-  def createNewIdFor(): JobId = JobId.createNew()
-
-  def inputFileNameForId(resultId: JobId): String = "input_" + resultId.string + ".vcf"
-
-  def inputFilePathForId(resultId: JobId): File = inputsFolder / inputFileNameForId(resultId)
-
-  def outputFileNameForId(resultId: JobId): String = resultId.string + ".tsv"
-
-  def logFileNameForId(resultId: JobId): String = resultId.string + ".log"
-
-  def outputFilePathForId(resultId: JobId): File = resultsFolder / outputFileNameForId(resultId)
-
-  def logFilePathForId(resultId: JobId): File = resultsFolder / logFileNameForId(resultId)
 
   def uploadFile(stream: Source[ByteString, Any], inputFile: File)(
     implicit actorSystem: ActorSystem
@@ -106,7 +66,8 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
     val jobId = formData.jobId
     val inputFileServer = formData.inputFileServer
-    val outputFile = outputFilePathForId(jobId)
+    val vepJobFiles = vepFolders.vepJobFiles(jobId)
+    val outputFile = vepJobFiles.outputFile
     val submissionTime = System.currentTimeMillis()
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
@@ -114,19 +75,24 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
     val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
-      val request = {
+      val requestBuilder =
+        VepRequestBuilder(
+          jobId, vepJobFiles, chroms, regionsByChrom, exonsFile.toString(), vepDataFields, Seq(dataFileWithIndex),
+          vepJobFiles.vepInputFile.toString(), vepJobFiles.vepOutputFile.toString(), formData.filter,
+          vepJobFiles.outputFile, formData.format
+        )
+      val requestOld =
         VepRequestBuilder.buildRequestOld(
           jobId, chroms, regionsByChrom, inputFileServer.toString, Seq(dataFileWithIndex), outputFile,
           formData.format, formData.filter, vepDataFields
         )
-      }
-      LunCompiler.compile(request)
+      LunCompiler.compile(requestOld)
     }.collect {
       case Right(runnable) =>
         val context = {
           LunRunContext(Materializer(actorSystem), resourceConfig)
         }
-        val out = new PrintStream(logFilePathForId(jobId).newFileOutputStream(append = true))
+        val out = new PrintStream(vepFolders.vepJobFiles(jobId).logFile.newFileOutputStream(append = true))
         val snagTracker = SnagTracker.briefConsolePrinting
         val statsTracker = StatsTracker(out.println)
         val runTracker = RunTracker(snagTracker, statsTracker)
@@ -182,8 +148,8 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
     snagOrSessionOpt
   }
 
-  def streamResults(resultId: JobId): Either[Snag, Source[ByteString, NotUsed]] = {
-    val outputFile = outputFilePathForId(resultId)
+  def streamResults(jobId: JobId): Either[Snag, Source[ByteString, NotUsed]] = {
+    val outputFile =  vepFolders.vepJobFiles(jobId).outputFile
     try {
       Right(Source.fromIterator(() => outputFile.lineIterator).map(line => ByteString(line + "\n")))
     } catch {
@@ -192,7 +158,7 @@ final class VepFileManager(val vepSettings: VepSettings, emailSettings: EmailSet
   }
 }
 
-object VepFileManager {
+object VepJobManager {
 
   def fourHexDigits(num: Long): String = ("000" + num.toHexString).takeRight(4)
 
