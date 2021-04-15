@@ -87,7 +87,7 @@ object LunValueJson {
   def decode(cursor: HCursor, lunType: LunType): Either[DecodingFailure, LunValue] = {
     lunType match {
       case LunType.StringType => cursor.as[String].map(PrimitiveValue.StringValue)
-      case LunType.FileType => cursor.as[String].map(PrimitiveValue.FileValue)
+      case LunType.FileType => cursor.as[String].map(PrimitiveValue.FileValue(_))
       case LunType.IntType => cursor.as[Long].map(PrimitiveValue.IntValue)
       case LunType.FloatType => cursor.as[Double].map(PrimitiveValue.FloatValue)
       case LunType.BoolType => cursor.as[Boolean].map(PrimitiveValue.BoolValue)

@@ -16,7 +16,7 @@ import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
 import lunaris.vep.vcf.VcfStreamVariantsReader
-import org.broadinstitute.yootilz.core.snag.Snag
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import java.io.PrintStream
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -72,32 +72,46 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
     val chromsAndRegionsFut = VcfStreamVariantsReader.readChromsAndRegions(inputFileServer)
-    val queryFuture = chromsAndRegionsFut.map { chromsAndRegions =>
+    val queryFuture = chromsAndRegionsFut.flatMap { chromsAndRegions =>
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
       val requestBuilder =
         VepRequestBuilder(
-          jobId, vepJobFiles, chroms, regionsByChrom, exonsFile.toString(), vepDataFields, Seq(dataFileWithIndex),
-          vepJobFiles.vepInputFile.toString(), vepJobFiles.vepOutputFile.toString(), formData.filter,
-          vepJobFiles.outputFile, formData.format
+          jobId, vepJobFiles, chroms, regionsByChrom, exonsFile, vepDataFields, Seq(dataFileWithIndex),
+          formData.filter, formData.format
         )
-      val requestOld =
-        VepRequestBuilder.buildRequestOld(
-          jobId, chroms, regionsByChrom, inputFileServer.toString, Seq(dataFileWithIndex), outputFile,
-          formData.format, formData.filter, vepDataFields
-        )
-      LunCompiler.compile(requestOld)
-    }.collect {
-      case Right(runnable) =>
-        val context = {
-          LunRunContext(Materializer(actorSystem), resourceConfig)
-        }
-        val out = new PrintStream(vepFolders.vepJobFiles(jobId).logFile.newFileOutputStream(append = true))
-        val snagTracker = SnagTracker.briefConsolePrinting
-        val statsTracker = StatsTracker(out.println)
-        val runTracker = RunTracker(snagTracker, statsTracker)
-        runnable.executeAsync(context, runTracker)
-    }.flatten
+      val requestPhaseOne = requestBuilder.buildPhaseOneRequest()
+      val snagTracker = SnagTracker.briefConsolePrinting
+      LunCompiler.compile(requestPhaseOne) match {
+        case Left(snag) =>
+          snagTracker.trackSnag(snag)
+          Future.failed(new SnagException(snag))
+        case Right(runnableOne) =>
+          val context = LunRunContext(Materializer(actorSystem), resourceConfig)
+          val out = new PrintStream(vepFolders.vepJobFiles(jobId).logFile.newFileOutputStream(append = true))
+          val statsTracker = StatsTracker(out.println)
+          val runTracker = RunTracker(snagTracker, statsTracker)
+          runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>
+            val vepRunner = VepRunner.createNewVepRunner(vepSettings.runSettings)
+            val vepReturnValue =
+              vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
+            if (vepReturnValue != 0) {
+              val snag = Snag(s"VEP return value should be zero, but was $vepReturnValue.")
+              snagTracker.trackSnag(snag)
+              Future.failed(new SnagException(snag))
+            } else {
+              val requestPhaseTwo = requestBuilder.buildPhaseTwoRequest()
+              LunCompiler.compile(requestPhaseTwo) match {
+                case Left(snag) =>
+                  snagTracker.trackSnag(snag)
+                  Future.failed(new SnagException(snag))
+                case Right(runnableTwo) =>
+                  runnableTwo.executeAsync(context, runTracker).map(runResultOne ++ _)
+              }
+            }
+          }
+      }
+    }
     queryFuture.onComplete {
       case Success(runResult) =>
         val successTime = System.currentTimeMillis()
@@ -149,7 +163,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   }
 
   def streamResults(jobId: JobId): Either[Snag, Source[ByteString, NotUsed]] = {
-    val outputFile =  vepFolders.vepJobFiles(jobId).outputFile
+    val outputFile = vepFolders.vepJobFiles(jobId).outputFile
     try {
       Right(Source.fromIterator(() => outputFile.lineIterator).map(line => ByteString(line + "\n")))
     } catch {
@@ -164,7 +178,7 @@ object VepJobManager {
 
   private def positiveRandomLong(): Long = {
     val raw = Random.nextLong()
-    if(raw < 0) raw + Long.MaxValue else raw
+    if (raw < 0) raw + Long.MaxValue else raw
   }
 
   def eightHexDigits(): String = fourHexDigits(System.currentTimeMillis()) + fourHexDigits(positiveRandomLong())

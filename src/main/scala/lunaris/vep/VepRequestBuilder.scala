@@ -19,13 +19,10 @@ case class VepRequestBuilder(jobId: JobId,
                              jobFiles: VepJobFiles,
                              chroms: Seq[String],
                              regions: Map[String, Seq[Region]],
-                             exomeFileName: String,  //  TODO: make File
+                             exomeFileName: File,
                              dataFields: VepDataFieldsSettings,
                              dataFilesWithIndices: Seq[BlockGzippedWithIndex],
-                             cacheMissesFileName: String,  //  TODO get from jobFiles
-                             cacheFileName: String,  //  TODO get from jobFiles
                              filter: LunBoolExpression,
-                             outputFile: File,  //  TODO get from jobFiles
                              outFileFormat: String) {
   val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
   val driverFile: FileValue = FileValue(jobFiles.inputFile)
@@ -34,10 +31,10 @@ case class VepRequestBuilder(jobId: JobId,
   val refField: StringValue = StringValue(dataFields.ref)
   val altField: StringValue = StringValue(dataFields.alt)
   val idFieldNew: StringValue = StringValue("idCanon")
-  val cacheMissesFile: FileValue = FileValue(cacheMissesFileName)
-  val cacheFile: FileValue = FileValue(cacheFileName)
+  val cacheMissesFile: FileValue = FileValue(jobFiles.vepInputFile)
+  val cacheFile: FileValue = FileValue(jobFiles.vepOutputFile)
   val filterValue: ExpressionValue = ExpressionValue(filter)
-  val outputFileValue: FileValue = FileValue(outputFile.toString())
+  val outputFileValue: FileValue = FileValue(jobFiles.outputFile)
   val outputFileFormatValue: StringValue = StringValue(outFileFormat)
 
   object Keys {
