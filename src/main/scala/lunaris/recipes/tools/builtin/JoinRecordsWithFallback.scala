@@ -41,6 +41,7 @@ object JoinRecordsWithFallback extends Tool {
 
   class VepFallbackGenerator(vepRunSettings: VepRunSettings) extends FallbackGenerator {
     private val vepRunner = VepRunner.createNewVepRunner(vepRunSettings)
+
     override def createFallback(snagLogger: Snag => (), materializer: Materializer): Record => Either[Snag, Record] =
       (record: Record) => vepRunner.processRecord(record, snagLogger)(materializer)
   }
@@ -64,16 +65,16 @@ object JoinRecordsWithFallback extends Tool {
   case class ToolInstance(driver: String,
                           datas: Seq[String],
                           fallbackGenerator: FallbackGenerator) extends tools.ToolInstance {
+    private val dataKeys: Seq[String] = datas.indices.map(Params.Keys.data + _)
+
     override def refs: Map[String, String] = {
-      val dataRefs = datas.zipWithIndex.collect {
-        case (ref, index) => (Params.Keys.data + index, ref)
-      }.toMap
+      val dataRefs = dataKeys.zip(datas).toMap
       Map(Params.Keys.driver -> driver) ++ dataRefs
     }
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
-      ToolInstanceUtils.newWorkerMaker1Set(Params.Keys.driver, Seq(Params.Keys.data), workers) {
+      ToolInstanceUtils.newWorkerMaker1Set(Params.Keys.driver, dataKeys, workers) {
         (driverWorker, dataWorkers) => new WorkerMaker(driverWorker, dataWorkers, fallbackGenerator)
       }
     }

@@ -32,15 +32,14 @@ object JoinRecords extends tools.Tool {
   }
 
   case class ToolInstance(from: Seq[String]) extends tools.ToolInstance {
-    override def refs: Map[String, String] = {
-      from.zipWithIndex.collect {
-        case (ref, index) => (Params.Keys.from + index, ref)
-      }.toMap
-    }
+
+    private val fromKeys: Seq[String] = from.indices.map(Params.Keys.from + _)
+
+    override def refs: Map[String, String] = fromKeys.zip(from).toMap
 
     override def newWorkerMaker(context: LunCompileContext,
                                 workers: Map[String, LunWorker]): Either[Snag, eval.WorkerMaker] = {
-      ToolInstanceUtils.newWorkerMakerSet(from, workers)(new WorkerMaker(_))
+      ToolInstanceUtils.newWorkerMakerSet(fromKeys, workers)(new WorkerMaker(_))
     }
   }
 

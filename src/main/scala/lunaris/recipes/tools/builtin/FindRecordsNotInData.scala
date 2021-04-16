@@ -19,9 +19,11 @@ object FindRecordsNotInData extends Tool {
       val driver: String = "driver"
       val data: String = "data"
     }
+
     val driver: Tool.RefParam = Tool.RefParam(Keys.driver, LunType.RecordStreamType, isRequired = true)
     val data: Tool.RefParam = Tool.RefParam(Keys.data, LunType.ArrayType(LunType.RecordStreamType), isRequired = true)
   }
+
   override def params: Seq[Tool.Param] = Seq(Params.driver, Params.data)
 
   override def isFinal: Boolean = false
@@ -34,16 +36,16 @@ object FindRecordsNotInData extends Tool {
   }
 
   case class ToolInstance(driver: String, datas: Seq[String]) extends tools.ToolInstance {
+    private val dataKeys: Seq[String] = datas.indices.map(Params.Keys.data + _)
+
     override def refs: Map[String, String] = {
-      val dataRefs = datas.zipWithIndex.collect {
-        case (ref, index) => (Params.Keys.data + index, ref)
-      }.toMap
+      val dataRefs = dataKeys.zip(datas).toMap
       Map(Params.Keys.driver -> driver) ++ dataRefs
     }
 
     override def newWorkerMaker(context: LunCompileContext, workers: Map[String, LunWorker]):
     Either[Snag, eval.WorkerMaker] = {
-      ToolInstanceUtils.newWorkerMaker1Set(Params.Keys.driver, Seq(Params.Keys.data), workers) {
+      ToolInstanceUtils.newWorkerMaker1Set(Params.Keys.driver, dataKeys, workers) {
         (driverWorker, dataWorkers) => new WorkerMaker(driverWorker, dataWorkers)
       }
     }
