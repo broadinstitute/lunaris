@@ -27,9 +27,11 @@ case class VepRequestBuilder(jobId: JobId,
   val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
   val driverFile: FileValue = FileValue(jobFiles.inputFile)
   val exomesFile: FileValue = FileValue(exomeFileName)
-  val idField: StringValue = StringValue(dataFields.varId)
-  val refField: StringValue = StringValue(dataFields.ref)
-  val altField: StringValue = StringValue(dataFields.alt)
+  val refFieldVcf: StringValue = StringValue(VcfCore.ColNames.ref)
+  val altFieldVcf: StringValue = StringValue(VcfCore.ColNames.alt)
+  val idFieldVep: StringValue = StringValue(dataFields.varId)
+  val refFieldVep: StringValue = StringValue(dataFields.ref)
+  val altFieldVep: StringValue = StringValue(dataFields.alt)
   val idFieldNew: StringValue = StringValue("idCanon")
   val cacheMissesFile: FileValue = FileValue(jobFiles.vepInputFile)
   val cacheFile: FileValue = FileValue(jobFiles.vepOutputFile)
@@ -59,8 +61,8 @@ case class VepRequestBuilder(jobId: JobId,
         val dataFileValue = FileValue(dataFileWithIndex.data.toString)
         val indexFileValue = FileValue(dataFileWithIndex.index.toString)
         Map(
-          readDataKey -> ToolCalls.indexedObjectReader(dataFileValue, Some(indexFileValue), idField),
-          canonicalizeDataKey -> ToolCalls.idCanonicalizer(readDataKey, refField, altField, idFieldNew)
+          readDataKey -> ToolCalls.indexedObjectReader(dataFileValue, Some(indexFileValue), idFieldVep),
+          canonicalizeDataKey -> ToolCalls.idCanonicalizer(readDataKey, refFieldVep, altFieldVep, idFieldNew)
         )
     }.fold(Map.empty)(_ ++ _)
   }
@@ -69,7 +71,7 @@ case class VepRequestBuilder(jobId: JobId,
     Map(
       Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue),
       Keys.restrictToExome -> ToolCalls.restrictToRegions(Keys.readDriver, exomesFile),
-      Keys.canonicalizeDriver -> ToolCalls.idCanonicalizer(Keys.restrictToExome, refField, altField, idFieldNew)
+      Keys.canonicalizeDriver -> ToolCalls.idCanonicalizer(Keys.restrictToExome, refFieldVcf, altFieldVcf, idFieldNew)
     ) ++ dataToolCalls()
   }
 
@@ -78,7 +80,8 @@ case class VepRequestBuilder(jobId: JobId,
     val toolCalls = {
       initialToolCalls() ++ Map(
         Keys.cacheMisses -> ToolCalls.findRecordsNotInData(Keys.canonicalizeDriver, Keys.canonicalizeDatas),
-        Keys.writeCacheMisses -> ToolCalls.vcfRecordsWriter(Keys.cacheMisses, cacheMissesFile, refField, altField)
+        Keys.writeCacheMisses ->
+          ToolCalls.vcfRecordsWriter(Keys.cacheMisses, cacheMissesFile, refFieldVcf, altFieldVcf)
       )
     }
     Request(requestId, regions, Recipe(toolCalls))
