@@ -11,7 +11,7 @@ import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.ResourceConfig
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
-import lunaris.utils.DateUtils
+import lunaris.utils.{DateUtils, ProcessUtils}
 import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
@@ -63,6 +63,8 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   private def waitForFileToBeReady(file: File): Unit = {
     val raf = new RandomAccessFile(file.toJava, "rw")
     raf.getChannel.lock().release()
+    println(s"ls -l $file")
+    println(ProcessUtils.ls(file))
   }
 
   def newQueryFuture(formData: VepFormData)(
