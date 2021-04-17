@@ -62,11 +62,11 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   }
 
   private def waitForFileToBeReady(file: File): Unit = {
-    val msWait = 1000
-    val nIntervals = 100
+    val msWait = 2000
+    val nIntervals = 200
     for(_ <- 0 until nIntervals) {
-      val dateString = new Date(System.currentTimeMillis())
-      println(dateString + "  " + ProcessUtils.ls(file))
+      val date = new Date(System.currentTimeMillis())
+      println(date + "  " + ProcessUtils.ls(file))
       Thread.sleep(msWait)
     }
   }

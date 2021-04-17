@@ -10,6 +10,7 @@ import org.broadinstitute.yootilz.core.snag.Snag
 import java.io.PrintWriter
 import java.nio.channels.Channels
 import java.nio.charset.StandardCharsets
+import java.util.Date
 import scala.collection.immutable.Iterable
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
@@ -98,9 +99,15 @@ object LunRunnable {
               val channel = writeChannelDisp.get
               val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
               val doneFut = writeRecords(recordStreamWithMeta, context, runTracker)(writer.println)
-              doneFut.onComplete { _ =>
+              doneFut.map { runResult =>
+                val date = new Date(System.currentTimeMillis())
+                println(s"Got run result at $date.")
+                runResult
+              }.onComplete { _ =>
                 writer.flush()
                 writer.close()
+                val date = new Date(System.currentTimeMillis())
+                println(s"Writer is closed at $date.")
                 writeChannelDisp.dispose()
               }
               doneFut
