@@ -98,7 +98,10 @@ object LunRunnable {
               val channel = writeChannelDisp.a
               val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
               val doneFut = writeRecords(recordStreamWithMeta, context, runTracker)(writer.println)
-              doneFut.onComplete(_ => writer.close())
+              doneFut.onComplete { _ =>
+                writer.flush()
+                writer.close()
+              }
               doneFut
             case None => writeRecords(recordStreamWithMeta, context, runTracker)(println)
           }
