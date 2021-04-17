@@ -64,7 +64,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     val msWait = 100
     val nIntervals = 100
     for(_ <- 0 until nIntervals) {
-      println(s"ls -l $file")
+      println(ProcessUtils.ls(file))
       Thread.sleep(msWait)
     }
   }
