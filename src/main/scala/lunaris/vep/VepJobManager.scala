@@ -19,6 +19,7 @@ import lunaris.vep.vcf.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import java.io.{PrintStream, RandomAccessFile}
+import java.util.Date
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
@@ -61,10 +62,11 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   }
 
   private def waitForFileToBeReady(file: File): Unit = {
-    val msWait = 100
+    val msWait = 1000
     val nIntervals = 100
     for(_ <- 0 until nIntervals) {
-      println(ProcessUtils.ls(file))
+      val dateString = new Date(System.currentTimeMillis())
+      println(dateString + "  " + ProcessUtils.ls(file))
       Thread.sleep(msWait)
     }
   }
