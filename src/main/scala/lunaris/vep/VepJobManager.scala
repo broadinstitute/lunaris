@@ -61,10 +61,12 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   }
 
   private def waitForFileToBeReady(file: File): Unit = {
-    val raf = new RandomAccessFile(file.toJava, "rw")
-    raf.getChannel.lock().release()
-    println(s"ls -l $file")
-    println(ProcessUtils.ls(file))
+    val msWait = 100
+    val nIntervals = 100
+    for(_ <- 0 until nIntervals) {
+      println(s"ls -l $file")
+      Thread.sleep(msWait)
+    }
   }
 
   def newQueryFuture(formData: VepFormData)(
