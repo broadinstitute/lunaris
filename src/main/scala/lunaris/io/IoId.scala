@@ -71,7 +71,7 @@ trait FileIoId extends IoId {
     if (pos != 0) {
       raf.seek(pos)
     }
-    Disposable(raf.getChannel)(Disposer.ForCloseable(raf))
+    Disposable.forCloseable(raf.getChannel)
   }
 
   def +(suffix: String): FileIoId

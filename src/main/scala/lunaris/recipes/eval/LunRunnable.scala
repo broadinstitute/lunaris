@@ -95,12 +95,13 @@ object LunRunnable {
           outputIdOpt match {
             case Some(file) =>
               val writeChannelDisp = file.newWriteChannelDisposable(context.resourceConfig)
-              val channel = writeChannelDisp.a
+              val channel = writeChannelDisp.get
               val writer = new PrintWriter(Channels.newWriter(channel, StandardCharsets.UTF_8))
               val doneFut = writeRecords(recordStreamWithMeta, context, runTracker)(writer.println)
               doneFut.onComplete { _ =>
                 writer.flush()
                 writer.close()
+                writeChannelDisp.dispose()
               }
               doneFut
             case None => writeRecords(recordStreamWithMeta, context, runTracker)(println)

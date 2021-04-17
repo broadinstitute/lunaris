@@ -89,7 +89,7 @@ object IndexedRecordReader extends tools.Tool {
                     }
                   }
               })
-            private val snagOrRecordEtor = snagOrRecordEtorDisp.a
+            private val snagOrRecordEtor = snagOrRecordEtorDisp.resource
             private val recordEtor = SnagUtils.throwIfSnag(snagOrRecordEtor)
 
             def nextRecord(): Option[Record] = {

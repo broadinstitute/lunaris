@@ -18,7 +18,7 @@ import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
 import lunaris.vep.vcf.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
-import java.io.PrintStream
+import java.io.{PrintStream, RandomAccessFile}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
@@ -60,6 +60,11 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     }
   }
 
+  private def waitForFileToBeReady(file: File): Unit = {
+    val raf = new RandomAccessFile(file.toJava, "rw")
+    raf.getChannel.lock().release()
+  }
+
   def newQueryFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem
   ): Future[RunResult] = {
@@ -92,6 +97,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
           val statsTracker = StatsTracker(out.println)
           val runTracker = RunTracker(snagTracker, statsTracker)
           runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>
+            waitForFileToBeReady(vepJobFiles.vepInputFile)
             val vepRunner = VepRunner.createNewVepRunner(vepSettings.runSettings)
             val vepReturnValue =
               vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
@@ -106,6 +112,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
                   snagTracker.trackSnag(snag)
                   Future.failed(new SnagException(snag))
                 case Right(runnableTwo) =>
+                  waitForFileToBeReady(vepJobFiles.vepOutputFile)
                   runnableTwo.executeAsync(context, runTracker).map(runResultOne ++ _)
               }
             }

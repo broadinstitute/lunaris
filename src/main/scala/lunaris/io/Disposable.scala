@@ -1,13 +1,14 @@
 package lunaris.io
 
 import java.io.Closeable
-
 import lunaris.io.Disposable.Disposer
 
-case class Disposable[+A](a: A)(private val disposer: Disposer) {
+import java.nio.channels.FileChannel
+
+case class Disposable[+A](resource: A)(private val disposer: Disposer) {
   private var isDisposedVar: Boolean = false
 
-  def get: A = a
+  def get: A = resource
 
   def isValid: Boolean = !isDisposedVar
 
@@ -19,16 +20,16 @@ case class Disposable[+A](a: A)(private val disposer: Disposer) {
   }
 
   def useUp[B](user: A => B): B = {
-    val b = user(a)
+    val b = user(resource)
     dispose()
     b
   }
 
-  def map[B](mapper: A => B): Disposable[B] = Disposable[B](mapper(a))(disposer)
+  def map[B](mapper: A => B): Disposable[B] = Disposable[B](mapper(resource))(disposer)
 
   def flatMap[B](mapper: A => Disposable[B]): Disposable[B] = {
-    val innerDis = mapper(a)
-    Disposable(innerDis.a)(disposer ++ innerDis.disposer)
+    val innerDis = mapper(resource)
+    Disposable(innerDis.resource)(disposer ++ innerDis.disposer)
   }
 }
 
@@ -38,7 +39,7 @@ object Disposable {
     Disposable[C](closeable)(Disposer.ForCloseable(closeable))
 
   def sequence[A](disposables: Seq[Disposable[A]]): Disposable[Seq[A]] = {
-    val as = disposables.map(_.a)
+    val as = disposables.map(_.resource)
     val disposerCombined = Disposer.Composite(disposables.map(_.disposer))
     Disposable(as)(disposerCombined)
   }
@@ -78,7 +79,6 @@ object Disposable {
     case class ForCloseable(closeable: Closeable) extends Disposer {
       override def dispose(): Unit = closeable.close()
     }
-
   }
 
   def fold2[A, B, C](aDisposable: Disposable[A], bDisposable: Disposable[B])(fun2: (A, B) => C): Disposable[C] = {
