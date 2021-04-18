@@ -3,7 +3,7 @@ package lunaris.io.request.examples
 import lunaris.genomics.Region
 import lunaris.recipes.tools.ToolCall
 import lunaris.recipes.tools.ToolCall.{RefArg, RefArrayArg, ValueArg}
-import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecords, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, RestrictToRegions, TSVWriter, VcfRecordsReader, VcfRecordsWriter}
+import lunaris.recipes.tools.builtin.{CalculateMaf, FindRecordsNotInData, GroupFileWriter, IdCanonicalizer, IndexedRecordReader, JSONWriter, JoinRecords, JoinRecordsWithFallback, RecordsFilter, RecordsSimpleFilter, RestrictToRegions, TSVWriter, VcfRecordsReader, VcfRecordsWriter, VepRecordsReader}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue, MapValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 
@@ -148,6 +148,12 @@ object RequestBuildUtils {
         VcfRecordsWriter.Params.Keys.altCol -> ValueArg(VcfRecordsWriter.Params.altCol, altCol)
       ))
     }
-  }
 
+    def vepRecordsReader(file: FileValue, chroms: ArrayValue): ToolCall = {
+      ToolCall(VepRecordsReader, Map(
+        VepRecordsReader.Params.Keys.file -> ValueArg(VepRecordsReader.Params.file, file),
+        VepRecordsReader.Params.Keys.chroms -> ValueArg(VepRecordsReader.Params.chroms, chroms)
+      ))
+    }
+  }
 }

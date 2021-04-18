@@ -93,7 +93,7 @@ case class VepRequestBuilder(jobId: JobId,
     val requestId = "lunaris_vep_phase_two_" + jobId.toString
     val toolCalls =
       initialToolCalls() ++ Map(
-        Keys.readCache -> ToolCalls.vcfRecordsReader(cacheFile, chromsValue),
+        Keys.readCache -> ToolCalls.vepRecordsReader(cacheFile, chromsValue),
         Keys.join ->
           ToolCalls.joinRecordsWithFallback(
             Keys.canonicalizeDriver, Keys.canonicalizeDatas :+ Keys.readCache, idFallback

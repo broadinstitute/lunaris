@@ -79,15 +79,12 @@ object HeaderRecordsParser {
       case Left(snag) =>
         Source.failed(SnagException(snag)).mapMaterializedValue(_ => Meta(recordCoreType, chroms))
       case Right((recordType, index)) =>
-        println("Record type:")
-        println(recordType)
         val meta = Meta(recordType, chroms)
         getLines(input, resourceConfig)
           .filter(!_.startsWith("#"))
           .map(_.split("\t"))
           .map(recordParser(recordType, index, _))
           .mapConcat { snagOrRecord =>
-            println(snagOrRecord)
             snagOrRecord.left.foreach(snagLogger)
             snagOrRecord.toSeq
           }

@@ -1,6 +1,6 @@
 import sbt.project
 
-val lunarisV = "2.0.0-DBG11"
+val lunarisV = "2.0.0-DBG12"
 val scalaV = "2.13.3"
 val yootilzV = "0.1.5"
 val scalaTestV = "3.2.0"
