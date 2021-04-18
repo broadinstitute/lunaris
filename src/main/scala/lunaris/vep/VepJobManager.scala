@@ -106,7 +106,9 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
             waitForFileToBeReady(vepJobFiles.vepInputFile)
             val vepRunner = VepRunner.createNewVepRunner(vepSettings.runSettings)
             val vepReturnValue =
-              vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
+              runResultOne.synchronized {
+                vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
+              }
             if (vepReturnValue != 0) {
               val snag = Snag(s"VEP return value should be zero, but was $vepReturnValue.")
               snagTracker.trackSnag(snag)
