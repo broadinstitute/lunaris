@@ -104,15 +104,11 @@ object LunRunnable {
                 println(s"Got run result at $date.")
                 println(runResult.hashCode())
                 println(runResult)
-                runResult
-              }.onComplete { _ =>
                 writer.flush()
                 writer.close()
-                val date = new Date(System.currentTimeMillis())
                 println(s"Writer is closed at $date.")
-                writeChannelDisp.dispose()
+                runResult
               }
-              doneFut
             case None => writeRecords(recordStreamWithMeta, context, runTracker)(println)
           }
       }
