@@ -18,7 +18,7 @@ import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
 import lunaris.vep.vcf.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
-import java.io.{PrintStream, RandomAccessFile}
+import java.io.PrintStream
 import java.util.Date
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.control.NonFatal
@@ -61,14 +61,10 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     }
   }
 
-  private def waitForFileToBeReady(file: File): Unit = {
-    val msWait = 2000
-    val nIntervals = 200
-    for(_ <- 0 until nIntervals) {
-      val date = new Date(System.currentTimeMillis())
-      println(date + "  " + ProcessUtils.ls(file))
-      Thread.sleep(msWait)
-    }
+  private def ls(file: File): Unit = {
+    val date = new Date(System.currentTimeMillis())
+    println(s"At $date, checking for $file.")
+    println(ProcessUtils.ls(file))
   }
 
   def newQueryFuture(formData: VepFormData)(
@@ -103,14 +99,13 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
           val statsTracker = StatsTracker(out.println)
           val runTracker = RunTracker(snagTracker, statsTracker)
           runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>
-            val date = new Date(System.currentTimeMillis())
-            println(s"Got runResultOne at $date")
-            println(runResultOne.hashCode())
-            println(runResultOne)
-            waitForFileToBeReady(vepJobFiles.vepInputFile)
             val vepRunner = VepRunner.createNewVepRunner(vepSettings.runSettings)
+            ls(vepJobFiles.vepInputFile)
+            ls(vepJobFiles.vepOutputFile)
             val vepReturnValue =
               vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
+            ls(vepJobFiles.vepInputFile)
+            ls(vepJobFiles.vepOutputFile)
             if (vepReturnValue != 0) {
               val snag = Snag(s"VEP return value should be zero, but was $vepReturnValue.")
               snagTracker.trackSnag(snag)
@@ -122,7 +117,6 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
                   snagTracker.trackSnag(snag)
                   Future.failed(new SnagException(snag))
                 case Right(runnableTwo) =>
-                  waitForFileToBeReady(vepJobFiles.vepOutputFile)
                   runnableTwo.executeAsync(context, runTracker).map(runResultOne ++ _)
               }
             }

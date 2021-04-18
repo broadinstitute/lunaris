@@ -101,9 +101,6 @@ object LunRunnable {
               val doneFut = writeRecords(recordStreamWithMeta, context, runTracker)(writer.println)
               doneFut.map { runResult =>
                 val date = new Date(System.currentTimeMillis())
-                println(s"Got run result at $date.")
-                println(runResult.hashCode())
-                println(runResult)
                 writer.flush()
                 writer.close()
                 println(s"Writer is closed at $date.")

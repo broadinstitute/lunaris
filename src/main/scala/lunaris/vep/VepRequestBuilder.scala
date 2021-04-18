@@ -9,6 +9,7 @@ import lunaris.io.request.Request
 import lunaris.io.request.examples.RequestBuildUtils.ToolCalls
 import lunaris.recipes.Recipe
 import lunaris.recipes.tools.ToolCall
+import lunaris.recipes.tools.builtin.JoinRecordsWithFallback.FallBacks
 import lunaris.recipes.values.LunType.StringType
 import lunaris.recipes.values.LunValue.PrimitiveValue.{FileValue, StringValue}
 import lunaris.recipes.values.LunValue.{ArrayValue, ExpressionValue}
@@ -38,6 +39,7 @@ case class VepRequestBuilder(jobId: JobId,
   val filterValue: ExpressionValue = ExpressionValue(filter)
   val outputFileValue: FileValue = FileValue(jobFiles.outputFile)
   val outputFileFormatValue: StringValue = StringValue(outFileFormat)
+  val idFallback: StringValue = StringValue(FallBacks.id)
 
   object Keys {
     val readDriver: String = "readDriver"
@@ -92,7 +94,10 @@ case class VepRequestBuilder(jobId: JobId,
     val toolCalls =
       initialToolCalls() ++ Map(
         Keys.readCache -> ToolCalls.vcfRecordsReader(cacheFile, chromsValue),
-        Keys.join -> ToolCalls.joinRecords(Keys.canonicalizeDriver +: Keys.canonicalizeDatas :+ Keys.readCache),
+        Keys.join ->
+          ToolCalls.joinRecordsWithFallback(
+            Keys.canonicalizeDriver, Keys.canonicalizeDatas :+ Keys.readCache, idFallback
+          ),
         Keys.calculateMaf -> ToolCalls.calculateMaf(Keys.join),
         Keys.filter -> ToolCalls.filter(Keys.calculateMaf, filterValue),
         Keys.write -> ToolCalls.groupFileWriter(Keys.filter, outputFileValue, outputFileFormatValue)

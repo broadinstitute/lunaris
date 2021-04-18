@@ -35,6 +35,11 @@ object JoinRecordsWithFallback extends Tool {
 
   override def isFinal: Boolean = false
 
+  object FallBacks {
+    val vep: String = "vep"
+    val id: String = "id"
+  }
+
   sealed trait FallbackGenerator {
     def createFallback(snagLogger: Snag => (), materializer: Materializer): Record => Either[Snag, Record]
   }
@@ -46,9 +51,15 @@ object JoinRecordsWithFallback extends Tool {
       (record: Record) => vepRunner.processRecord(record, snagLogger)(materializer)
   }
 
+  object IdFallbackGenerator extends FallbackGenerator {
+    override def createFallback(snagLogger: Snag => Unit, materializer: Materializer):
+    Record => Either[Snag, Record] = (record: Record) => Right(record)
+  }
+
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
     fallbackString match {
-      case "vep" => VepRunSettingsBox.getVepRunSettings.map(new VepFallbackGenerator(_))
+      case FallBacks.vep => VepRunSettingsBox.getVepRunSettings.map(new VepFallbackGenerator(_))
+      case FallBacks.id => Right(IdFallbackGenerator)
       case _ => Left(Snag(s"Unknown fallback '$fallbackString'"))
     }
   }

@@ -21,7 +21,7 @@ final class EmailManager(emailSettings: EmailSettings, apiKey: String) {
     } else {
       "<p>There were the following problems:</p>\n" + snags.take(100).map { snag =>
         s"<p>${snag.message}</p>\n"
-      } + (if (snags.size > 100) s"<p>(and ${snags.size - 100} more)</p>\n" else "")
+      }.mkString("") + (if (snags.size > 100) s"<p>(and ${snags.size - 100} more)</p>\n" else "")
     }
   }
 
@@ -38,7 +38,7 @@ final class EmailManager(emailSettings: EmailSettings, apiKey: String) {
          |
          |<p>To get back to your session, click
          |<a href="http://eggserver.org/lunaris/vep.html?session=$sessionId">here</a>, or download the result
-         |<a href="http://eggserver.org/lunaris/predictor/results/${jobId}.tsv" download="${jobId}.tsv">here</a>.
+         |<a href="http://eggserver.org/lunaris/predictor/results/$jobId.tsv" download="$jobId.tsv">here</a>.
          |</p>
          |""".stripMargin
     val errorList = snagsToHtml(result.snags)
@@ -62,7 +62,7 @@ final class EmailManager(emailSettings: EmailSettings, apiKey: String) {
          |""".stripMargin
     val stackTrace = "<pre>\n" + snag.report + "\n</pre>\n"
     val content = summary + stackTrace
-    sendMessage(toAddress, subject, content);
+    sendMessage(toAddress, subject, content)
   }
 
   def sendTestMessage(): Either[Snag, Response] = {
@@ -74,7 +74,7 @@ final class EmailManager(emailSettings: EmailSettings, apiKey: String) {
         |<p>This is a test message from the
         |<a href="http://eggserver.org/lunaris/vep.html">EGG Server</a>.</p>
         |""".stripMargin
-    sendMessage(toAddress, subject, content);
+    sendMessage(toAddress, subject, content)
   }
 
   private def sendMessage(toAddress: String, subject: String, contentString: String): Either[Snag, Response] = {
