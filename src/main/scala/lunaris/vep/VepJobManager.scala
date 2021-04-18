@@ -64,7 +64,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   private def ls(file: File): Unit = {
     val date = new Date(System.currentTimeMillis())
     println(s"At $date, checking for $file.")
-    println(ProcessUtils.ls(file))
+    println(ProcessUtils.ls(file).fold(_.getMessage, printOut => printOut))
   }
 
   def newQueryFuture(formData: VepFormData)(
