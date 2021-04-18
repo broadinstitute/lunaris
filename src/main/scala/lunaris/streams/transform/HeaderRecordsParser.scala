@@ -4,7 +4,7 @@ import akka.stream.scaladsl.{Framing, Sink, Source}
 import akka.stream.{IOResult, Materializer}
 import akka.util.ByteString
 import lunaris.io.{InputId, ResourceConfig}
-import lunaris.recipes.values.LunType
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
 import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
@@ -73,14 +73,16 @@ object HeaderRecordsParser {
                         (indexer: Seq[String] => Either[Snag, I])
                         (recordParser: (LunType.RecordType, I, Seq[String]) => Either[Snag, Record])
                         (snagLogger: Snag => ())
-                        (implicit materializer: Materializer): RecordSource = {
+                        (implicit materializer: Materializer): RecordStreamWithMeta = {
     implicit val executionContext: ExecutionContextExecutor = materializer.executionContext
     getRecordType(input, resourceConfig)(recordCoreType)(indexer) match {
       case Left(snag) =>
-        Source.failed(SnagException(snag)).mapMaterializedValue(_ => Meta(recordCoreType, chroms))
+        val meta = Meta(recordCoreType, chroms)
+        val stream = Source.failed(SnagException(snag)).mapMaterializedValue(_ => Meta(recordCoreType, chroms))
+        RecordStreamWithMeta(meta, stream)
       case Right((recordType, index)) =>
         val meta = Meta(recordType, chroms)
-        getLines(input, resourceConfig)
+        val stream = getLines(input, resourceConfig)
           .filter(!_.startsWith("#"))
           .map(_.split("\t"))
           .map(recordParser(recordType, index, _))
@@ -89,6 +91,7 @@ object HeaderRecordsParser {
             snagOrRecord.toSeq
           }
           .mapMaterializedValue(_ => meta)
+        RecordStreamWithMeta(meta, stream)
     }
   }
 }

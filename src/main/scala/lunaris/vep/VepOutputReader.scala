@@ -3,8 +3,8 @@ package lunaris.vep
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
 import better.files.File
-import lunaris.io.{FileInputId, ResourceConfig}
-import lunaris.recipes.values.{LunType, LunValue}
+import lunaris.io.{FileInputId, InputId, ResourceConfig}
+import lunaris.recipes.values.{LunType, LunValue, RecordStreamWithMeta}
 import lunaris.streams.transform.HeaderRecordsParser
 import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
 import lunaris.utils.NumberParser
@@ -99,12 +99,11 @@ object VepOutputReader {
     }
   }
 
-  def read(inputFile: File, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ())
+  def read(inputId: InputId, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ())
           (implicit materializer: Materializer):
-  RecordSource = {
-    val inputId = FileInputId(inputFile)
+  RecordStreamWithMeta = {
     val recordTypeCore = LunType.RecordType(ColNames.id, ColNames.chrom, ColNames.pos, ColNames.pos)
-    val records = HeaderRecordsParser
+    val recordsWithMeta = HeaderRecordsParser
       .newRecordSource(inputId, resourceConfig, chroms)(recordTypeCore) { headers =>
         ColIndices.fromHeaders(headers)
       } { (recordType, index, values) =>
@@ -119,8 +118,11 @@ object VepOutputReader {
       } {
         snagLogger
       }
+    val meta = recordsWithMeta.meta
+    val records = recordsWithMeta.source
     val recordOpts = records.map(Some(_)) ++ Source.single(None)
     val recordPickerGenerator: () => RecordPicker = () => new RecordPicker(snagLogger)
-    recordOpts.statefulMapConcat(recordPickerGenerator)
+    val recordsPicked = recordOpts.statefulMapConcat(recordPickerGenerator)
+    RecordStreamWithMeta(meta, recordsPicked)
   }
 }

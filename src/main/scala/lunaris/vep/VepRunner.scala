@@ -114,8 +114,8 @@ class VepRunner(val runSettings: VepRunSettings) {
       Await.ready(doneFut, Duration.Inf) //  TODO do without Await
       val returnValue = runVep(inputFile, outputFile, warningsFile)
       if (returnValue == 0) {
-        val records = VepOutputReader.read(inputFile, ResourceConfig.empty, chroms, snagLogger)
-        val recordSeqFut = records.runWith(Sink.collection[Record, Seq[Record]])
+        val streamWithMeta = VepOutputReader.read(FileInputId(inputFile), ResourceConfig.empty, chroms, snagLogger)
+        val recordSeqFut = streamWithMeta.source.runWith(Sink.collection[Record, Seq[Record]])
         Await.ready(recordSeqFut, Duration.Inf) //  TODO do without Await
         recordSeqFut.value.get match {
           case Failure(exception) =>

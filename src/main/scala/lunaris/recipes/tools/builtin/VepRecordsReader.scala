@@ -1,5 +1,6 @@
 package lunaris.recipes.tools.builtin
 
+import akka.stream.Materializer
 import lunaris.io.InputId
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, RunTracker, WorkerMaker}
@@ -51,14 +52,10 @@ object VepRecordsReader extends tools.Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[RecordStreamWorker] =
         Some[RecordStreamWorker] {
           (context: LunRunContext, runTracker: RunTracker) => {
-//            VepOutputReader.read()
-//            val recordType = VcfCore.vcfRecordType
-//            val meta = Meta(recordType, chroms)
-//            val source = VcfStreamVariantsReader.readVcfRecords(file.newStream(context.resourceConfig))
-//              .map(_.toRecord).mapMaterializedValue(_ => meta)
-//            val stream = RecordStreamWithMeta(meta, source)
-//            LunWorker.StreamBox(stream)
-            ???  //  TODO
+            implicit val materializer: Materializer = context.materializer
+            val streamWithMeta =
+              VepOutputReader.read(file, context.resourceConfig, chroms, runTracker.snagTracker.trackSnag)
+            LunWorker.StreamBox(streamWithMeta)
           }
         }
 
