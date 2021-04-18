@@ -103,12 +103,14 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
           val statsTracker = StatsTracker(out.println)
           val runTracker = RunTracker(snagTracker, statsTracker)
           runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>
+            val date = new Date(System.currentTimeMillis())
+            println(s"Got runResultOne at $date")
+            println(runResultOne.hashCode())
+            println(runResultOne)
             waitForFileToBeReady(vepJobFiles.vepInputFile)
             val vepRunner = VepRunner.createNewVepRunner(vepSettings.runSettings)
             val vepReturnValue =
-              runResultOne.synchronized {
-                vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
-              }
+              vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
             if (vepReturnValue != 0) {
               val snag = Snag(s"VEP return value should be zero, but was $vepReturnValue.")
               snagTracker.trackSnag(snag)

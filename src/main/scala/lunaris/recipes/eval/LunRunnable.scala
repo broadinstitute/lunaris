@@ -102,6 +102,8 @@ object LunRunnable {
               doneFut.map { runResult =>
                 val date = new Date(System.currentTimeMillis())
                 println(s"Got run result at $date.")
+                println(runResult.hashCode())
+                println(runResult)
                 runResult
               }.onComplete { _ =>
                 writer.flush()
