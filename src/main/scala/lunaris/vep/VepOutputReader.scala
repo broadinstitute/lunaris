@@ -12,22 +12,28 @@ import org.broadinstitute.yootilz.core.snag.Snag
 
 object VepOutputReader {
 
-  trait ColNames {
-    def id: String
-    def chrom: String
-  }
-
-  object ColNames1 extends ColNames {
-    override val id = "Uploaded_variation"
-    val location: String = "Location"
-    override val chrom = "Chrom"
-    val start = "Start"
+  object CoreFields {
+    val id = "Uploaded_variation"
+    val chrom = "Chrom"
+    val begin = "Begin"
     val end = "End"
   }
 
-  object ColNames2 extends ColNames {
-    override val id = "Uploaded_variation"
-    val chrom = "Chrom"
+  val recordCoreType: LunType.RecordType =
+    LunType.RecordType(CoreFields.id, CoreFields.chrom, CoreFields.begin, CoreFields.end)
+
+  trait FileColNames {
+    def id: String
+  }
+
+  object FileColNames1 extends FileColNames {
+    override val id: String = CoreFields.id
+    val location: String = "Location"
+  }
+
+  object FileColNames2 extends FileColNames {
+    override val id: String = CoreFields.id
+    val chrom: String = CoreFields.chrom
     val pos = "Pos"
     val ref = "Ref"
     val alt = "Alt"
@@ -53,18 +59,18 @@ object VepOutputReader {
     }
 
     def fromHeaders(headers: Seq[String]): Either[Snag, ColIndices] = {
-      if(headers.contains(ColNames1.location)) {
+      if(headers.contains(FileColNames1.location)) {
         for {
-          iId <- indexOf(ColNames1.id, headers)
-          iLocation <- indexOf(ColNames1.location, headers)
+          iId <- indexOf(FileColNames1.id, headers)
+          iLocation <- indexOf(FileColNames1.location, headers)
         } yield ColIndices1(iId, iLocation)
       } else {
         for {
-          iId <- indexOf(ColNames2.id, headers)
-          iChrom <- indexOf(ColNames2.chrom, headers)
-          iPos <- indexOf(ColNames2.pos, headers)
-          iRef <- indexOf(ColNames2.ref, headers)
-          iAlt <- indexOf(ColNames2.alt, headers)
+          iId <- indexOf(FileColNames2.id, headers)
+          iChrom <- indexOf(FileColNames2.chrom, headers)
+          iPos <- indexOf(FileColNames2.pos, headers)
+          iRef <- indexOf(FileColNames2.ref, headers)
+          iAlt <- indexOf(FileColNames2.alt, headers)
         } yield ColIndices2(iId, iChrom, iPos, iRef, iAlt)
       }
     }
@@ -92,8 +98,8 @@ object VepOutputReader {
           id <- pickNonEmptyValue(iId, values)
           location <- pickNonEmptyValue(iLocation, values)
           locus <- Locus.parse(location)
-        } yield LunValue.RecordValue(ColNames1.id, id, ColNames1.chrom, locus.chrom, ColNames1.start,
-          locus.region.begin, ColNames1.end, locus.region.end)
+        } yield LunValue.RecordValue(CoreFields.id, id, CoreFields.chrom, locus.chrom, CoreFields.begin,
+          locus.region.begin, CoreFields.end, locus.region.end)
       case ColIndices2(iId, iChrom, iPos, iRef, _) =>
         for {
           id <- pickNonEmptyValue(iId, values)
@@ -101,7 +107,7 @@ object VepOutputReader {
           posString <- pickNonEmptyValue(iPos, values)
           pos <- NumberParser.parseInt(posString)
           ref <- pickNonEmptyValue(iRef, values)
-        } yield LunValue.RecordValue(ColNames2.id, id, ColNames2.chrom, chrom, ColNames2.pos, pos, regionLength(ref))
+        } yield LunValue.RecordValue(FileColNames2.id, id, FileColNames2.chrom, chrom, FileColNames2.pos, pos, regionLength(ref))
     }
   }
 
@@ -111,7 +117,7 @@ object VepOutputReader {
       (recordOpt, recordOptStored) match {
         case (Some(record), Some(recordStored)) =>
           if(record.id == recordStored.id) {
-            record.get(ColNames2.pick) match {
+            record.get(FileColNames2.pick) match {
               case Left(snag) => snagLogger(snag)
               case Right(pick) =>
               if (pick.toString == "1") {
@@ -138,7 +144,7 @@ object VepOutputReader {
   def read(inputId: InputId, resourceConfig: ResourceConfig, chroms: Seq[String], snagLogger: Snag => ())
           (implicit materializer: Materializer):
   RecordStreamWithMeta = {
-    val recordTypeCore = LunType.RecordType(ColNames2.id, ColNames2.chrom, ColNames2.pos, ColNames2.pos)
+    val recordTypeCore = LunType.RecordType(FileColNames2.id, FileColNames2.chrom, FileColNames2.pos, FileColNames2.pos)
     val recordsWithMeta = HeaderRecordsParser
       .newRecordSource(inputId, resourceConfig, chroms)(recordTypeCore) { headers =>
         ColIndices.fromHeaders(headers)

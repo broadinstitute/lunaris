@@ -4,11 +4,12 @@ import akka.stream.scaladsl.{Framing, Sink, Source}
 import akka.stream.{IOResult, Materializer}
 import akka.util.ByteString
 import lunaris.io.{InputId, ResourceConfig}
-import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
 import lunaris.recipes.values.RecordStreamWithMeta.Meta
-import lunaris.streams.utils.RecordStreamTypes.{Record, RecordSource}
+import lunaris.recipes.values.{LunType, RecordStreamWithMeta}
+import lunaris.streams.utils.RecordStreamTypes.Record
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
+import scala.collection.immutable.ArraySeq
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, ExecutionContextExecutor, Future}
 
@@ -20,34 +21,21 @@ object HeaderRecordsParser {
       .map(_.utf8String)
   }
 
-  private def checkCoreFields(cols: Array[String], coreFields: Seq[String]): Either[Snag, ()] = {
-    var snagOpt: Option[Snag] = None
-    val coreFieldsIter = coreFields.iterator
-    while (snagOpt.isEmpty && coreFieldsIter.hasNext) {
-      val coreField = coreFieldsIter.next()
-      if (!cols.contains(coreField)) {
-        snagOpt = Some(Snag(s"Missing column $coreField."))
-      }
-    }
-    snagOpt.fold[Either[Snag, ()]](Right(()))(Left(_))
-  }
-
   private def parseHeaderLine[I](recordCoreType: LunType.RecordType, headerLine: String)
                                 (indexer: Seq[String] => Either[Snag, I]):
   Either[Snag, (LunType.RecordType, I)] = {
     val headerLineCleaned = if (headerLine.startsWith("#")) headerLine.substring(1) else headerLine
     val cols = headerLineCleaned.split("\t")
-    checkCoreFields(cols, recordCoreType.fields) match {
-      case Left(snag) => Left(snag)
-      case Right(_) =>
-        var recordTypeTmp = recordCoreType
-        for (col <- cols) {
-          if (!recordTypeTmp.fields.contains(col)) {
-            recordTypeTmp = recordTypeTmp.addField(col, LunType.StringType)
-          }
+    val recordType = {
+      var recordTypeTmp = recordCoreType
+      for (col <- cols) {
+        if (!recordTypeTmp.fields.contains(col)) {
+          recordTypeTmp = recordTypeTmp.addField(col, LunType.StringType)
         }
-        indexer(cols).map(index => (recordTypeTmp, index))
+      }
+      recordTypeTmp
     }
+    indexer(ArraySeq.unsafeWrapArray(cols)).map((recordType, _))
   }
 
   private def getRecordType[I](input: InputId, resourceConfig: ResourceConfig)
@@ -85,7 +73,9 @@ object HeaderRecordsParser {
         val stream = getLines(input, resourceConfig)
           .filter(!_.startsWith("#"))
           .map(_.split("\t"))
-          .map(recordParser(recordType, index, _))
+          .map { fields =>
+            recordParser(recordType, index, ArraySeq.unsafeWrapArray(fields))
+          }
           .mapConcat { snagOrRecord =>
             snagOrRecord.left.foreach(snagLogger)
             snagOrRecord.toSeq
