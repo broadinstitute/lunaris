@@ -55,7 +55,13 @@ object RestrictToRegions extends Tool {
           (context: LunRunContext, runTracker: RunTracker) => {
             val exonsSet: LociSet = SnagUtils.throwIfSnag(ExonsFileReader.read(regionsFile))
             val snagOrStream = fromWorker.getStreamBox(context, runTracker).snagOrStream.map { fromStream =>
-              val filteredStream = fromStream.source.filter(record => exonsSet.overlapsLocus(record.locus))
+              val filteredStream = fromStream.source.filter { record =>
+                val recordIsInRegions = exonsSet.overlapsLocus(record.locus)
+                if (!recordIsInRegions) {
+                  runTracker.snagTracker.trackSnag(Snag(s"${record.id} is outside of specified regions."))
+                }
+                recordIsInRegions
+              }
               RecordStreamWithMeta(fromStream.meta, filteredStream)
             }
             LunWorker.StreamBox(snagOrStream)

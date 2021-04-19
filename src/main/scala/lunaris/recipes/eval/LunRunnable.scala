@@ -103,7 +103,6 @@ object LunRunnable {
                 val date = new Date(System.currentTimeMillis())
                 writer.flush()
                 writer.close()
-                println(s"Writer is closed at $date.")
                 runResult
               }
             case None => writeRecords(recordStreamWithMeta, context, runTracker)(println)
