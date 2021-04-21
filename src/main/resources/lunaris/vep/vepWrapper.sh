@@ -28,6 +28,7 @@ $vepCmd -i $input \
 --force_overwrite \
 --no_stats \
 --offline \
+--no_check_variants_order \
 --fasta $fasta \
 --tab \
 --cache \
@@ -59,6 +60,7 @@ $vepCmd -i $input \
 --force_overwrite \
 --no_stats \
 --offline \
+--no_check_variants_order \
 --fasta $fasta \
 --tab \
 --cache \
