@@ -1,7 +1,6 @@
 package lunaris.recipes.tools.builtin
 
 import akka.stream.Materializer
-import lunaris.app.VepRunSettings
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval._
@@ -12,7 +11,6 @@ import lunaris.recipes.{eval, tools}
 import lunaris.streams.transform.RecordStreamJoinerWithFallback
 import lunaris.streams.utils.RecordStreamTypes.Record
 import lunaris.utils.EitherSeqUtils
-import lunaris.vep.{VepRunSettingsBox, VepRunner}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 object JoinRecordsWithFallback extends Tool {
@@ -36,19 +34,11 @@ object JoinRecordsWithFallback extends Tool {
   override def isFinal: Boolean = false
 
   object FallBacks {
-    val vep: String = "vep"
     val id: String = "id"
   }
 
   sealed trait FallbackGenerator {
     def createFallback(snagLogger: Snag => (), materializer: Materializer): Record => Either[Snag, Record]
-  }
-
-  class VepFallbackGenerator(vepRunSettings: VepRunSettings) extends FallbackGenerator {
-    private val vepRunner = VepRunner.createNewVepRunner(vepRunSettings)
-
-    override def createFallback(snagLogger: Snag => (), materializer: Materializer): Record => Either[Snag, Record] =
-      (record: Record) => vepRunner.processRecord(record, snagLogger)(materializer)
   }
 
   object IdFallbackGenerator extends FallbackGenerator {
@@ -58,7 +48,6 @@ object JoinRecordsWithFallback extends Tool {
 
   private def getFallbackGenerator(fallbackString: String): Either[Snag, FallbackGenerator] = {
     fallbackString match {
-      case FallBacks.vep => VepRunSettingsBox.getVepRunSettings.map(new VepFallbackGenerator(_))
       case FallBacks.id => Right(IdFallbackGenerator)
       case _ => Left(Snag(s"Unknown fallback '$fallbackString'"))
     }

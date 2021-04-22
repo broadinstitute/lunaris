@@ -18,7 +18,9 @@ class VepRunnerTest extends AnyFunSuite {
   private val snagOrVepSettings = LunarisConfigProps.inputIdProps(configFile).flatMap(props => props.toVepSettings)
 
   private def runVep(vepSettings: VepSettings, chrom: String, pos: Int, ref: String, alt: String): Unit = {
-    val vepRunner = new VepRunner(vepSettings.runSettings)
+    val vepFolders = VepFolders(vepSettings)
+    val scriptRepo = ScriptRepo(vepFolders.workFolder)
+    val vepRunner = new VepRunner(vepFolders, scriptRepo, vepSettings.runSettings)
     val id = s"$chrom:$pos:$ref:$alt"
     val qual = ""
     val filter = ""

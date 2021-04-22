@@ -28,6 +28,8 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
                           emailApiKey: String, resourceConfig: ResourceConfig) {
 
   val vepFolders: VepFolders = VepFolders(vepSettings)
+  private val scriptRepo = ScriptRepo(vepFolders.workFolder)
+  private val vcfSorter = VcfSorter(scriptRepo)
   private val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
   private val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
   private val dbFile: File = vepSettings.runSettings.workDir / "db" / dbName
@@ -78,7 +80,9 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     val submissionTime = System.currentTimeMillis()
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
-    val chromsAndRegionsFut = VcfStreamVariantsReader.readChromsAndRegions(inputFileServer)
+    val chromsAndRegionsFut = Future {
+      vcfSorter.sortVcf(inputFileServer, inputFileServer)
+    }.flatMap(_ => VcfStreamVariantsReader.readChromsAndRegions(inputFileServer))
     val queryFuture = chromsAndRegionsFut.flatMap { chromsAndRegions =>
       val chroms = chromsAndRegions.chroms
       val regionsByChrom = chromsAndRegions.regions
@@ -99,9 +103,8 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
           val statsTracker = StatsTracker(out.println)
           val runTracker = RunTracker(snagTracker, statsTracker)
           runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>
-            val vepRunner = VepRunner.createNewVepRunner(vepSettings.runSettings)
+            val vepRunner = VepRunner.createNewVepRunner(vepFolders, scriptRepo, vepSettings.runSettings)
             ls(vepJobFiles.vepInputFile)
-            ls(vepJobFiles.vepOutputFile)
             val vepReturnValue =
               vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
             ls(vepJobFiles.vepInputFile)

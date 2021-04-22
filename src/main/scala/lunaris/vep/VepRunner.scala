@@ -3,13 +3,13 @@ package lunaris.vep
 import akka.Done
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
-import better.files.{File, Resource}
+import better.files.File
 import lunaris.app.VepRunSettings
 import lunaris.genomics.LociSet
 import lunaris.io.{ExonsFileReader, FileInputId, ResourceConfig}
 import lunaris.recipes.values.LunValue
 import lunaris.streams.utils.RecordStreamTypes.Record
-import lunaris.utils.{IOUtils, SnagUtils}
+import lunaris.utils.SnagUtils
 import lunaris.vep.vcf.VcfCore.VcfCoreRecord
 import lunaris.vep.vcf.VcfStreamVariantsWriter
 import lunaris.vep.vcf.VcfStreamVariantsWriter.VcfRecord
@@ -22,23 +22,9 @@ import scala.concurrent.{Await, Future}
 import scala.sys.process._
 import scala.util.{Failure, Random, Success}
 
-class VepRunner(val runSettings: VepRunSettings) {
-
-  private val vepWrapperScriptResourceShortName: String = "vepWrapper.sh"
-  private val vepWrapperScriptResourceFullName: String = "lunaris/vep/" + vepWrapperScriptResourceShortName
-
-  private val vepWorkDir: File = runSettings.workDir
-  private val vepWrapperScriptFile: File = vepWorkDir / vepWrapperScriptResourceShortName
-  private val vepRunDir: File = runSettings.runDir
+class VepRunner(val vepFolders: VepFolders, val scriptRepo: ScriptRepo, val runSettings: VepRunSettings) {
 
   private val exonsFile: File = runSettings.exonsFile
-
-  {
-    vepWorkDir.createDirectoryIfNotExists(createParents = true)
-    vepRunDir.createDirectoryIfNotExists(createParents = true)
-    val vepScriptFileOut = vepWrapperScriptFile.newOutputStream
-    IOUtils.writeAllYouCanRead(Resource.getAsStream(vepWrapperScriptResourceFullName), vepScriptFileOut)
-  }
 
   val exonsSet: LociSet = SnagUtils.throwIfSnag(ExonsFileReader.read(FileInputId(exonsFile)))
 
@@ -83,7 +69,7 @@ class VepRunner(val runSettings: VepRunSettings) {
     val pluginsDir = runSettings.pluginsDir
     val dbNsfp = runSettings.dbNSFPFile
     val commandLine =
-      s"bash $vepWrapperScriptFile $vepCmd $inputFile $cpus $fastaFile $cacheDir $pluginsDir $dbNsfp " +
+      s"bash ${scriptRepo.Files.vepWrapper} $vepCmd $inputFile $cpus $fastaFile $cacheDir $pluginsDir $dbNsfp " +
         s"$outputFile $warningsFile"
     commandLine.!
   }
@@ -104,7 +90,7 @@ class VepRunner(val runSettings: VepRunSettings) {
 
   def calculateValues(vcfRecord: VcfRecord, snagLogger: Snag => ())(implicit materializer: Materializer):
   Either[Snag, Record] = {
-    createUseDiscardDir(vepRunDir / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
+    createUseDiscardDir(vepFolders.runFolder / Random.nextLong(Long.MaxValue).toHexString) { subRunDir =>
       val vcfRecords = Source.single(vcfRecord)
       val chroms = Seq(vcfRecord.chrom)
       val inputFile = subRunDir / "input.vcf"
@@ -142,5 +128,6 @@ class VepRunner(val runSettings: VepRunSettings) {
 }
 
 object VepRunner {
-  def createNewVepRunner(runSettings: VepRunSettings): VepRunner = new VepRunner(runSettings)
+  def createNewVepRunner(vepFolders: VepFolders, scriptRepo: ScriptRepo, runSettings: VepRunSettings): VepRunner =
+    new VepRunner(vepFolders, scriptRepo, runSettings)
 }

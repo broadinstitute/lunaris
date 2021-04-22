@@ -10,7 +10,7 @@ import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
 import lunaris.utils.{Crypt, HttpUtils, SnagJson}
 import lunaris.vep.VepJobManager.{JobId, SessionId}
-import lunaris.vep.{VepFormData, VepJobManager, VepJson, VepMasksManager, VepRunSettingsBox}
+import lunaris.vep.{VepFormData, VepJobManager, VepJson, VepMasksManager}
 import org.broadinstitute.yootilz.core.snag.Snag
 
 import scala.concurrent.ExecutionContextExecutor
@@ -27,7 +27,6 @@ object VepServerRunner {
     val host = serverSettings.webInterface
     val port = serverSettings.port
     val vepSettings = vepServerSettings.vepSettings
-    VepRunSettingsBox.setVepRunSettings(vepSettings.runSettings)
     val resourceConfig = ResourceConfig.empty
     val emailSettings = vepServerSettings.emailSettings
     val dbName = vepServerSettings.dbName
