@@ -21,8 +21,8 @@ import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 import java.io.PrintStream
 import java.util.Date
 import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.util.Random
 import scala.util.control.NonFatal
-import scala.util.{Failure, Random, Success}
 
 final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSettings, dbName: String,
                           emailApiKey: String, resourceConfig: ResourceConfig) {
@@ -80,7 +80,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     val submissionTime = System.currentTimeMillis()
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
-    val chromsAndRegionsFut = Future {
+    val chromsAndRegionsFut: Future[VcfStreamVariantsReader.ChromsAndRegions] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
     }.flatMap(_ => VcfStreamVariantsReader.readChromsAndRegions(inputFileServer))
     val queryFuture = chromsAndRegionsFut.flatMap { chromsAndRegions =>
@@ -126,24 +126,30 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
           }
       }
     }
-    queryFuture.onComplete {
-      case Success(runResult) =>
-        val successTime = System.currentTimeMillis()
-        val snagMessages = runResult.snags.map(_.message)
-        updateStatus(jobId, ResultStatus.createSucceeded(submissionTime, successTime, snagMessages))
-        formData.emailOpt.foreach { email =>
-          emailManager.sendJobResultMessage(email, submissionTime, successTime, jobId, formData.sessionId, runResult)
-        }
-      case Failure(exception) =>
-        val failTime = System.currentTimeMillis()
-        val snag = Snag(exception)
-        println(snag.report)
-        updateStatus(jobId, ResultStatus.createFailed(submissionTime, failTime, snag.message, Seq(snag.message)))
-        formData.emailOpt.foreach { email =>
-          emailManager.sendJobSnagMessage(email, submissionTime, failTime, formData.sessionId, snag)
-        }
+    val successTransform: RunResult => RunResult = { runResult =>
+      val successTime = System.currentTimeMillis()
+      val successDate = new Date(successTime)
+      println(s"$jobId succeeded at $successDate.")
+      val snagMessages = runResult.snags.map(_.message)
+      updateStatus(jobId, ResultStatus.createSucceeded(submissionTime, successTime, snagMessages))
+      formData.emailOpt.foreach { email =>
+        emailManager.sendJobResultMessage(email, submissionTime, successTime, jobId, formData.sessionId, runResult)
+      }
+      runResult
     }
-    queryFuture
+    val exceptionTransform: Throwable => Throwable = { exception =>
+      val failTime = System.currentTimeMillis()
+      val failDate = new Date(failTime)
+      println(s"$jobId failed at $failDate")
+      val snag = Snag(exception)
+      println(snag.report)
+      updateStatus(jobId, ResultStatus.createFailed(submissionTime, failTime, snag.message, Seq(snag.message)))
+      formData.emailOpt.foreach { email =>
+        emailManager.sendJobSnagMessage(email, submissionTime, failTime, formData.sessionId, snag)
+      }
+      exception
+    }
+    queryFuture.transform(successTransform, exceptionTransform)
   }
 
   def newUploadAndQueryFutureFuture(formData: VepFormData)(
