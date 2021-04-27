@@ -10,7 +10,7 @@ class VepFolders(vepSettings: VepSettings) {
 
   def resultsFolder: File = vepSettings.resultsFolder
 
-  def workFolder: File = vepSettings.runSettings.runDir
+  def workFolder: File = vepSettings.runSettings.workDir
 
   def runFolder: File = vepSettings.runSettings.runDir
 

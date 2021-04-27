@@ -24,11 +24,15 @@ trait LunRunnable {
 object LunRunnable {
 
   case class RunResult(snags: Seq[Snag]) {
-    def ++(oResult: RunResult): RunResult = RunResult(snags ++ oResult.snags)
+    def ++(oResult: RunResult): RunResult = {
+      val messageSet = snags.map(_.message).toSet
+      RunResult(snags ++ oResult.snags.filter(snag => !messageSet(snag.message)))
+    }
   }
 
   object RunResult {
     def apply(snag: Snag): RunResult = RunResult(Seq(snag))
+
     def create: RunResult = RunResult(Seq.empty)
   }
 
@@ -72,7 +76,7 @@ object LunRunnable {
   class TextWriter(fromWorker: RecordStreamWorker, outputIdOpt: Option[OutputId])(
     recordsToLines: (RecordStreamWithMeta, RunTracker) => Source[String, RecordStreamWithMeta.Meta]
   )
-  extends LunRunnable {
+    extends LunRunnable {
     private def writeRecords(stream: RecordStreamWithMeta,
                              context: LunRunContext,
                              runTracker: RunTracker)(

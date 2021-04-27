@@ -25,15 +25,20 @@ case class Region(begin: Int, end: Int) extends Ordered[Region] {
 }
 
 object Region {
-  def parse(string: String): Either[Snag, Region] = {
+  def parse(string: String, allowNoEnd: Boolean = false): Either[Snag, Region] = {
     val parts = string.split("-")
-    if (parts.length != 2) {
-      Left(Snag(s"Don't know how to parse $string as a region."))
-    } else {
+    if (parts.length == 2) {
       for {
         begin <- NumberParser.parseInt(parts(0))
         end <- NumberParser.parseInt(parts(1))
       } yield Region(begin, end)
+    } else if (allowNoEnd && parts.length == 1) {
+      for {
+        begin <- NumberParser.parseInt(parts(0))
+        end = begin + 1
+      } yield Region(begin, end)
+    } else {
+      Left(Snag(s"Don't know how to parse $string as a region."))
     }
   }
 }

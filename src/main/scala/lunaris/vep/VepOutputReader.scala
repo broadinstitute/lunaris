@@ -97,7 +97,7 @@ object VepOutputReader {
         for {
           id <- pickNonEmptyValue(iId, values)
           location <- pickNonEmptyValue(iLocation, values)
-          locus <- Locus.parse(location)
+          locus <- Locus.parse(location, allowNoEnd = true)
         } yield LunValue.RecordValue(CoreFields.id, id, CoreFields.chrom, locus.chrom, CoreFields.begin,
           locus.region.begin, CoreFields.end, locus.region.end)
       case ColIndices2(iId, iChrom, iPos, iRef, _) =>
