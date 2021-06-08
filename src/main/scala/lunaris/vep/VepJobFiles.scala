@@ -8,6 +8,14 @@ class VepJobFiles(vepFolders: VepFolders, jobId: JobId) {
 
   def inputFile: File = vepFolders.inputsFolder / inputFileName
 
+  def extractedDataFileName: String = "data_" + jobId.string + ".tsv"
+
+  def extractedDataFile: File = vepFolders.runFolder / extractedDataFileName
+
+  def cacheMissesFileName: String = "cache_misses_" + jobId.string + ".vcf"
+
+  def cacheMissesFile: File = vepFolders.runFolder / cacheMissesFileName
+
   def vepInputFileName: String = "vep_input_" + jobId.string + ".vcf"
 
   def vepInputFile: File = vepFolders.runFolder / vepInputFileName

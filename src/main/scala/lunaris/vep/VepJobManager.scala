@@ -8,14 +8,15 @@ import akka.util.ByteString
 import better.files.File
 import lunaris.app.{EmailSettings, VepDataFieldsSettings, VepSettings}
 import lunaris.data.BlockGzippedWithIndex
-import lunaris.io.ResourceConfig
+import lunaris.genomics.Region
+import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
-import lunaris.utils.{DateUtils, ProcessUtils}
+import lunaris.selene.Selene
+import lunaris.utils.{DateUtils, ProcessUtils, SnagUtils}
 import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
-import lunaris.vep.vcf.VcfStreamVariantsReader
 import org.broadinstitute.yootilz.core.snag.{Snag, SnagException}
 
 import java.io.PrintStream
@@ -78,18 +79,21 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     val vepJobFiles = vepFolders.vepJobFiles(jobId)
     val outputFile = vepJobFiles.outputFile
     val submissionTime = System.currentTimeMillis()
+
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
-    val chromsAndRegionsFut: Future[VcfStreamVariantsReader.ChromsAndRegions] = Future {
+    val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
-    }.flatMap(_ => VcfStreamVariantsReader.readChromsAndRegions(inputFileServer))
-    val queryFuture = chromsAndRegionsFut.flatMap { chromsAndRegions =>
-      val chroms = chromsAndRegions.chroms
-      val regionsByChrom = chromsAndRegions.regions
+      Selene.tabix(inputFileServer, dataFileWithIndex.data.asInstanceOf[FileInputId].file, None,
+        vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
+    }.map (SnagUtils.throwIfSnag)
+    val queryFuture = inputPreparationFut.flatMap { _ =>
+      val chroms = SnagUtils.throwIfSnag(Selene.readChromosomeList(vepJobFiles.extractedDataFile))
+      val coverAllRegion = Region(0, Int.MaxValue)
+      val regionsByChrom = chroms.map((_, Seq(coverAllRegion))).toMap
       val requestBuilder =
         VepRequestBuilder(
-          jobId, vepJobFiles, chroms, regionsByChrom, exonsFile, vepDataFields, Seq(dataFileWithIndex),
-          formData.filter, formData.format
+          jobId, vepJobFiles, chroms, regionsByChrom, exonsFile, vepDataFields, formData.filter, formData.format
         )
       val requestPhaseOne = requestBuilder.buildPhaseOneRequest()
       val snagTracker = SnagTracker.briefConsolePrinting
