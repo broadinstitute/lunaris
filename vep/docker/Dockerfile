@@ -87,7 +87,7 @@ RUN mkdir git && \
     cd git && \
     git clone https://github.com/broadinstitute/selene.git && \
     cd selene && \
-    git checkout v1.1.0  && \
+    git checkout v1.1.1  && \
     cargo build --release && \
     mv target/release/selene ../../selene  && \
     cd ../..  && \
@@ -217,7 +217,7 @@ RUN chmod a+x /usr/local/bin/selene
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.0.0-RC2
+# SBT, tools related to Debian packaging, Lunaris 3.0.0-RC3
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -232,9 +232,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.0.0-RC2 && \
+    git checkout v3.0.0-RC3 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.0.0-RC2_all.deb && \
+    apt -y install ./target/lunaris_3.0.0-RC3_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
