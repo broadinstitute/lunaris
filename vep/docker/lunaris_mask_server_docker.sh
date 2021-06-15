@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-image=lunaris-variant-mask-server:3.0.0-RC3
+image=lunaris-variant-mask-server:3.0.0-RC4
 lunaris_vep_dir=$HOME/lunaris/vep
 inputs_dir=$lunaris_vep_dir/inputs
 results_dir=$lunaris_vep_dir/results
@@ -16,13 +16,16 @@ sudo docker build vep/docker/ -t ${image}
 
 echo "Done building image ${image}, now running command."
 
-if [[ "$1" = "prod" ]] || [[ "$1" = "dev" ]]; then
+if [[ "$1" = "prod" ]] || [[ "$1" = "dev" ]] || [[ "$1" = "dev2" ]]; then
   if [[ "$1" = "prod" ]]; then
     port=80
     db_name="egg"
   elif [[ "$1" = "dev" ]]; then
     port=8080
     db_name="egg_dev"
+  elif [[ "$1" = "dev2" ]]; then
+    port=8888
+    db_name="egg_dev2"
   fi
   echo "Launching the server in $1 mode on port $port."
   cmd="lunaris vep --db-name $db_name --config-file configs/lunarisVepDocker.conf"
@@ -42,6 +45,7 @@ else
   echo "Specify one of the following subcommands:"
   echo "  prod - launch server in production mode (i.e. port 80)"
   echo "  dev  - launch server in development mode (i.e. port 8080)"
+  echo "  dev2  - launch server in development alternate mode (i.e. port 8888)"
   echo "  bash - Instead of server, launch bash. Useful for debugging Docker image."
 fi
 
