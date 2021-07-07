@@ -217,24 +217,23 @@ RUN chmod a+x /usr/local/bin/selene
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.0.0-RC5
+# SBT, tools related to Debian packaging, Lunaris 3.0.0-RC6
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
-    echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list && \
-    apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823 && \
-    apt-get -y update && \
-    apt-get -y install sbt && \
+    wget https://github.com/sbt/sbt/releases/download/v1.5.4/sbt-1.5.4.tgz && \
+    gunzip sbt-1.5.4.tgz && \
+    tar -xvf sbt-1.5.4.tar && \
     git clone https://github.com/broadinstitute/yootilz.git && \
     cd yootilz && \
     git checkout v0.1.5 && \
-    sbt publishLocal && \
+    opt/sbt/bin/sbt publishLocal && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.0.0-RC5 && \
-    sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.0.0-RC5_all.deb && \
+    git checkout v3.0.0-RC6 && \
+    /opt/sbt/bin/sbt debian:packageBin && \
+    apt -y install ./target/lunaris_3.0.0-RC6_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \

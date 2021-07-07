@@ -1,6 +1,6 @@
 import sbt.project
 
-val lunarisV = "3.0.0-RC5"
+val lunarisV = "3.0.0-RC6"
 val scalaV = "2.13.3"
 val yootilzV = "0.1.5"
 val scalaTestV = "3.2.0"
@@ -43,16 +43,16 @@ lazy val testDeps = Set(
 lazy val root = (project in file("."))
   .settings(
     name := "lunaris",
-    name in Linux := "lunaris",
+    Linux / name := "lunaris",
     version := lunarisV,
     scalaVersion := scalaV,
     libraryDependencies ++= (mainDeps ++ testDeps),
     scalacOptions ++= Seq("-feature", "-deprecation", "-unchecked"),
-    mainClass in (Compile, run) := Some("lunaris.app.Lunaris"),
+    Compile / run / mainClass := Some("lunaris.app.Lunaris"),
     maintainer := "Oliver A Ruebenacker <oliverr@broadinstitute.org>",
     packageSummary := "Streaming location-sorted, tabix-indexed, block-gzipped TSV files from Terra (Google Cloud Storage) for analysis",
     packageDescription := "Streaming location-sorted, tabix-indexed, block-gzipped TSV files from Terra (Google Cloud Storage) for analysis",
     debianPackageDependencies := Seq("java8-runtime-headless"),
-    debianNativeBuildOptions in Debian := Seq("-Zgzip", "-z3") // gzip compression at level 3
+    Debian / debianNativeBuildOptions := Seq("-Zgzip", "-z3") // gzip compression at level 3
   ).enablePlugins(JavaAppPackaging, DebianPlugin)
 
