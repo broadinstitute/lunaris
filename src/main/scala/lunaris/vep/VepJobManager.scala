@@ -13,7 +13,7 @@ import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
 import lunaris.selene.Selene
-import lunaris.utils.{DateUtils, ProcessUtils, SnagUtils}
+import lunaris.utils.{DateUtils, DebugUtils, ProcessUtils, SnagUtils}
 import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
@@ -82,11 +82,13 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
 
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
+    DebugUtils.printlnDebug("Before inputPreparationFut")
     val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
       Selene.tabix(inputFileServer, dataFileWithIndex.data.asInstanceOf[FileInputId].file, None,
         vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
     }.map (SnagUtils.throwIfSnag)
+    DebugUtils.printlnDebug("Before queryFuture")
     val queryFuture = inputPreparationFut.flatMap { _ =>
       val chroms = SnagUtils.throwIfSnag(Selene.readChromosomeList(vepJobFiles.extractedDataFile))
       val coverAllRegion = Region(0, Int.MaxValue)
@@ -153,6 +155,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       }
       exception
     }
+    DebugUtils.printlnDebug("Before queryFuture.transform()")
     queryFuture.transform(successTransform, exceptionTransform)
   }
 
@@ -166,7 +169,9 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
 
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    DebugUtils.printlnDebug("Before newUploadAndQueryFutureFuture")
     val fut = newUploadAndQueryFutureFuture(formData)
+    DebugUtils.printlnDebug("After newUploadAndQueryFutureFuture")
     new SubmissionResponse(formData.jobId, fut)
   }
 

@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
-import lunaris.utils.{Crypt, HttpUtils, SnagJson}
+import lunaris.utils.{Crypt, DebugUtils, HttpUtils, SnagJson}
 import lunaris.vep.VepJobManager.{JobId, SessionId}
 import lunaris.vep.{VepFormData, VepJobManager, VepJson, VepMasksManager}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -93,6 +93,7 @@ object VepServerRunner {
                       }.runFold(Map.empty[String, VepFormData.FormField]) { (fieldsByName, field) =>
                         fieldsByName + (field.name -> field)
                       }.map(VepFormData.fromFields).map { variantEffectFormData =>
+                        DebugUtils.printlnDebug("Before vepFileManager.submit()")
                         vepFileManager.submit(variantEffectFormData)
                       }
                       onComplete(uploadFut) {

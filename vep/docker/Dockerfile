@@ -217,7 +217,7 @@ RUN chmod a+x /usr/local/bin/selene
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.0.0-RC4
+# SBT, tools related to Debian packaging, Lunaris 3.0.0-RC5
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -232,9 +232,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.0.0-RC4 && \
+    git checkout v3.0.0-RC5 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.0.0-RC4_all.deb && \
+    apt -y install ./target/lunaris_3.0.0-RC5_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
