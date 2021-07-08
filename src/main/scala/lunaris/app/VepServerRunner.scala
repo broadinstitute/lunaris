@@ -94,8 +94,11 @@ object VepServerRunner {
                         fieldsByName + (field.name -> field)
                       }.map(VepFormData.fromFields).map { variantEffectFormData =>
                         DebugUtils.printlnDebug("Before vepFileManager.submit()")
-                        vepFileManager.submit(variantEffectFormData)
+                        val submissionResponse = vepFileManager.submit(variantEffectFormData)
+                        DebugUtils.printlnDebug("After vepFileManager.submit(variantEffectFormData)")
+                        submissionResponse
                       }
+                      DebugUtils.printlnDebug("Before onComplete(uploadFut)")
                       onComplete(uploadFut) {
                         case Success(submissionResponse) =>
                           println("Submission response: " + submissionResponse.jobId)

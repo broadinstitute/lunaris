@@ -172,7 +172,9 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     DebugUtils.printlnDebug("Before newUploadAndQueryFutureFuture")
     val fut = newUploadAndQueryFutureFuture(formData)
     DebugUtils.printlnDebug("After newUploadAndQueryFutureFuture")
-    new SubmissionResponse(formData.jobId, fut)
+    val submissionResponse = new SubmissionResponse(formData.jobId, fut)
+    DebugUtils.printlnDebug("After new SubmissionResponse(formData.jobId, fut)")
+    submissionResponse
   }
 
   def getStatus(resultId: JobId): ResultStatus = {
