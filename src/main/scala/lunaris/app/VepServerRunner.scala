@@ -98,8 +98,16 @@ object VepServerRunner {
                         DebugUtils.printlnDebug("After vepFileManager.submit(variantEffectFormData)")
                         submissionResponse
                       }
+                      uploadFut.onComplete {
+                        case Success(_) =>
+                          DebugUtils.printlnDebug(s"uploadFut succeeded.")
+                        case Failure(ex) =>
+                          DebugUtils.printlnDebug(
+                            s"uploadFut failed with ${ex.getClass.getSimpleName}: ${ex.getMessage}"
+                          )
+                      }
                       DebugUtils.printlnDebug("Before onComplete(uploadFut)")
-                      onComplete(uploadFut) {
+                      val route = onComplete(uploadFut) {
                         case Success(submissionResponse) =>
                           println("Submission response: " + submissionResponse.jobId)
                           complete(
@@ -112,6 +120,8 @@ object VepServerRunner {
                             HttpUtils.ResponseBuilder.fromPlainTextString(ex.getMessage)
                           )
                       }
+                      DebugUtils.printlnDebug("Before route")
+                      route
                     }
                   }
                 }
