@@ -88,7 +88,7 @@ object VepServerRunner {
                 withSizeLimit(1000000000L) {
                   decodeRequest {
                     entity(as[Multipart.FormData]) { httpFormData =>
-                      val uploadFut = httpFormData.parts.mapAsync(1) {
+                      val uploadFut = httpFormData.parts.mapAsync(10) {
                         VepFormData.FormField.bodyPartToFieldFut(_, vepFileManager)
                       }.runFold(Map.empty[String, VepFormData.FormField]) { (fieldsByName, field) =>
                         fieldsByName + (field.name -> field)
