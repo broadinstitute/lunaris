@@ -7,7 +7,7 @@ import akka.util.ByteString
 import better.files.File
 import lunaris.genomics.utils.RegionConsolidator
 import lunaris.genomics.{Locus, Region, Variant}
-import lunaris.utils.NumberParser
+import lunaris.utils.{AkkaUtils, NumberParser}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -57,7 +57,7 @@ object VcfStreamVariantsReader {
   def readChromsAndRegions(inputFile: File)(
     implicit actorSystem: ActorSystem
   ): Future[ChromsAndRegions] = {
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
     readVcfRecords(inputFile).map(_.toLocus).map(Some(_)).concat(Source.single(None)).statefulMapConcat { () =>
       var chroms: Seq[String] = Seq()
       var chromSet: Set[String] = Set()
@@ -81,7 +81,7 @@ object VcfStreamVariantsReader {
   def readVariantsByChrom(inputFile: File)(
     implicit actorSystem: ActorSystem
   ): Future[Map[String, Seq[Variant]]] = {
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
     readVcfRecords(inputFile).map(_.toVariant)
       .runFold(Map.empty[String, mutable.Builder[Variant, Seq[Variant]]]) { (variantsByChrom, variant) =>
         val chrom = variant.chrom

@@ -6,6 +6,7 @@ import akka.util.ByteString
 import better.files.File
 import lunaris.expressions.LunBoolExpression
 import lunaris.recipes.parsing.LunBoolExpressionParser
+import lunaris.utils.AkkaUtils
 import lunaris.vep.VepJobManager.{JobId, SessionId}
 import org.broadinstitute.yootilz.core.snag.SnagUtils
 
@@ -78,7 +79,7 @@ object VepFormData {
 
     def bodyPartToFieldFut(bodyPart: Multipart.FormData.BodyPart, vepFileManager: VepJobManager)(
       implicit actorSystem: ActorSystem): Future[FormField] = {
-      implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+      implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
       bodyPart.name match {
         case Keys.filter =>
           bodyPartToStringFut(bodyPart).map(FilterField)

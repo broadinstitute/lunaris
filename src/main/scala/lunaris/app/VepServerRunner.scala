@@ -8,7 +8,7 @@ import akka.stream.Materializer
 import io.circe.Json
 import lunaris.io.ResourceConfig
 import lunaris.io.query.{HeaderExtractor, HeaderJson}
-import lunaris.utils.{Crypt, DebugUtils, HttpUtils, SnagJson}
+import lunaris.utils.{AkkaUtils, Crypt, DebugUtils, HttpUtils, SnagJson}
 import lunaris.vep.VepJobManager.{JobId, SessionId}
 import lunaris.vep.{VepFormData, VepJobManager, VepJson, VepMasksManager}
 import org.broadinstitute.yootilz.core.snag.Snag
@@ -42,7 +42,7 @@ object VepServerRunner {
       case Right(_) =>
         implicit val actorSystem: ActorSystem = ActorSystem("Lunaris-Actor-System")
         implicit val materializer: Materializer = Materializer(actorSystem)
-        implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+        implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
         val route: Route = {
           concat(
             path("lunaris" / "vep.html") {
@@ -88,7 +88,7 @@ object VepServerRunner {
                 withSizeLimit(1000000000L) {
                   decodeRequest {
                     entity(as[Multipart.FormData]) { httpFormData =>
-                      val uploadFut = httpFormData.parts.mapAsync(10) {
+                      val uploadFut = httpFormData.parts.mapAsync(3) {
                         VepFormData.FormField.bodyPartToFieldFut(_, vepFileManager)
                       }.runFold(Map.empty[String, VepFormData.FormField]) { (fieldsByName, field) =>
                         fieldsByName + (field.name -> field)

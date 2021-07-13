@@ -13,7 +13,7 @@ import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
 import lunaris.selene.Selene
-import lunaris.utils.{DateUtils, DebugUtils, ProcessUtils, SnagUtils}
+import lunaris.utils.{AkkaUtils, DateUtils, DebugUtils, ProcessUtils, SnagUtils}
 import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
@@ -73,7 +73,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   def newQueryFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem
   ): Future[RunResult] = {
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
     val jobId = formData.jobId
     val inputFileServer = formData.inputFileServer
     val vepJobFiles = vepFolders.vepJobFiles(jobId)
@@ -161,14 +161,14 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
 
   def newUploadAndQueryFutureFuture(formData: VepFormData)(
     implicit actorSystem: ActorSystem): Future[RunResult] = {
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
     newQueryFuture(formData)
   }
 
   class SubmissionResponse(val jobId: JobId, val fut: Future[RunResult])
 
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
-    implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
+    implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
     DebugUtils.printlnDebug("Before newUploadAndQueryFutureFuture")
     val fut = newUploadAndQueryFutureFuture(formData)
     DebugUtils.printlnDebug("After newUploadAndQueryFutureFuture")

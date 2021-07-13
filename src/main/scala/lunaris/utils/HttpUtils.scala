@@ -74,10 +74,10 @@ object HttpUtils {
     bindingFuture.flatMap { binding =>
       println("Web service now scheduled to shut down.")
       binding.unbind()
-    }(actorSystem.dispatcher)
+    }(AkkaUtils.getDispatcher(actorSystem))
       .onComplete { _ =>
         actorSystem.terminate()
         println("Web service has been shut down.")
-      }(actorSystem.dispatcher)
+      }(AkkaUtils.getDispatcher(actorSystem))
   }
 }
