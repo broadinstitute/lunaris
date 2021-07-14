@@ -93,21 +93,9 @@ object VepServerRunner {
                       }.runFold(Map.empty[String, VepFormData.FormField]) { (fieldsByName, field) =>
                         fieldsByName + (field.name -> field)
                       }.map(VepFormData.fromFields).map { variantEffectFormData =>
-                        DebugUtils.printlnDebug("Before vepFileManager.submit()")
-                        val submissionResponse = vepFileManager.submit(variantEffectFormData)
-                        DebugUtils.printlnDebug("After vepFileManager.submit(variantEffectFormData)")
-                        submissionResponse
+                        vepFileManager.submit(variantEffectFormData)
                       }
-                      uploadFut.onComplete {
-                        case Success(_) =>
-                          DebugUtils.printlnDebug(s"uploadFut succeeded.")
-                        case Failure(ex) =>
-                          DebugUtils.printlnDebug(
-                            s"uploadFut failed with ${ex.getClass.getSimpleName}: ${ex.getMessage}"
-                          )
-                      }
-                      DebugUtils.printlnDebug("Before onComplete(uploadFut)")
-                      val route = onComplete(uploadFut) {
+                      onComplete(uploadFut) {
                         case Success(submissionResponse) =>
                           println("Submission response: " + submissionResponse.jobId)
                           complete(
@@ -120,8 +108,6 @@ object VepServerRunner {
                             HttpUtils.ResponseBuilder.fromPlainTextString(ex.getMessage)
                           )
                       }
-                      DebugUtils.printlnDebug("Before route")
-                      route
                     }
                   }
                 }

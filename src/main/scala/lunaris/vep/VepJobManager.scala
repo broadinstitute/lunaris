@@ -82,13 +82,11 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
 
     insertNewJobToDb(jobId, formData.sessionId, formData.inputFileClient, inputFileServer, outputFile,
       formData.filterString, formData.format, submissionTime)
-    DebugUtils.printlnDebug("Before inputPreparationFut")
     val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
       Selene.tabix(inputFileServer, dataFileWithIndex.data.asInstanceOf[FileInputId].file, None,
         vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
     }.map (SnagUtils.throwIfSnag)
-    DebugUtils.printlnDebug("Before queryFuture")
     val queryFuture = inputPreparationFut.flatMap { _ =>
       val chroms = SnagUtils.throwIfSnag(Selene.readChromosomeList(vepJobFiles.extractedDataFile))
       val coverAllRegion = Region(0, Int.MaxValue)
@@ -155,7 +153,6 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       }
       exception
     }
-    DebugUtils.printlnDebug("Before queryFuture.transform()")
     queryFuture.transform(successTransform, exceptionTransform)
   }
 
@@ -169,12 +166,8 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
 
   def submit(formData: VepFormData)(implicit actorSystem: ActorSystem): SubmissionResponse = {
     implicit val executionContext: ExecutionContextExecutor = AkkaUtils.getDispatcher(actorSystem)
-    DebugUtils.printlnDebug("Before newUploadAndQueryFutureFuture")
     val fut = newUploadAndQueryFutureFuture(formData)
-    DebugUtils.printlnDebug("After newUploadAndQueryFutureFuture")
-    val submissionResponse = new SubmissionResponse(formData.jobId, fut)
-    DebugUtils.printlnDebug("After new SubmissionResponse(formData.jobId, fut)")
-    submissionResponse
+    new SubmissionResponse(formData.jobId, fut)
   }
 
   def getStatus(resultId: JobId): ResultStatus = {
