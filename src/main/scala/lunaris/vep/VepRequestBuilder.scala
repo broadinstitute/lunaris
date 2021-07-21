@@ -18,13 +18,11 @@ case class VepRequestBuilder(jobId: JobId,
                              jobFiles: VepJobFiles,
                              chroms: Seq[String],
                              regions: Map[String, Seq[Region]],
-                             exomeFileName: File,
                              dataFields: VepDataFieldsSettings,
                              filter: LunBoolExpression,
                              outFileFormat: String) {
   val chromsValue: ArrayValue = ArrayValue(chroms.map(StringValue), StringType)
   val driverFile: FileValue = FileValue(jobFiles.inputFile)
-  val exomesFile: FileValue = FileValue(exomeFileName)
   val refFieldVcf: StringValue = StringValue(VcfCore.ColNames.ref)
   val altFieldVcf: StringValue = StringValue(VcfCore.ColNames.alt)
   val refFieldVep: StringValue = StringValue(dataFields.ref)
@@ -60,9 +58,7 @@ case class VepRequestBuilder(jobId: JobId,
     val toolCalls = {
       Map(
         Keys.cacheMisses -> ToolCalls.vcfRecordsReader(cacheMissesFile, chromsValue),
-        Keys.restrictMissesToExome -> ToolCalls.restrictToRegions(Keys.cacheMisses, exomesFile),
-        Keys.writeCacheMisses ->
-          ToolCalls.vcfRecordsWriter(Keys.restrictMissesToExome, vepInputFile, refFieldVcf, altFieldVcf)
+        Keys.writeCacheMisses -> ToolCalls.vcfRecordsWriter(Keys.cacheMisses, vepInputFile, refFieldVcf, altFieldVcf)
       )
     }
     Request(requestId, regions, Recipe(toolCalls))
@@ -73,9 +69,8 @@ case class VepRequestBuilder(jobId: JobId,
     val toolCalls =
       Map(
         Keys.readDriver -> ToolCalls.vcfRecordsReader(driverFile, chromsValue),
-        Keys.restrictDriverToExome -> ToolCalls.restrictToRegions(Keys.readDriver, exomesFile),
         Keys.canonicalizeDriver ->
-          ToolCalls.idCanonicalizer(Keys.restrictDriverToExome, refFieldVcf, altFieldVcf, idFieldNew),
+          ToolCalls.idCanonicalizer(Keys.readDriver, refFieldVcf, altFieldVcf, idFieldNew),
         Keys.readExtractedData -> ToolCalls.vepRecordsReader(extractedDataFile, chromsValue),
         Keys.canonicalizeExtractedData ->
           ToolCalls.idCanonicalizer(Keys.readExtractedData, refFieldVep, altFieldVep, idFieldNew),

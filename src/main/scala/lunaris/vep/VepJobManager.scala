@@ -84,7 +84,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       formData.filterString, formData.format, submissionTime)
     val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
-      Selene.tabix(inputFileServer, dataFileWithIndex.data.asInstanceOf[FileInputId].file, None,
+      Selene.tabix(inputFileServer, dataFileWithIndex.data.asInstanceOf[FileInputId].file, None, Some(exonsFile),
         vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
     }.map (SnagUtils.throwIfSnag)
     val queryFuture = inputPreparationFut.flatMap { _ =>
@@ -92,9 +92,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       val coverAllRegion = Region(0, Int.MaxValue)
       val regionsByChrom = chroms.map((_, Seq(coverAllRegion))).toMap
       val requestBuilder =
-        VepRequestBuilder(
-          jobId, vepJobFiles, chroms, regionsByChrom, exonsFile, vepDataFields, formData.filter, formData.format
-        )
+        VepRequestBuilder(jobId, vepJobFiles, chroms, regionsByChrom, vepDataFields, formData.filter, formData.format)
       val requestPhaseOne = requestBuilder.buildPhaseOneRequest()
       val snagTracker = SnagTracker.briefConsolePrinting
       LunCompiler.compile(requestPhaseOne) match {
