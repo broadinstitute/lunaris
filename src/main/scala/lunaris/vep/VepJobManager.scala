@@ -12,7 +12,7 @@ import lunaris.genomics.Region
 import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
-import lunaris.selene.Selene
+import lunaris.selene.{EggMion, Selene}
 import lunaris.utils.{AkkaUtils, DateUtils, DebugUtils, ProcessUtils, SnagUtils}
 import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
@@ -84,9 +84,14 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       formData.filterString, formData.format, submissionTime)
     val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
-      Selene.tabix(inputFileServer, dataFileWithIndex.data.asInstanceOf[FileInputId].file, None, Some(exonsFile),
-        vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
-    }.map (SnagUtils.throwIfSnag)
+      val cacheFile = dataFileWithIndex.data.asInstanceOf[FileInputId].file
+//      Selene.tabix(inputFileServer, cacheFile, None, Some(exonsFile),
+//        vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
+      val mionScript =
+        EggMion.script(inputFileServer, vepJobFiles.jobFolder, cacheFile, Some(exonsFile), vepDataFields.ref,
+          vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
+      Selene.run_script(mionScript)
+    }.map(SnagUtils.throwIfSnag)
     val queryFuture = inputPreparationFut.flatMap { _ =>
       val chroms = SnagUtils.throwIfSnag(Selene.readChromosomeList(vepJobFiles.extractedDataFile))
       val coverAllRegion = Region(0, Int.MaxValue)
@@ -101,7 +106,9 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
           Future.failed(new SnagException(snag))
         case Right(runnableOne) =>
           val context = LunRunContext(Materializer(actorSystem), resourceConfig)
-          val out = new PrintStream(vepFolders.vepJobFiles(jobId).logFile.newFileOutputStream(append = true))
+          val jobFiles = vepFolders.vepJobFiles(jobId)
+          jobFiles.jobFolder.createDirectories()
+          val out = new PrintStream(jobFiles.logFile.newFileOutputStream(append = true))
           val statsTracker = StatsTracker(out.println)
           val runTracker = RunTracker(snagTracker, statsTracker)
           runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>

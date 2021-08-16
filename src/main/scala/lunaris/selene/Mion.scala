@@ -85,4 +85,6 @@ object Mion {
   def int(int: Long): IntValue = IntValue(int)
   def float(float: Double): FloatValue = FloatValue(float)
   def bin(lhs: Expression, op: BinOp, rhs: Expression): BinaryExpression = BinaryExpression(lhs, op, rhs)
+  def block(expressions: Expression*): Block = Block(expressions)
+  def apply(expressions: Expression*): Script = Script(expressions)
 }
