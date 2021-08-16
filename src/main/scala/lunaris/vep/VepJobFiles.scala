@@ -8,7 +8,7 @@ class VepJobFiles(vepFolders: VepFolders, jobId: JobId) {
 
   def inputFileName: String = "input_" + jobId.string + ".vcf"
 
-  def inputFile: File = jobFolder / inputFileName
+  def inputFile: File = vepFolders.inputsFolder / inputFileName
 
   def extractedDataFileName: String = "data_" + jobId.string + ".tsv"
 
