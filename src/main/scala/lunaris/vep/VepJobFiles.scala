@@ -4,6 +4,8 @@ import better.files.File
 import lunaris.vep.VepJobManager.JobId
 
 class VepJobFiles(vepFolders: VepFolders, jobId: JobId) {
+  jobFolder.createDirectories()
+
   def jobFolder: File = vepFolders.runFolder / jobId.string;
 
   def inputFileName: String = "input_" + jobId.string + ".vcf"

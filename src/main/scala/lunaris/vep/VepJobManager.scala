@@ -107,9 +107,6 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
         case Right(runnableOne) =>
           val context = LunRunContext(Materializer(actorSystem), resourceConfig)
           val jobFiles = vepFolders.vepJobFiles(jobId)
-          println(s"Job folder is ${jobFiles.jobFolder}. Does it exist: ${jobFiles.jobFolder.exists}")
-          jobFiles.jobFolder.createDirectories()
-          println(s"Job folder is ${jobFiles.jobFolder}. Does it exist: ${jobFiles.jobFolder.exists}")
           val out = new PrintStream(jobFiles.logFile.newFileOutputStream(append = true))
           val statsTracker = StatsTracker(out.println)
           val runTracker = RunTracker(snagTracker, statsTracker)
