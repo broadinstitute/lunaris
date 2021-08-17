@@ -29,8 +29,6 @@ case class VepRequestBuilder(jobId: JobId,
   val altFieldVep: StringValue = StringValue(dataFields.alt)
   val idFieldNew: StringValue = StringValue("idCanon")
   val extractedDataFile: FileValue = FileValue(jobFiles.extractedDataFile)
-  val cacheMissesFile: FileValue = FileValue(jobFiles.cacheMissesFile)
-  val vepInputFile: FileValue = FileValue(jobFiles.vepInputFile)
   val vepOutputFile: FileValue = FileValue(jobFiles.vepOutputFile)
   val filterValue: ExpressionValue = ExpressionValue(filter)
   val outputFileValue: FileValue = FileValue(jobFiles.outputFile)
@@ -39,13 +37,9 @@ case class VepRequestBuilder(jobId: JobId,
 
   object Keys {
     val readDriver: String = "readDriver"
-    val restrictDriverToExome: String = "restrictDriverToExome"
-    val restrictMissesToExome: String = "restrictMissesToExome"
     val canonicalizeDriver: String = "canonicalizeDriver"
     val readExtractedData: String = "readExtractedData"
     val canonicalizeExtractedData: String = "canonicalizeExtractedData"
-    val cacheMisses: String = "cacheMisses"
-    val writeCacheMisses: String = "writeCacheMisses"
     val readVepOutput: String = "readVepOutput"
     val join: String = "join"
     val calculateMaf: String = "calculateMaf"
@@ -53,18 +47,7 @@ case class VepRequestBuilder(jobId: JobId,
     val write: String = "write"
   }
 
-  def buildPhaseOneRequest(): Request = {
-    val requestId = "lunaris_vep_phase_one_" + jobId.toString
-    val toolCalls = {
-      Map(
-        Keys.cacheMisses -> ToolCalls.vcfRecordsReader(cacheMissesFile, chromsValue),
-        Keys.writeCacheMisses -> ToolCalls.vcfRecordsWriter(Keys.cacheMisses, vepInputFile, refFieldVcf, altFieldVcf)
-      )
-    }
-    Request(requestId, regions, Recipe(toolCalls))
-  }
-
-  def buildPhaseTwoRequest(): Request = {
+  def buildRequest(): Request = {
     val requestId = "lunaris_vep_phase_two_" + jobId.toString
     val toolCalls =
       Map(

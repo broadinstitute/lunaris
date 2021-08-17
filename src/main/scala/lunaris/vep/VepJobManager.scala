@@ -85,11 +85,11 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
     val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
       val cacheFile = dataFileWithIndex.data.asInstanceOf[FileInputId].file
-//      Selene.tabix(inputFileServer, cacheFile, None, Some(exonsFile),
-//        vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
+      //      Selene.tabix(inputFileServer, cacheFile, None, Some(exonsFile),
+      //        vepDataFields.ref, vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
       val mionScript =
-        EggMion.script(inputFileServer, vepJobFiles.jobFolder, cacheFile, Some(exonsFile), vepDataFields.ref,
-          vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
+      EggMion.script(inputFileServer, vepJobFiles.jobFolder, cacheFile, Some(exonsFile), vepDataFields.ref,
+        vepDataFields.alt, vepJobFiles.extractedDataFile, vepJobFiles.cacheMissesFile)
       Selene.run_script(mionScript)
     }.map(SnagUtils.throwIfSnag)
     val queryFuture = inputPreparationFut.flatMap { _ =>
@@ -98,40 +98,31 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       val regionsByChrom = chroms.map((_, Seq(coverAllRegion))).toMap
       val requestBuilder =
         VepRequestBuilder(jobId, vepJobFiles, chroms, regionsByChrom, vepDataFields, formData.filter, formData.format)
-      val requestPhaseOne = requestBuilder.buildPhaseOneRequest()
       val snagTracker = SnagTracker.briefConsolePrinting
-      LunCompiler.compile(requestPhaseOne) match {
-        case Left(snag) =>
-          snagTracker.trackSnag(snag)
-          Future.failed(new SnagException(snag))
-        case Right(runnableOne) =>
-          val context = LunRunContext(Materializer(actorSystem), resourceConfig)
-          val jobFiles = vepFolders.vepJobFiles(jobId)
-          val out = new PrintStream(jobFiles.logFile.newFileOutputStream(append = true))
-          val statsTracker = StatsTracker(out.println)
-          val runTracker = RunTracker(snagTracker, statsTracker)
-          runnableOne.executeAsync(context, runTracker).flatMap { runResultOne =>
-            val vepRunner = VepRunner.createNewVepRunner(vepFolders, scriptRepo, vepSettings.runSettings)
-            ls(vepJobFiles.vepInputFile)
-            val vepReturnValue =
-              vepRunner.runVep(vepJobFiles.vepInputFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
-            ls(vepJobFiles.vepInputFile)
-            ls(vepJobFiles.vepOutputFile)
-            if (vepReturnValue != 0) {
-              val snag = Snag(s"VEP return value should be zero, but was $vepReturnValue.")
-              snagTracker.trackSnag(snag)
-              Future.failed(new SnagException(snag))
-            } else {
-              val requestPhaseTwo = requestBuilder.buildPhaseTwoRequest()
-              LunCompiler.compile(requestPhaseTwo) match {
-                case Left(snag) =>
-                  snagTracker.trackSnag(snag)
-                  Future.failed(new SnagException(snag))
-                case Right(runnableTwo) =>
-                  runnableTwo.executeAsync(context, runTracker).map(runResultOne ++ _)
-              }
-            }
-          }
+      val context = LunRunContext(Materializer(actorSystem), resourceConfig)
+      val jobFiles = vepFolders.vepJobFiles(jobId)
+      val out = new PrintStream(jobFiles.logFile.newFileOutputStream(append = true))
+      val statsTracker = StatsTracker(out.println)
+      val runTracker = RunTracker(snagTracker, statsTracker)
+      val vepRunner = VepRunner.createNewVepRunner(vepFolders, scriptRepo, vepSettings.runSettings)
+      ls(vepJobFiles.cacheMissesFile)
+      val vepReturnValue =
+        vepRunner.runVep(vepJobFiles.cacheMissesFile, vepJobFiles.vepOutputFile, vepJobFiles.logFile)
+      ls(vepJobFiles.cacheMissesFile)
+      ls(vepJobFiles.vepOutputFile)
+      if (vepReturnValue != 0) {
+        val snag = Snag(s"VEP return value should be zero, but was $vepReturnValue.")
+        snagTracker.trackSnag(snag)
+        Future.failed(new SnagException(snag))
+      } else {
+        val lunRequest = requestBuilder.buildRequest()
+        LunCompiler.compile(lunRequest) match {
+          case Left(snag) =>
+            snagTracker.trackSnag(snag)
+            Future.failed(new SnagException(snag))
+          case Right(lunRunnable) =>
+            lunRunnable.executeAsync(context, runTracker)
+        }
       }
     }
     val successTransform: RunResult => RunResult = { runResult =>

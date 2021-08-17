@@ -20,13 +20,9 @@ class VepJobFiles(vepFolders: VepFolders, jobId: JobId) {
 
   def cacheMissesFile: File = jobFolder / cacheMissesFileName
 
-  def vepInputFileName: String = "vep_input_" + jobId.string + ".vcf"
-
-  def vepInputFile: File = vepFolders.runFolder / vepInputFileName
-
   def vepOutputFileName: String = "vep_output_" + jobId.string + ".tsv"
 
-  def vepOutputFile: File = vepFolders.runFolder / vepOutputFileName
+  def vepOutputFile: File = jobFolder / vepOutputFileName
 
   def outputFileName: String = jobId.string + ".tsv"
 
