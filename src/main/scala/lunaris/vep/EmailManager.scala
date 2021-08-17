@@ -53,12 +53,14 @@ final class EmailManager(emailSettings: EmailSettings, apiKey: String) {
   Either[Snag, Response] = {
     val submissionDate = new Date(submissionTime)
     val failDate = new Date(failTime)
+    val runTimeString = DateUtils.timeDiffToString(failTime - submissionTime)
     val subject = s"Job submitted on $submissionDate has failed."
     val summary =
       s"""
          |<p>Hello,</p>
          |
-         |<p>Your job submitted to EGG Server on $submissionDate has failed with an exception on $failDate.</p>
+         |<p>Your job submitted to EGG Server on $submissionDate has failed with an exception on $failDate
+         |after $runTimeString.</p>
          |
          |<p>To get back to your session, click
          |<a href="http://eggserver.org/lunaris/vep.html?session=$sessionId">here</a>

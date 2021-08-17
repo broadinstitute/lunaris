@@ -55,7 +55,6 @@ $vepCmd -i $input \
 COMMANDLINE
 echo "= = = End of vep invocation"
 
-cat <<COMMANDLINE
 $vepCmd -i $input \
 --format vcf \
 --fork $cpus \
