@@ -24,6 +24,7 @@ warnings=$9
 echo "= = = Begin of vep invocation"
 cat <<COMMANDLINE
 $vepCmd -i $input \
+--format vcf \
 --fork $cpus \
 --force_overwrite \
 --no_stats \
@@ -54,7 +55,9 @@ $vepCmd -i $input \
 COMMANDLINE
 echo "= = = End of vep invocation"
 
+cat <<COMMANDLINE
 $vepCmd -i $input \
+--format vcf \
 --fork $cpus \
 --force_overwrite \
 --no_stats \

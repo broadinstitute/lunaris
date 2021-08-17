@@ -5,6 +5,7 @@ import com.sendgrid.helpers.mail.Mail
 import com.sendgrid.helpers.mail.objects.{Content, Email}
 import lunaris.app.EmailSettings
 import lunaris.recipes.eval.LunRunnable.RunResult
+import lunaris.utils.DateUtils
 import lunaris.vep.VepJobManager.{JobId, SessionId}
 import org.broadinstitute.yootilz.core.snag.Snag
 
@@ -29,12 +30,14 @@ final class EmailManager(emailSettings: EmailSettings, apiKey: String) {
                            sessionId: SessionId, result: RunResult): Either[Snag, Response] = {
     val submissionDate = new Date(submissionTime)
     val successDate = new Date(successTime)
+    val runTimeString = DateUtils.timeDiffToString(successTime - submissionTime)
     val subject = s"Job submitted on $submissionDate has succeeded."
     val summary =
       s"""
          |<p>Hello,</p>
          |
-         |<p>Your job submitted to EGG Server on $submissionDate has successfully completed on $successDate.</p>
+         |<p>Your job submitted to EGG Server on $submissionDate has successfully completed on $successDate
+         |after $runTimeString.</p>
          |
          |<p>To get back to your session, click
          |<a href="http://eggserver.org/lunaris/vep.html?session=$sessionId">here</a>, or download the result
