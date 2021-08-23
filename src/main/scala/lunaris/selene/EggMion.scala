@@ -47,7 +47,7 @@ object EggMion {
                 Mion.id("fasta_file").assign(Mion.str(vepSettings.runSettings.fastaFile.toString())),
                 Mion.id("cache_dir").assign(Mion.str(vepSettings.runSettings.cacheDir.toString())),
                 Mion.id("plugins_dir").assign(Mion.str(vepSettings.runSettings.pluginsDir.toString())),
-                Mion.id("dbnsfp").assign(Mion.str(vepSettings.runSettings.pluginsDir.toString())),
+                Mion.id("dbnsfp").assign(Mion.str(vepSettings.runSettings.dbNSFPFile.toString())),
                 Mion.id("output_file").assign(replace_file_name("vep_output")),
                 Mion.id("warnings_file").assign(replace_file_name("vep_warnings")),
               ))
