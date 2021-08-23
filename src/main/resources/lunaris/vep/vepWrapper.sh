@@ -10,17 +10,6 @@ dbNSFP=$7
 output=$8
 warnings=$9
 
-#user=$USER
-#if id vep &>/dev/null; then
-#  echo "User vep exists, so will execute vep as vep user."
-#  user=vep
-#  export USER=vep
-#  export HOME=~vep
-#  chmod a+rwx $(dirname $input)
-#  chmod a+rwx $(dirname $output)
-#  chmod a+rwx $(dirname $warnings)
-#fi
-
 echo "= = = Begin of vep invocation"
 cat <<COMMANDLINE
 $vepCmd -i $input \

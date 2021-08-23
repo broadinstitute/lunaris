@@ -87,9 +87,9 @@ RUN mkdir git && \
     cd git && \
     git clone https://github.com/broadinstitute/selene.git && \
     cd selene && \
-    git checkout v2.0.0  && \
-    cargo build --release && \
-    mv target/release/selene ../../selene  && \
+    git checkout v2.0.1  && \
+    cargo deb && \
+    mv target/debian/selene_2.0.1_*.deb ../../selene.deb  && \
     cd ../..  && \
     rm -r git
 
@@ -211,13 +211,12 @@ ENV PERL5LIB $PERL5LIB:/usr/local/bin/loftee
 
 # Java Runtime Environment
 
-COPY --from=selene_builder /build_selene/selene /usr/local/bin/selene
-
-RUN chmod a+x /usr/local/bin/selene
+COPY --from=selene_builder /build_selene/selene.deb selene.deb
+RUN apt install ./selene.deb
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.2.2-RC2
+# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC1
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -231,9 +230,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.2.2-RC2 && \
+    git checkout v3.3.0-RC1 && \
     /opt/sbt/bin/sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.2.2-RC2_all.deb && \
+    apt -y install ./target/lunaris_3.3.0-RC1_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \

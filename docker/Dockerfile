@@ -8,7 +8,7 @@ WORKDIR /work
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.2.2-RC2
+# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC1
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -23,9 +23,9 @@ RUN apt -y update && \
     cd /work && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.2.2-RC2 && \
+    git checkout v3.3.0-RC1 && \
     sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.2.2-RC2_all.deb && \
+    apt -y install ./target/lunaris_3.3.0-RC1_all.deb && \
     cd /work && \
     rm -r yootilz && \
     rm -r lunaris && \
