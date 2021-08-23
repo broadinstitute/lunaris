@@ -5,6 +5,7 @@ FROM ubuntu:20.04 as builder
 
 # Update aptitude and install some required packages
 # a lot of them are required for Bio::DB::BigFile
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
     build-essential \
     git \
@@ -101,6 +102,7 @@ FROM ubuntu:20.04
 
 # Update aptitude and install some required packages
 # a lot of them are required for Bio::DB::BigFile
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get -y install \
     build-essential \
     cpanminus \
@@ -215,10 +217,12 @@ ENV PERL5LIB $PERL5LIB:/usr/local/bin/loftee
 COPY --from=selene_builder /build_selene/selene.deb selene.deb
 RUN apt install ./selene.deb
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC4
+# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC5
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
     wget https://github.com/sbt/sbt/releases/download/v1.5.4/sbt-1.5.4.tgz && \
@@ -231,9 +235,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.3.0-RC4 && \
+    git checkout v3.3.0-RC5 && \
     /opt/sbt/bin/sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.3.0-RC4_all.deb && \
+    apt -y install ./target/lunaris_3.3.0-RC5_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
