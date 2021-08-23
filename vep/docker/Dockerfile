@@ -80,7 +80,7 @@ RUN make && rm -f Makefile *.c
 ###################################################
 # Building Selene #
 ###################################################
-FROM rust:1.52 AS selene_builder
+FROM rust:1.54 AS selene_builder
 
 WORKDIR build_selene
 RUN mkdir git && \
@@ -217,7 +217,7 @@ RUN apt install ./selene.deb
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC2
+# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC3
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -231,9 +231,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.3.0-RC2 && \
+    git checkout v3.3.0-RC3 && \
     /opt/sbt/bin/sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.3.0-RC2_all.deb && \
+    apt -y install ./target/lunaris_3.3.0-RC3_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
