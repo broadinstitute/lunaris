@@ -30,7 +30,7 @@ object Selene {
     runCommandLine(commandLine)
   }
 
-  val chromosomeLinePrefix: String = "## Chromosomes:"
+  val chromosomeLinePrefix: String = "##CHROMOSOMES=<"
 
   def readChromosomeList(file: File): Either[Snag, Seq[String]] = {
     val chromsLineOpt =
@@ -40,7 +40,10 @@ object Selene {
       case None =>
         Left(Snag("Missing chromosome meta-line."))
       case Some(chromsLine) =>
-        Right(chromsLine.substring(chromosomeLinePrefix.length).trim().split("\t").toSeq)
+        val chromsLineTrim = chromsLine.trim()
+        val chroms =
+          chromsLineTrim.substring(chromosomeLinePrefix.length, chromsLineTrim.length - 1).split(",").toSeq
+        Right(chroms)
     }
   }
 
