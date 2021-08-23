@@ -1,7 +1,7 @@
 ###################################################
 # Stage 1 - docker container to build ensembl-vep #
 ###################################################
-FROM ubuntu:18.04 as builder
+FROM ubuntu:20.04 as builder
 
 # Update aptitude and install some required packages
 # a lot of them are required for Bio::DB::BigFile
@@ -97,7 +97,7 @@ RUN mkdir git && \
 ###################################################
 # Stage 2 - docker container to build ensembl-vep #
 ###################################################
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 # Update aptitude and install some required packages
 # a lot of them are required for Bio::DB::BigFile
@@ -217,7 +217,7 @@ RUN apt install ./selene.deb
 
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC3
+# SBT, tools related to Debian packaging, Lunaris 3.3.0-RC4
 
 RUN apt -y update && \
     apt -y install gnupg2 fakeroot lintian && \
@@ -231,9 +231,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.3.0-RC3 && \
+    git checkout v3.3.0-RC4 && \
     /opt/sbt/bin/sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.3.0-RC3_all.deb && \
+    apt -y install ./target/lunaris_3.3.0-RC4_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
