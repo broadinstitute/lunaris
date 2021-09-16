@@ -63,10 +63,10 @@ object EggMion {
               Mion.id("merge_sorted_files").call(Seq(
                 Mion.id("input_file1")
                   .assign(Mion.id("tabix_outputs").member(Mion.id("output_file"))),
-                Mion.id("id1").assign(Mion.str(vepSettings.vepDataFieldsSettings.varId)),
+                Mion.id("pos_col1").assign(Mion.str(vepSettings.vepDataFieldsSettings.pos)),
                 Mion.id("input_file2")
                   .assign(Mion.id("vep_result_pick").member(Mion.id("output_file"))),
-                Mion.id("id2").assign(Mion.str(vepSettings.vepDataFieldsSettings.varId)),
+                Mion.id("pos_col2").assign(Mion.str(vepSettings.vepDataFieldsSettings.pos)),
                 Mion.id("output_file").assign(replace_file_name("merged.tsv"))
               ))
             ),

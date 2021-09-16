@@ -22,6 +22,7 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.dataFile")
   val indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.indexFile")
   val varIdField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.varId")
+  val posField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.pos")
   val refField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.ref")
   val altField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.alt")
   val vepScriptFile: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.vepCmd")
@@ -51,9 +52,10 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       indexFileOpt <- indexFile.getOpt
       dataFileWithIndex = BlockGzippedWithIndex(dataFileVal, indexFileOpt)
       varIdFieldVal <- varIdField.get
+      posFieldVal <- posField.get
       refFieldVal <- refField.get
       altFieldVal <- altField.get
-      vepDataFields = VepDataFieldsSettings(varIdFieldVal, refFieldVal, altFieldVal)
+      vepDataFields = VepDataFieldsSettings(varIdFieldVal, posFieldVal, refFieldVal, altFieldVal)
       vepScriptFile <- vepScriptFile.get
       workDir <- vepWorkDir.get
       fastaFile <- vepFastaFile.get
