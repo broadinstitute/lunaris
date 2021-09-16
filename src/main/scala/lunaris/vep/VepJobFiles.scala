@@ -6,7 +6,7 @@ import lunaris.vep.VepJobManager.JobId
 class VepJobFiles(vepFolders: VepFolders, jobId: JobId) {
   jobFolder.createDirectories()
 
-  def jobFolder: File = vepFolders.runFolder / jobId.string;
+  def jobFolder: File = vepFolders.runFolder / jobId.string
 
   def inputFileName: String = "input_" + jobId.string + ".vcf"
 
@@ -23,6 +23,10 @@ class VepJobFiles(vepFolders: VepFolders, jobId: JobId) {
   def vepOutputFileName: String = "vep_output_" + jobId.string + ".tsv"
 
   def vepOutputFile: File = jobFolder / vepOutputFileName
+
+  def mergedFileName: String = "merged_" + jobId.string + ".tsv"
+
+  def mergedFile: File = jobFolder / mergedFileName
 
   def outputFileName: String = jobId.string + ".tsv"
 

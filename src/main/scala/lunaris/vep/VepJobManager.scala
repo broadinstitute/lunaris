@@ -13,7 +13,7 @@ import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.eval.LunRunnable.RunResult
 import lunaris.recipes.eval.{LunCompiler, LunRunContext, RunTracker, SnagTracker, StatsTracker}
 import lunaris.selene.{EggMion, Selene}
-import lunaris.utils.{AkkaUtils, DateUtils, DebugUtils, ProcessUtils, SnagUtils}
+import lunaris.utils.{AkkaUtils, DateUtils, ProcessUtils, SnagUtils}
 import lunaris.vep.VepJobManager.{JobId, ResultStatus, SessionId}
 import lunaris.vep.db.EggDb
 import lunaris.vep.db.EggDb.{JobRecord, SessionRecord}
@@ -95,7 +95,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       val coverAllRegion = Region(0, Int.MaxValue)
       val regionsByChrom = chroms.map((_, Seq(coverAllRegion))).toMap
       val requestBuilder =
-        VepRequestBuilder(jobId, vepJobFiles, chroms, regionsByChrom, vepDataFields, formData.filter, formData.format)
+        VepRequestBuilder(jobId, vepJobFiles, chroms, regionsByChrom, formData.filter, formData.format)
       val snagTracker = SnagTracker.briefConsolePrinting
       val context = LunRunContext(Materializer(actorSystem), resourceConfig)
       val jobFiles = vepFolders.vepJobFiles(jobId)

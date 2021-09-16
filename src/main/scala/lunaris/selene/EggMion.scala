@@ -52,37 +52,40 @@ object EggMion {
                 Mion.id("warnings_file").assign(replace_file_name("vep_warnings")),
               ))
             ),
+            Mion.id("vep_result_pick").assign(
+              Mion.id("pick_vep_results").call(Seq(
+                Mion.id("input_file")
+                  .assign(Mion.id("vep_outputs").member(Mion.id("output_file"))),
+                Mion.id("output_file").assign(replace_file_name("picked.tsv"))
+              ))
+            ),
+            Mion.id("merge_outputs").assign(
+              Mion.id("merge_sorted_files").call(Seq(
+                Mion.id("input_file1")
+                  .assign(Mion.id("tabix_outputs").member(Mion.id("output_file"))),
+                Mion.id("id1").assign(Mion.str(vepSettings.vepDataFieldsSettings.varId)),
+                Mion.id("input_file2")
+                  .assign(Mion.id("vep_result_pick").member(Mion.id("output_file"))),
+                Mion.id("id2").assign(Mion.str(vepSettings.vepDataFieldsSettings.varId)),
+                Mion.id("output_file").assign(replace_file_name("merged.tsv"))
+              ))
+            ),
             Mion.id("new").call(Seq(
-              Mion.id("cache_data_file")
-                .assign(Mion.id("tabix_outputs").member(Mion.id("output_file"))),
               Mion.id("cache_misses_file")
                 .assign(Mion.id("tabix_outputs").member(Mion.id("misses_file"))),
-              Mion.id("vep_output_file")
-                .assign(Mion.id("vep_outputs").member(Mion.id("output_file"))),
+              Mion.id("merge_output_file")
+                .assign(Mion.id("merge_outputs").member(Mion.id("output_file"))),
             ))
           )
         )
       ),
       Mion.id("merge_all_files").call(Seq(
         Mion.id("file_list").assign(Mion.id("new").call(Seq(
-          Mion.id("cache_data_file").assign(Mion.str(vepJobFiles.extractedDataFile.toString)),
           Mion.id("cache_misses_file").assign(Mion.str(vepJobFiles.cacheMissesFile.toString)),
-          Mion.id("vep_output_file").assign(Mion.str(vepJobFiles.vepOutputFile.toString()))
+          Mion.id("merge_output_file").assign(Mion.str(vepJobFiles.mergedFile.toString()))
         ))),
         Mion.id("shards").assign(Mion.id("vep_and_cache_results"))
       ))
     )
   }
 }
-//);
-//};
-//merge_all_files(
-//file_list = new(
-//cache_data_file = "/home/oliverr/lunaris/vep/test/tmp/cache_data.tsv",
-//cache_misses_file = "/home/oliverr/lunaris/vep/test/tmp/cache_misses.vcf",
-//vep_output_file = ""
-//),
-//shards = cache_match_results
-//);
-//
-
