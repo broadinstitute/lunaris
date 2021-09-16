@@ -220,7 +220,7 @@ RUN apt install ./selene.deb
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.4.0-RC3
+# SBT, tools related to Debian packaging, Lunaris 3.4.0-RC4
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt -y update && \
@@ -235,9 +235,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.4.0-RC3 && \
+    git checkout v3.4.0-RC4 && \
     /opt/sbt/bin/sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.4.0-RC3_all.deb && \
+    apt -y install ./target/lunaris_3.4.0-RC4_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \

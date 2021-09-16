@@ -91,7 +91,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       Selene.run_script(mionScript)
     }.map(SnagUtils.throwIfSnag)
     val queryFuture = inputPreparationFut.flatMap { _ =>
-      val chroms = SnagUtils.throwIfSnag(Selene.readChromosomeList(vepJobFiles.extractedDataFile))
+      val chroms = SnagUtils.throwIfSnag(Selene.readChromosomeList(vepJobFiles.mergedFile))
       val coverAllRegion = Region(0, Int.MaxValue)
       val regionsByChrom = chroms.map((_, Seq(coverAllRegion))).toMap
       val requestBuilder =
