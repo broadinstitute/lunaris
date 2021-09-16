@@ -88,10 +88,10 @@ RUN mkdir git && \
     cd git && \
     git clone https://github.com/broadinstitute/selene.git && \
     cd selene && \
-    git checkout v2.2.1  && \
+    git checkout v2.2.2  && \
     cargo install cargo-deb  && \
     cargo deb && \
-    mv target/debian/selene_2.2.1_*.deb ../../selene.deb  && \
+    mv target/debian/selene_2.2.2_*.deb ../../selene.deb  && \
     cd ../..  && \
     rm -r git
 
@@ -220,7 +220,7 @@ RUN apt install ./selene.deb
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt update && apt -y install openjdk-11-jdk-headless
 
-# SBT, tools related to Debian packaging, Lunaris 3.4.0-RC2
+# SBT, tools related to Debian packaging, Lunaris 3.4.0-RC3
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt -y update && \
@@ -235,9 +235,9 @@ RUN apt -y update && \
     cd .. && \
     git clone https://github.com/broadinstitute/lunaris.git && \
     cd lunaris && \
-    git checkout v3.4.0-RC2 && \
+    git checkout v3.4.0-RC3 && \
     /opt/sbt/bin/sbt debian:packageBin && \
-    apt -y install ./target/lunaris_3.4.0-RC2_all.deb && \
+    apt -y install ./target/lunaris_3.4.0-RC3_all.deb && \
     cd .. && \
     mv lunaris/configs configs && \
     rm -r yootilz && \
