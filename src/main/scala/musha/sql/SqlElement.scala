@@ -5,6 +5,21 @@ trait SqlElement {
 }
 
 object SqlElement {
+  val backslash = '\\'
+  val specialChars = Set(backslash, '\'', '\"')
+
+  def escape(string: String): String = {
+    val sb = new StringBuilder()
+    for (character <- string) {
+      if (specialChars.contains(character)) {
+        sb ++= s"$backslash$character"
+      } else {
+        sb.append(character)
+      }
+    }
+    sb.toString()
+  }
+
   def asSqlLiteral(value: Any): String = {
     value match {
       case number: Int => number.toString
@@ -16,7 +31,7 @@ object SqlElement {
       case number: Float => number.toString
       case boolean: Boolean => boolean.toString.toUpperCase
       case string: String => "'" + string + "'"
-      case _ => "'" + value.toString + "'"
+      case _ => "'" + escape(value.toString) + "'"
     }
   }
 }
