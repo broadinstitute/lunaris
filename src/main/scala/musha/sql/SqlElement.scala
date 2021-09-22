@@ -5,19 +5,8 @@ trait SqlElement {
 }
 
 object SqlElement {
-  val backslash = '\\'
-  val specialChars = Set(backslash, '\'', '\"')
-
   def escape(string: String): String = {
-    val sb = new StringBuilder()
-    for (character <- string) {
-      if (specialChars.contains(character)) {
-        sb ++= s"$backslash$character"
-      } else {
-        sb.append(character)
-      }
-    }
-    sb.toString()
+    string.replaceAll("'", "''")
   }
 
   def asSqlLiteral(value: Any): String = {
