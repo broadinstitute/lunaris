@@ -30,7 +30,7 @@ object SqlElement {
       case number: Double => number.toString
       case number: Float => number.toString
       case boolean: Boolean => boolean.toString.toUpperCase
-      case string: String => "'" + string + "'"
+      case string: String => "'" + escape(string) + "'"
       case _ => "'" + escape(value.toString) + "'"
     }
   }
