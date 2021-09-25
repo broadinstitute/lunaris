@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.Multipart
 import akka.util.ByteString
 import better.files.File
 import lunaris.expressions.LunBoolExpression
+import lunaris.genomics.Hg
 import lunaris.recipes.parsing.LunBoolExpressionParser
 import lunaris.utils.AkkaUtils
 import lunaris.vep.VepJobManager.{JobId, SessionId}
@@ -15,6 +16,7 @@ import scala.concurrent.{ExecutionContextExecutor, Future}
 case class VepFormData(jobId: JobId,
                        inputFileClient: File,
                        inputFileServer: File,
+                       hg: Hg,
                        filterString: String,
                        filter: LunBoolExpression,
                        format: String,
@@ -27,12 +29,13 @@ object VepFormData {
     val jobId = inputFileField.jobId
     val inputFileClient = inputFileField.inputFileClient
     val inputFileServer = inputFileField.inputFileServer
+    val hg = fields(FormField.Keys.hg).asInstanceOf[HgField].hg
     val filterString = fields(FormField.Keys.filter).asInstanceOf[FilterField].filter
     val filter = SnagUtils.assertNotSnag(LunBoolExpressionParser.parse(filterString))
     val format = fields(FormField.Keys.format).asInstanceOf[FormatField].format
     val sessionId = fields(FormField.Keys.session).asInstanceOf[SessionIdField].sessionId
     val emailOpt = fields.get(FormField.Keys.email).map(_.asInstanceOf[EmailField]).map(_.email)
-    VepFormData(jobId, inputFileClient, inputFileServer, filterString, filter, format, sessionId, emailOpt)
+    VepFormData(jobId, inputFileClient, inputFileServer, hg, filterString, filter, format, sessionId, emailOpt)
   }
 
   sealed trait FormField {
@@ -60,6 +63,10 @@ object VepFormData {
     override def name: String = FormField.Keys.email
   }
 
+  case class HgField(hg: Hg) extends FormField {  //  TODO hg data type
+    override def name: String = FormField.Keys.hg
+  }
+
   case class IgnoredField(name: String) extends FormField
 
   object FormField {
@@ -70,6 +77,7 @@ object VepFormData {
       val format: String = "format"
       val session: String = "session"
       val email: String = "email"
+      val hg = "hg"
     }
 
     private def bodyPartToStringFut(bodyPart: Multipart.FormData.BodyPart)(
@@ -96,6 +104,10 @@ object VepFormData {
           bodyPartToStringFut(bodyPart).map(SessionId(_)).map(SessionIdField)
         case Keys.email =>
           bodyPartToStringFut(bodyPart).map(EmailField)
+        case Keys.hg =>
+          bodyPartToStringFut(bodyPart).map{ hgString =>
+            lunaris.utils.SnagUtils.throwIfSnag(Hg.parse(hgString))
+          }.map(HgField)
         case unknownName: String =>
           bodyPart.entity.dataBytes.runFold(())((_, _) => ()).map(_ => IgnoredField(unknownName))
       }

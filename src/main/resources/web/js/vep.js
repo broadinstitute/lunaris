@@ -149,6 +149,7 @@ function submit() {
     formData.append("inputFile", inputFile);
     formData.append("format", getOutputFormat());
     formData.append("session", lunarisVariantPredictor.sessionId);
+    formData.append("hg", getHg());
     if(email) {
         formData.append("email", email);
     }
@@ -361,6 +362,10 @@ function setOutputFormat(format) {
 
 function getOutputFormat() {
     return getOutputFormatNode().value;
+}
+
+function getHg() {
+    return document.getElementById("hg").value;
 }
 
 function setMask(mask) {
