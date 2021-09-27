@@ -92,8 +92,6 @@ class LunarisCliConf(arguments: Seq[String]) extends ScallopConf(arguments) {
         copyServerOptions(configPropsBox, this.vep)
         configPropsBox.modifyForeach(this.vep.inputsFolder.map(File(_)).toOption)(_.inputsFolder.set(_))
         configPropsBox.modifyForeach(this.vep.resultsFolder.map(File(_)).toOption)(_.resultsFolder.set(_))
-        configPropsBox.modifyForeach(this.vep.dataFile.map(InputId(_)).toOption)(_.dataFile.set(_))
-        configPropsBox.modifyForeach(this.vep.indexFile.map(InputId(_)).toOption)(_.indexFile.set(_))
         configPropsBox.modifyForeach(this.vep.dbName.toOption)(_.dbName.set(_))
       case List(this.misc, miscMode) =>
         configPropsBox.modify(_.mode.set(LunarisMode.Misc))

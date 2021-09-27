@@ -151,7 +151,7 @@ object VepServerRunner {
             },
             path("lunaris" / "predictor" / "schema") {
               get {
-                HeaderExtractor.extractHeader(vepSettings.dataFileWithIndex, resourceConfig).useUp {
+                HeaderExtractor.extractHeader(vepSettings.hg38Settings.dataFileWithIndex, resourceConfig).useUp {
                   case Left(snag) =>
                     complete(
                       HttpUtils.ResponseBuilder.fromJson(SnagJson.snagEncoder(snag))

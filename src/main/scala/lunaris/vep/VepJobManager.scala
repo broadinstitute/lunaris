@@ -31,7 +31,6 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   val vepFolders: VepFolders = VepFolders(vepSettings)
   private val scriptRepo = ScriptRepo(vepFolders.workFolder)
   private val vcfSorter = VcfSorter(scriptRepo)
-  private val dataFileWithIndex: BlockGzippedWithIndex = vepSettings.dataFileWithIndex
   private val vepDataFields: VepDataFieldsSettings = vepSettings.vepDataFieldsSettings
   private val dbFile: File = vepSettings.runSettings.workDir / "db" / dbName
   private val eggDb: EggDb = EggDb(dbFile)
@@ -84,7 +83,7 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       formData.filterString, formData.format, submissionTime)
     val inputPreparationFut: Future[Unit] = Future {
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
-      val cacheFile = dataFileWithIndex.data.asInstanceOf[FileInputId].file
+      val cacheFile = vepSettings.hgSettings(formData.hg).dataFileWithIndex.data.asInstanceOf[FileInputId].file
       val mionScript =
         EggMion.script(inputFileServer, vepJobFiles, cacheFile, Some(exonsFile), vepDataFields.ref,
           vepDataFields.alt, vepSettings)

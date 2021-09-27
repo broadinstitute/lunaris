@@ -1,13 +1,14 @@
 package lunaris.app
 
-import java.nio.channels.Channels
-import java.nio.charset.StandardCharsets
 import com.typesafe.config.{Config, ConfigFactory}
 import lunaris.data.BlockGzippedWithIndex
 import lunaris.io.{InputId, ResourceConfig}
-import lunaris.utils.{ConfigProps, SnagUtils}
 import lunaris.utils.ConfigProps.{FileField, InputIdField, IntField, LunarisMiscModeField, LunarisModeField, StringField}
+import lunaris.utils.{ConfigProps, SnagUtils}
 import org.broadinstitute.yootilz.core.snag.Snag
+
+import java.nio.channels.Channels
+import java.nio.charset.StandardCharsets
 
 case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigProps] {
   override def map(mapper: Config => Config): LunarisConfigProps = LunarisConfigProps(mapper(config))
@@ -19,8 +20,6 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val port: IntField[LunarisConfigProps] = IntField(this, "lunaris.server.port")
   val inputsFolder: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.inputsFolder")
   val resultsFolder: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.resultsFolder")
-  val dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.dataFile")
-  val indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.indexFile")
   val varIdField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.varId")
   val posField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.pos")
   val refField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.ref")
@@ -36,6 +35,10 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val miscMode: LunarisMiscModeField[LunarisConfigProps] = LunarisMiscModeField(this, "lunaris.misc.mode")
   val exonsFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.exonsFile")
   val dbName: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.dbName")
+  val hg19dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg19.dataFile")
+  val hg19indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg19.indexFile")
+  val hg38dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg38.dataFile")
+  val hg38indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg38.indexFile")
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {
@@ -44,13 +47,26 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
     } yield ServerSettings(hostVal, portVal)
   }
 
+  def toHg19Settings: Either[Snag, VepHgSettings] = {
+    for {
+      dataFile <- hg19dataFile.get
+      indexFileOpt <- hg19dataFile.getOpt
+      dataFileWithIndex = BlockGzippedWithIndex(dataFile, indexFileOpt)
+    } yield VepHgSettings(dataFileWithIndex)
+  }
+
+  def toHg38Settings: Either[Snag, VepHgSettings] = {
+    for {
+      dataFile <- hg38dataFile.get
+      indexFileOpt <- hg38dataFile.getOpt
+      dataFileWithIndex = BlockGzippedWithIndex(dataFile, indexFileOpt)
+    } yield VepHgSettings(dataFileWithIndex)
+  }
+
   def toVepSettings: Either[Snag, VepSettings] = {
     for {
       inputsFolderVal <- inputsFolder.get
       resultsFolderVal <- resultsFolder.get
-      dataFileVal <- dataFile.get
-      indexFileOpt <- indexFile.getOpt
-      dataFileWithIndex = BlockGzippedWithIndex(dataFileVal, indexFileOpt)
       varIdFieldVal <- varIdField.get
       posFieldVal <- posField.get
       refFieldVal <- refField.get
@@ -65,7 +81,9 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       exonsFile <- exonsFile.get
       vepRunSettings = VepRunSettings(vepScriptFile, workDir, fastaFile, cacheDir, pluginsDir, dbNSFPFile,
         exonsFile)
-    } yield VepSettings(inputsFolderVal, resultsFolderVal, dataFileWithIndex, vepDataFields, vepRunSettings)
+      hg19Settings <- toHg19Settings
+      hg38Settings <- toHg38Settings
+    } yield VepSettings(inputsFolderVal, resultsFolderVal, vepDataFields, vepRunSettings, hg19Settings, hg38Settings)
   }
 
   def toEmailSettings: Either[Snag, EmailSettings] = {
