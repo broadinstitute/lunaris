@@ -32,7 +32,6 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val emailKeyId: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyId")
   val emailKeyEncrypted: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyEncrypted")
   val miscMode: LunarisMiscModeField[LunarisConfigProps] = LunarisMiscModeField(this, "lunaris.misc.mode")
-  val exonsFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.exonsFile")
   val dbName: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.dbName")
 
   final case class HgProps(dataFile: InputIdField[LunarisConfigProps], indexFile: InputIdField[LunarisConfigProps],
@@ -84,7 +83,6 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       workDir <- vepWorkDir.get
       cacheDir <- vepCacheDir.get
       pluginsDir <- vepPluginsDir.get
-      exonsFile <- exonsFile.get
       vepRunSettings = VepRunSettings(vepScriptFile, workDir, cacheDir, pluginsDir)
       hg19Settings <- toHgSettings(hg19Props)
       hg38Settings <- toHgSettings(hg38Props)
