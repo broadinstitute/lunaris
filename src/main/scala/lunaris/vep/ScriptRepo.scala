@@ -8,12 +8,10 @@ class ScriptRepo(folder: File) {
   private val resourcePrefix: String = "lunaris/vep/"
 
   object Names {
-    val vepWrapper: String = "vepWrapper.sh"
     val sortVcf: String = "sort_vcf.sh"
   }
 
   object Files {
-    val vepWrapper: File = copyScriptToFolder(Names.vepWrapper)
     val sortVcf: File = copyScriptToFolder(Names.sortVcf)
   }
 

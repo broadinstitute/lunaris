@@ -7,7 +7,6 @@ import akka.stream.{IOResult, Materializer}
 import akka.util.ByteString
 import better.files.File
 import lunaris.app.{EmailSettings, VepDataFieldsSettings, VepSettings}
-import lunaris.data.BlockGzippedWithIndex
 import lunaris.genomics.Region
 import lunaris.io.{FileInputId, ResourceConfig}
 import lunaris.recipes.eval.LunRunnable.RunResult
@@ -35,7 +34,6 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
   private val dbFile: File = vepSettings.runSettings.workDir / "db" / dbName
   private val eggDb: EggDb = EggDb(dbFile)
   private val emailManager: EmailManager = new EmailManager(emailSettings, emailApiKey)
-  private val exonsFile: File = vepSettings.runSettings.exonsFile
 
   def reportSnag(snag: Snag): Unit = {
     println(snag.report)
@@ -85,8 +83,8 @@ final class VepJobManager(val vepSettings: VepSettings, emailSettings: EmailSett
       vcfSorter.sortVcf(inputFileServer, inputFileServer)
       val cacheFile = vepSettings.hgSettings(formData.hg).dataFileWithIndex.data.asInstanceOf[FileInputId].file
       val mionScript =
-        EggMion.script(inputFileServer, vepJobFiles, cacheFile, Some(exonsFile), vepDataFields.ref,
-          vepDataFields.alt, vepSettings)
+        EggMion.script(inputFileServer, vepJobFiles, cacheFile, vepDataFields.ref, vepDataFields.alt, vepSettings,
+          formData.hg)
       Selene.run_script(mionScript)
     }.map(SnagUtils.throwIfSnag)
     val queryFuture = inputPreparationFut.flatMap { _ =>

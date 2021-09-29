@@ -2,6 +2,7 @@ package lunaris.app
 
 import com.typesafe.config.{Config, ConfigFactory}
 import lunaris.data.BlockGzippedWithIndex
+import lunaris.genomics.Hg
 import lunaris.io.{InputId, ResourceConfig}
 import lunaris.utils.ConfigProps.{FileField, InputIdField, IntField, LunarisMiscModeField, LunarisModeField, StringField}
 import lunaris.utils.{ConfigProps, SnagUtils}
@@ -26,19 +27,31 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
   val altField: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.field.alt")
   val vepScriptFile: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.vepCmd")
   val vepWorkDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.workDir")
-  val vepFastaFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.fastaFile")
   val vepCacheDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.cacheDir")
   val vepPluginsDir: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.pluginsDir")
-  val vepDbNSFPFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.dbNSFPFile")
   val emailKeyId: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyId")
   val emailKeyEncrypted: StringField[LunarisConfigProps] = StringField(this, "lunaris.email.keyEncrypted")
   val miscMode: LunarisMiscModeField[LunarisConfigProps] = LunarisMiscModeField(this, "lunaris.misc.mode")
   val exonsFile: FileField[LunarisConfigProps] = FileField(this, "lunaris.vep.runVep.exonsFile")
   val dbName: StringField[LunarisConfigProps] = StringField(this, "lunaris.vep.runVep.dbName")
-  val hg19dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg19.dataFile")
-  val hg19indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg19.indexFile")
-  val hg38dataFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg38.dataFile")
-  val hg38indexFile: InputIdField[LunarisConfigProps] = InputIdField(this, "lunaris.vep.hg38.indexFile")
+
+  final case class HgProps(dataFile: InputIdField[LunarisConfigProps], indexFile: InputIdField[LunarisConfigProps],
+                           fastaFile: FileField[LunarisConfigProps], dbNSFPFile: FileField[LunarisConfigProps],
+                           exonsFile: FileField[LunarisConfigProps])
+
+  object HgProps {
+    def forHg(props: LunarisConfigProps, hg: Hg): HgProps = {
+      val dataFile = InputIdField(props, s"lunaris.vep.${hg.name}.dataFile")
+      val indexFile = InputIdField(props, s"lunaris.vep.${hg.name}.indexFile")
+      val fastaFile = FileField(props, s"lunaris.vep.${hg.name}.fastaFile")
+      val dbNSFPFile = FileField(props, s"lunaris.vep.${hg.name}.dbNSFPFile")
+      val exonsFile = FileField(props, s"lunaris.vep.${hg.name}.exonsFile")
+      HgProps(dataFile, indexFile, fastaFile, dbNSFPFile, exonsFile)
+    }
+  }
+
+  val hg19Props: HgProps = HgProps.forHg(this, Hg.Hg19)
+  val hg38Props: HgProps = HgProps.forHg(this, Hg.Hg38)
 
   def toServerSettings: Either[Snag, ServerSettings] = {
     for {
@@ -47,20 +60,15 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
     } yield ServerSettings(hostVal, portVal)
   }
 
-  def toHg19Settings: Either[Snag, VepHgSettings] = {
+  def toHgSettings(hgProps: HgProps): Either[Snag, VepHgSettings] = {
     for {
-      dataFile <- hg19dataFile.get
-      indexFileOpt <- hg19dataFile.getOpt
+      dataFile <- hgProps.dataFile.get
+      indexFileOpt <- hgProps.indexFile.getOpt
+      fastaFile <- hgProps.fastaFile.get
       dataFileWithIndex = BlockGzippedWithIndex(dataFile, indexFileOpt)
-    } yield VepHgSettings(dataFileWithIndex)
-  }
-
-  def toHg38Settings: Either[Snag, VepHgSettings] = {
-    for {
-      dataFile <- hg38dataFile.get
-      indexFileOpt <- hg38dataFile.getOpt
-      dataFileWithIndex = BlockGzippedWithIndex(dataFile, indexFileOpt)
-    } yield VepHgSettings(dataFileWithIndex)
+      dbNSFPFile <- hgProps.dbNSFPFile.get
+      exonsFile <- hgProps.exonsFile.get
+    } yield VepHgSettings(dataFileWithIndex, fastaFile, dbNSFPFile, exonsFile)
   }
 
   def toVepSettings: Either[Snag, VepSettings] = {
@@ -74,15 +82,12 @@ case class LunarisConfigProps(config: Config) extends ConfigProps[LunarisConfigP
       vepDataFields = VepDataFieldsSettings(varIdFieldVal, posFieldVal, refFieldVal, altFieldVal)
       vepScriptFile <- vepScriptFile.get
       workDir <- vepWorkDir.get
-      fastaFile <- vepFastaFile.get
       cacheDir <- vepCacheDir.get
       pluginsDir <- vepPluginsDir.get
-      dbNSFPFile <- vepDbNSFPFile.get
       exonsFile <- exonsFile.get
-      vepRunSettings = VepRunSettings(vepScriptFile, workDir, fastaFile, cacheDir, pluginsDir, dbNSFPFile,
-        exonsFile)
-      hg19Settings <- toHg19Settings
-      hg38Settings <- toHg38Settings
+      vepRunSettings = VepRunSettings(vepScriptFile, workDir, cacheDir, pluginsDir)
+      hg19Settings <- toHgSettings(hg19Props)
+      hg38Settings <- toHgSettings(hg38Props)
     } yield VepSettings(inputsFolderVal, resultsFolderVal, vepDataFields, vepRunSettings, hg19Settings, hg38Settings)
   }
 
