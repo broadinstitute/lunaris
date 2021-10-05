@@ -49,15 +49,8 @@ object EggMion {
                 Mion.id("warnings_file").assign(replace_file_name("vep_warnings")),
               ))
             ),
-            Mion.id("tabix_pick").assign(
-              Mion.id("pick_vep_results").call(Seq(
-                Mion.id("input_file")
-                  .assign(Mion.id("tabix_outputs").member(Mion.id("output_file"))),
-                Mion.id("output_file").assign(replace_file_name("tabix_picked.tsv"))
-              ))
-            ),
-            Mion.id("vep_result_pick").assign(
-              Mion.id("pick_vep_results").call(Seq(
+            Mion.id("vep_results_transformed").assign(
+              Mion.id("transform_vep_results").call(Seq(
                 Mion.id("input_file")
                   .assign(Mion.id("vep_outputs").member(Mion.id("output_file"))),
                 Mion.id("output_file").assign(replace_file_name("vep_picked.tsv"))
@@ -66,10 +59,10 @@ object EggMion {
             Mion.id("merge_outputs").assign(
               Mion.id("merge_sorted_files").call(Seq(
                 Mion.id("input_file1")
-                  .assign(Mion.id("tabix_pick").member(Mion.id("output_file"))),
+                  .assign(Mion.id("tabix_outputs").member(Mion.id("output_file"))),
                 Mion.id("pos_col1").assign(Mion.str(vepSettings.vepDataFieldsSettings.pos)),
                 Mion.id("input_file2")
-                  .assign(Mion.id("vep_result_pick").member(Mion.id("output_file"))),
+                  .assign(Mion.id("vep_results_transformed").member(Mion.id("output_file"))),
                 Mion.id("pos_col2").assign(Mion.str(vepSettings.vepDataFieldsSettings.pos)),
                 Mion.id("output_file").assign(replace_file_name("merged.tsv"))
               ))
