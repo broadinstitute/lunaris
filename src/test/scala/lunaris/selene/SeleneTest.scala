@@ -6,7 +6,7 @@ import org.scalatest.funsuite.AnyFunSuite
 
 class SeleneTest extends AnyFunSuite {
   test("Run selene tabix") {
-    val inputFile = File("/home/oliverr/lunaris/vep/test/inputs/input_selene.vcf")
+    val inputFile = File("/home/oliverr/lunaris/vep/test/inputs/hg19/input_selene.vcf")
     val dataFile = File("/home/oliverr/lunaris/vep/data/all_sites.vep.tsv.gz")
     val regionsFile = File("/home/oliverr/lunaris/vep/aux/55k.gencode.transcript.exons")
     val refCol = VepOutputReader.FileColNames2.ref
