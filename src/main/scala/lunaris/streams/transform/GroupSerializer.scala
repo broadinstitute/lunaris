@@ -10,6 +10,11 @@ trait GroupSerializer {
 
   def groupIdFields: Seq[String]
 
+  def isUsefulGroupId(id: String): Boolean = {
+    val idTrimmed = id.trim
+    idTrimmed.nonEmpty  && idTrimmed != "-"
+  }
+
   protected def getGroupId(record: Record): Either[Snag, String] = {
     var snagOpt: Option[Snag] = None
     var groupIdOpt: Option[String] = None
@@ -19,7 +24,10 @@ trait GroupSerializer {
       if (record.has(groupIdField)) {
         record.get(groupIdField).flatMap(_.asString) match {
           case Left(snag) => snagOpt = Some(snag)
-          case Right(groupId) => groupIdOpt = Some(groupId)
+          case Right(groupId) =>
+            if(isUsefulGroupId(groupId)) {
+              groupIdOpt = Some(groupId)
+            }
         }
       }
     }

@@ -24,8 +24,8 @@ class RareMetalsGroupSerializer(override val groupIdFields: Seq[String]) extends
       case Right(groupId) =>
         val chrom = record.locus.chrom
         val pos = record.locus.region.begin
-        val ref = getString(record, "REF", "?")
-        val alt = getString(record, "ALT", "?")
+        val ref = getString(record, "REF", getString(record, "Ref", "?"))
+        val alt = getString(record, "ALT", getString(record, "Alt", "?"))
         val rs = getString(record, "ID", record.id)
         val af = getString(record, "MAF", "NA")
         val line = Seq(chrom, pos, ref, alt, rs, af, groupId).mkString("\t")
