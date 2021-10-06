@@ -59,12 +59,8 @@ object VepOutputReader {
     }
 
     def fromHeaders(headers: Seq[String]): Either[Snag, ColIndices] = {
-      if(headers.contains(FileColNames1.location)) {
-        for {
-          iId <- indexOf(FileColNames1.id, headers)
-          iLocation <- indexOf(FileColNames1.location, headers)
-        } yield ColIndices1(iId, iLocation)
-      } else {
+      if (headers.contains(FileColNames2.chrom) && headers.contains(FileColNames2.pos)
+        && headers.contains(FileColNames2.ref) && headers.contains(FileColNames2.alt)) {
         for {
           iId <- indexOf(FileColNames2.id, headers)
           iChrom <- indexOf(FileColNames2.chrom, headers)
@@ -72,6 +68,11 @@ object VepOutputReader {
           iRef <- indexOf(FileColNames2.ref, headers)
           iAlt <- indexOf(FileColNames2.alt, headers)
         } yield ColIndices2(iId, iChrom, iPos, iRef, iAlt)
+      } else {
+        for {
+          iId <- indexOf(FileColNames1.id, headers)
+          iLocation <- indexOf(FileColNames1.location, headers)
+        } yield ColIndices1(iId, iLocation)
       }
     }
   }
@@ -107,22 +108,25 @@ object VepOutputReader {
           posString <- pickNonEmptyValue(iPos, values)
           pos <- NumberParser.parseInt(posString)
           ref <- pickNonEmptyValue(iRef, values)
-        } yield LunValue.RecordValue(FileColNames2.id, id, FileColNames2.chrom, chrom, FileColNames2.pos, pos, regionLength(ref))
+        } yield
+          LunValue.RecordValue(FileColNames2.id, id, FileColNames2.chrom, chrom, FileColNames2.pos, pos,
+            regionLength(ref))
     }
   }
 
   private class RecordPicker(snagLogger: Snag => ()) extends (Option[Record] => Seq[Record]) {
     var recordOptStored: Option[Record] = None
+
     override def apply(recordOpt: Option[Record]): Seq[Record] = {
       (recordOpt, recordOptStored) match {
         case (Some(record), Some(recordStored)) =>
-          if(record.id == recordStored.id) {
+          if (record.id == recordStored.id) {
             record.get(FileColNames2.pick) match {
               case Left(snag) => snagLogger(snag)
               case Right(pick) =>
-              if (pick.toString == "1") {
-                recordOptStored = Some(record)
-              }
+                if (pick.toString == "1") {
+                  recordOptStored = Some(record)
+                }
             }
             Seq.empty
           } else {

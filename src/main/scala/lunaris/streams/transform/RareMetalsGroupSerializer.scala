@@ -16,12 +16,21 @@ class RareMetalsGroupSerializer(override val groupIdFields: Seq[String]) extends
     stringOpt.getOrElse(default)
   }
 
+  private def debug(record: Record): Unit = {
+    val REF = getString(record, "REF", "*")
+    val Ref = getString(record, "Ref", "*")
+    val ALT = getString(record, "ALT", "*")
+    val Alt = getString(record, "Alt", "*")
+    println(s"REF='$REF', Ref='$Ref', ALT='$ALT', Alt='$Alt'")
+  }
+
   private def recordToDataLine(record: Record, runTracker: RunTracker): Seq[String] = {
     getGroupId(record) match {
       case Left(snag) =>
         runTracker.snagTracker.trackSnag(snag)
         Seq.empty
       case Right(groupId) =>
+        debug(record)
         val chrom = record.locus.chrom
         val pos = record.locus.region.begin
         val ref = getString(record, "REF", getString(record, "Ref", "?"))
