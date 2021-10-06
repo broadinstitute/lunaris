@@ -28,9 +28,10 @@ object HeaderRecordsParser {
     val cols = headerLineCleaned.split("\t")
     val recordType = {
       var recordTypeTmp = recordCoreType
+      recordTypeTmp = recordTypeTmp.copy(fields = cols)
       for (col <- cols) {
-        if (!recordTypeTmp.fields.contains(col)) {
-          recordTypeTmp = recordTypeTmp.addField(col, LunType.StringType)
+        if(!recordTypeTmp.elementTypes.contains(col)) {
+          recordTypeTmp = recordTypeTmp.copy(elementTypes = recordTypeTmp.elementTypes + (col -> LunType.StringType))
         }
       }
       recordTypeTmp
