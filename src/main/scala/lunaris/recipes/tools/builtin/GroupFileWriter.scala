@@ -63,7 +63,7 @@ object GroupFileWriter extends Tool {
       override def pickupWorkerOpt(receipt: WorkerMaker.Receipt): Option[LunWorker] = None
 
       override def pickupRunnableOpt(): Some[TextWriter] = {
-        val groupIdFields = Seq("SYMBOL", "Gene")
+        val groupIdFields = Seq("Gene")
         val groupSerializerFactory =
           GroupSerializer.Registry.getFactoryOrElse(format, RareMetalsGroupSerializer.Factory)
         val groupSerializer = groupSerializerFactory.create(groupIdFields)
