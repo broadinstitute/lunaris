@@ -2,7 +2,8 @@ package lunaris.expressions
 
 import lunaris.recipes.values.{LunType, LunValue}
 import lunaris.recipes.values.LunValue.PrimitiveValue
-import org.broadinstitute.yootilz.core.snag.Snag
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
+
 import scala.util.matching.Regex
 
 
@@ -90,6 +91,8 @@ object FieldFilterExpression {
     override def createFilter(field: String, value: Double): GreaterOrEqualFilter = GreaterOrEqualFilter(field, value)
   }
 
+  val missingFieldSnagTag: SnagTag = SnagTag("Missing field", "Record does not have expected field.")
+
   trait TypedFieldFilter[T] extends FieldFilterExpression {
     def expectedFieldType: LunType
 
@@ -106,7 +109,8 @@ object FieldFilterExpression {
             result = fieldTest(unpackedValue)
           } yield PrimitiveValue.BoolValue(result)
         case None =>
-          Left(Snag(s"Filter depends on field `$field`, but record ${record.id} does not have that field."))
+          Left(Snag(s"Filter depends on field `$field`, but record ${record.id} does not have that field.",
+            missingFieldSnagTag))
       }
     }
 

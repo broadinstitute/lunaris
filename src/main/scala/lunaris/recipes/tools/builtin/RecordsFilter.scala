@@ -1,6 +1,6 @@
 package lunaris.recipes.tools.builtin
 
-import lunaris.expressions.LunBoolExpression
+import lunaris.expressions.{FieldFilterExpression, LunBoolExpression}
 import lunaris.recipes.eval.LunWorker.RecordStreamWorker
 import lunaris.recipes.eval.WorkerMaker.WorkerBox
 import lunaris.recipes.eval.{LunCompileContext, LunRunContext, LunRunnable, LunWorker, RunTracker, WorkerMaker}
@@ -67,7 +67,9 @@ object RecordsFilter extends Tool {
                   filter.evaluate(record) match {
                     case Right(LunValue.PrimitiveValue.BoolValue(value)) => value
                     case Left(snag) =>
-                      runTracker.snagTracker.trackSnag(snag)
+                      if(!snag.tags.contains(FieldFilterExpression.missingFieldSnagTag)) {
+                        runTracker.snagTracker.trackSnag(snag)
+                      }
                       false
                   }
                 }
