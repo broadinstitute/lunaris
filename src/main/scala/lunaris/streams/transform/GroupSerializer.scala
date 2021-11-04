@@ -4,7 +4,7 @@ import akka.stream.scaladsl.Source
 import lunaris.recipes.eval.RunTracker
 import lunaris.recipes.values.RecordStreamWithMeta
 import lunaris.streams.utils.RecordStreamTypes.Record
-import org.broadinstitute.yootilz.core.snag.Snag
+import org.broadinstitute.yootilz.core.snag.{Snag, SnagTag}
 
 trait GroupSerializer {
 
@@ -34,7 +34,8 @@ trait GroupSerializer {
     (snagOpt, groupIdOpt) match {
       case (Some(snag), _) => Left(snag)
       case (_, Some(groupId)) => Right(groupId)
-      case _ => Left(Snag(s"Record ${record.id} does not have any of the fields ${groupIdFields.mkString(", ")}."))
+      case _ => Left(Snag(s"Record ${record.id} does not have any of the fields ${groupIdFields.mkString(", ")}.",
+        GroupSerializer.groupFieldsMissingSnagTag))
     }
   }
 
@@ -43,6 +44,9 @@ trait GroupSerializer {
 }
 
 object GroupSerializer {
+
+  val groupFieldsMissingSnagTag: SnagTag =
+    SnagTag("Group fields missing", "Record does not have non-blank values in fields used as group id.")
 
   trait Factory {
     def name: String

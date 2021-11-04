@@ -19,7 +19,9 @@ class RareMetalsGroupSerializer(override val groupIdFields: Seq[String]) extends
   private def recordToDataLine(record: Record, runTracker: RunTracker): Seq[String] = {
     getGroupId(record) match {
       case Left(snag) =>
-        runTracker.snagTracker.trackSnag(snag)
+        if(!snag.tags.contains(GroupSerializer.groupFieldsMissingSnagTag)) {
+          runTracker.snagTracker.trackSnag(snag)
+        }
         Seq.empty
       case Right(groupId) =>
         val chrom = record.locus.chrom

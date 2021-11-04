@@ -31,7 +31,9 @@ final class EpactsGroupSerializer(override val groupIdFields: Seq[String])
         case Some(record) =>
           getGroupId(record) match {
             case Left(snag) =>
-              snagTracker.trackSnag(snag)
+              if(!snag.tags.contains(GroupSerializer.groupFieldsMissingSnagTag)) {
+                snagTracker.trackSnag(snag)
+              }
               Seq.empty
             case Right(groupId) =>
               val variantIdBuilder = variantIdBuilders.getOrElse(groupId, {
