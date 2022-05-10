@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-image=lunaris-variant-mask-server:3.6.0
+image=lunaris-variant-mask-server:3.7.0
 lunaris_vep_dir=$HOME/lunaris/vep
 inputs_dir=$lunaris_vep_dir/inputs
 results_dir=$lunaris_vep_dir/results
