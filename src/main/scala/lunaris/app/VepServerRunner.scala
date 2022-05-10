@@ -53,17 +53,19 @@ object VepServerRunner {
                 )
               }
             },
-            path("lunaris" / "css" / "lunaris.css") {
+            path("lunaris" / "css" / Remaining) { remaining =>
+              val location = "web/css/" + remaining
               get {
                 complete(
-                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.css, "web/css/lunaris.css")
+                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.css, location)
                 )
               }
             },
-            path("lunaris" / "js" / "vep.js") {
+            path("lunaris" / "js" / Remaining) { remaining =>
+              val location = "web/js/" + remaining
               get {
                 complete(
-                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.js, "web/js/vep.js")
+                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.js, location)
                 )
               }
             },
