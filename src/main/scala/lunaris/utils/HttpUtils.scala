@@ -1,10 +1,9 @@
 package lunaris.utils
 
 import java.io.InputStream
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.{Http, model}
-import akka.http.scaladsl.model.{ContentType, HttpCharsets, HttpEntity, MediaTypes, MessageEntity}
+import akka.http.scaladsl.model.{ContentType, HttpCharsets, HttpEntity, MediaType, MediaTypes, MessageEntity}
 import akka.http.scaladsl.server.Route
 import akka.stream.Materializer
 import akka.stream.scaladsl.Source
@@ -21,6 +20,7 @@ object HttpUtils {
     val tsv: ContentType.WithCharset = MediaTypes.`text/tab-separated-values`.withCharset(HttpCharsets.`UTF-8`)
     val json: ContentType.WithFixedCharset = model.ContentTypes.`application/json`
     val plain: ContentType.WithCharset = model.ContentTypes.`text/plain(UTF-8)`
+    val svg: MediaType.Binary = MediaTypes.`image/svg+xml`
   }
 
   object ResponseBuilder {

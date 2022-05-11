@@ -69,6 +69,14 @@ object VepServerRunner {
                 )
               }
             },
+            path("lunaris" / "svg" / Remaining) { remaining =>
+              val location = "web/svg/" + remaining
+              get {
+                complete(
+                  HttpUtils.ResponseBuilder.fromResourceOrError(HttpUtils.ContentTypes.svg, location)
+                )
+              }
+            },
             path("lunaris" / "codemirror" / Remaining) { remaining =>
               get {
                 complete {
