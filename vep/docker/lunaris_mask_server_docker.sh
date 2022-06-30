@@ -18,13 +18,13 @@ echo "Done building image ${image}, now running command."
 
 if [[ "$1" = "prod" ]] || [[ "$1" = "dev" ]] || [[ "$1" = "dev2" ]]; then
   if [[ "$1" = "prod" ]]; then
-    port=80
+    port=8080
     db_name="egg"
   elif [[ "$1" = "dev" ]]; then
-    port=8080
+    port=8888
     db_name="egg_dev"
   elif [[ "$1" = "dev2" ]]; then
-    port=8888
+    port=8989
     db_name="egg_dev2"
   fi
   echo "Launching the server in $1 mode on port $port."
